@@ -50,7 +50,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 }){Text(label)}
             }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState())){TextButton(onClick={linkDialog=true}){Text("Insert link")};TextButton(onClick={imagePicker.launch(arrayOf("image/*"))}){Text("Insert image")};TextButton(onClick={val table="""<table border="1" style="border-collapse:collapse;width:100%"><tr><td>Cell</td><td>Cell</td></tr><tr><td>Cell</td><td>Cell</td></tr></table><p></p>""";web.value?.evaluateJavascript("document.execCommand('insertHTML',false,"+JSONObject.quote(table)+")",null)}){Text("Insert table")}}
+        Row(Modifier.horizontalScroll(rememberScrollState())){TextButton(onClick={linkDialog=true}){Text("Insert link")};TextButton(onClick={imagePicker.launch(arrayOf("image/*"))}){Text("Insert image")};TextButton(onClick={val table="""<table border="1" style="border-collapse:collapse;width:100%"><tr><td>Cell</td><td>Cell</td></tr><tr><td>Cell</td><td>Cell</td></tr></table><p></p>""";web.value?.evaluateJavascript("document.execCommand('insertHTML',false,"+JSONObject.quote(table)+")",null)}){Text("Insert table")};TextButton(onClick={val pageBreak="""<div class="page-break"></div><p></p>""";web.value?.evaluateJavascript("document.execCommand('insertHTML',false,"+JSONObject.quote(pageBreak)+")",null)}){Text("Page break")}}
         AndroidView(modifier=Modifier.fillMaxSize(),factory={ctx->
             WebView(ctx).apply{
                 settings.javaScriptEnabled=true
@@ -61,9 +61,9 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 val initial=JSONObject.quote(value)
                 val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
                 @font-face{font-family:Custom;src:url(data:${customFontMime};base64,${customFontData})}
-                body{font-family:${fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:${pageMargin}px;margin:0 auto;max-width:${if(pageMode) "${pageWidth}px" else "none"};background:${backgroundColor};background-image:${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"};background-size:cover;background-attachment:fixed;color:${textColor}} p{margin-bottom:${paragraphSpacing}px}
+                body{font-family:${fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:${pageMargin}px;margin:0 auto;max-width:${if(pageMode) "${pageWidth}px" else "none"};min-height:${if(pageMode) "1056px" else "95vh"};box-sizing:border-box;${if(pageMode) "box-shadow:0 4px 22px rgba(0,0,0,.25);border:1px solid #8b8495;" else ""}background:${backgroundColor};background-image:${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"};background-size:cover;background-attachment:fixed;color:${textColor}} p{margin-bottom:${paragraphSpacing}px}
                 #editor{min-height:95vh;outline:none;overflow-wrap:anywhere} blockquote{border-left:3px solid #bfa7df;padding-left:12px;color:#aaa}
-                h1,h2,h3{line-height:1.25} a{color:#bfa7df}
+                h1,h2,h3{line-height:1.25} a{color:#bfa7df} .page-break{break-after:page;page-break-after:always;height:1px} @media print{.page-break{break-after:page;page-break-after:always}}
                 </style></head><body><div id="editor" contenteditable="true"></div><script>
                 const editor=document.getElementById('editor');
                 editor.innerHTML=$initial;
@@ -73,7 +73,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 loadDataWithBaseURL(null,page,"text/html","UTF-8",null)
             }.also{web.value=it}
         },update={view->
-            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.backgroundImage='${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"}';document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
+            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.minHeight='${if(pageMode) "1056px" else "95vh"}';document.body.style.boxSizing='border-box';document.body.style.boxShadow='${if(pageMode) "0 4px 22px rgba(0,0,0,.25)" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.backgroundImage='${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"}';document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
             if(findTerm.isNotBlank()){view.setFindListener{_,count,done->if(done){if(count>0)repeat(findOccurrence.coerceIn(0,count-1)){view.findNext(true)};findCallback()}};view.findAllAsync(findTerm)}
         })
