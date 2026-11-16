@@ -113,6 +113,7 @@ object CloudSyncManager {
             }.asReversed()
         }.getOrDefault(emptyList())
     }
+    @Synchronized
     private fun recordEvent(context: Context, status: String) {
         val preferences = prefs(context)
         val now = System.currentTimeMillis()
