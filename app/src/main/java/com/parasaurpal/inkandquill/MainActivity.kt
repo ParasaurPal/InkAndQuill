@@ -224,6 +224,10 @@ class MainActivity:ComponentActivity(){
     var fieldSection by remember{mutableStateOf("General")}
     var fieldOptions by remember{mutableStateOf("")}
     var fieldHint by remember{mutableStateOf("")}
+    var fieldConditionField by remember{mutableStateOf("")}
+    var fieldConditionValue by remember{mutableStateOf("")}
+    var fieldFormula by remember{mutableStateOf("")}
+    var fieldRepeatable by remember{mutableStateOf(false)}
     var fieldType by remember{mutableStateOf("Long text")}
     var required by remember{mutableStateOf(false)}
     var typeMenu by remember{mutableStateOf(false)}
@@ -239,7 +243,7 @@ class MainActivity:ComponentActivity(){
             val allFields=remember(t.id,fieldRefresh){db.templateFields(t.id,true)}
             val activeFieldIds=remember(t.id,fieldRefresh){db.templateFields(t.id,false).map{it.id}.toSet()}
             LazyColumn(verticalArrangement=Arrangement.spacedBy(6.dp)){
-                items(allFields){f->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(f.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Text(f.fieldType,color=Plum,fontSize=11.sp)};Text("Section: ${f.section} · ${if(f.required)"Required" else "Optional"}",fontSize=11.sp);if(f.options.isNotBlank())Text("Options: ${f.options}",fontSize=11.sp);Row{if(f.id !in activeFieldIds)TextButton(onClick={db.restoreTemplateField(f.id);fieldRefresh++}){Text("Restore") }else{TextButton(onClick={db.templateVersion(t.id);editingField=f;fieldName=f.name;fieldType=f.fieldType;required=f.required;fieldSection=f.section;fieldOptions=f.options;fieldHint=f.hint;addField=true}){Text("Edit")};TextButton(onClick={db.moveTemplateField(t.id,f.id,-1);fieldRefresh++}){Text("↑")};TextButton(onClick={db.moveTemplateField(t.id,f.id,1);fieldRefresh++}){Text("↓")};TextButton(onClick={db.removeTemplateField(f.id);fieldRefresh++}){Text("Remove")}}}}}}
+                items(allFields){f->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(f.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Text(f.fieldType,color=Plum,fontSize=11.sp)};Text("Section: ${f.section} · ${if(f.required)"Required" else "Optional"}",fontSize=11.sp);if(f.options.isNotBlank())Text("Options: ${f.options}",fontSize=11.sp);if(f.conditionField.isNotBlank())Text("Shown when ${f.conditionField} = ${f.conditionValue}",fontSize=11.sp);if(f.formula.isNotBlank())Text("Formula: ${f.formula}",fontSize=11.sp);if(f.repeatable)Text("Repeatable group",fontSize=11.sp);Row{if(f.id !in activeFieldIds)TextButton(onClick={db.restoreTemplateField(f.id);fieldRefresh++}){Text("Restore") }else{TextButton(onClick={db.templateVersion(t.id);editingField=f;fieldName=f.name;fieldType=f.fieldType;required=f.required;fieldSection=f.section;fieldOptions=f.options;fieldHint=f.hint;fieldConditionField=f.conditionField;fieldConditionValue=f.conditionValue;fieldFormula=f.formula;fieldRepeatable=f.repeatable;addField=true}){Text("Edit")};TextButton(onClick={db.moveTemplateField(t.id,f.id,-1);fieldRefresh++}){Text("↑")};TextButton(onClick={db.moveTemplateField(t.id,f.id,1);fieldRefresh++}){Text("↓")};TextButton(onClick={db.removeTemplateField(f.id);fieldRefresh++}){Text("Remove")}}}}}}
             }
         }else{
             OutlinedTextField(templateQuery,{templateQuery=it},Modifier.fillMaxWidth(),label={Text("Search templates")},singleLine=true)
@@ -251,9 +255,14 @@ class MainActivity:ComponentActivity(){
         Box{OutlinedButton(onClick={typeMenu=true},modifier=Modifier.fillMaxWidth()){Text("Type: $fieldType")};DropdownMenu(expanded=typeMenu,onDismissRequest={typeMenu=false}){types.forEach{DropdownMenuItem(text={Text(it)},onClick={fieldType=it;typeMenu=false})}}}
         OutlinedTextField(fieldSection,{fieldSection=it},label={Text("Section")},singleLine=true)
         OutlinedTextField(fieldHint,{fieldHint=it},label={Text("Help text / hint")})
+        Text("Conditional visibility (optional)",fontWeight=FontWeight.SemiBold)
+        OutlinedTextField(fieldConditionField,{fieldConditionField=it},label={Text("Show when field has this name")},singleLine=true)
+        OutlinedTextField(fieldConditionValue,{fieldConditionValue=it},label={Text("Equals this value")},singleLine=true)
+        if(fieldType=="Calculated")OutlinedTextField(fieldFormula,{fieldFormula=it},label={Text("Calculated field formula")})
+        if(fieldType=="Repeatable group")Row(verticalAlignment=Alignment.CenterVertically){Checkbox(fieldRepeatable,{fieldRepeatable=it});Text("Allow repeated groups") }
         if(fieldType=="Dropdown"||fieldType=="Multi-select")OutlinedTextField(fieldOptions,{fieldOptions=it},label={Text("Options (comma separated)")})
         Row(verticalAlignment=Alignment.CenterVertically){Checkbox(required,{required=it});Text("Required field")}
-    }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint)};editingField=null;fieldName="";fieldHint="";fieldOptions="";required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
+    }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)};editingField=null;fieldName="";fieldHint="";fieldOptions="";fieldConditionField="";fieldConditionValue="";fieldFormula="";fieldRepeatable=false;required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
 }
 @Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int){
     var title by remember(record.id){mutableStateOf(record.title)}
