@@ -477,6 +477,7 @@ class MainActivity:ComponentActivity(){
         TextButton(onClick=importBackup){Text("Import local JSON backup")}
         TextButton(onClick={if(backupPassword.length>=10){cloudExport(backupPassword)}else{Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}}){Text("Save encrypted cloud backup")}
         TextButton(onClick={if(backupPassword.isNotBlank()){cloudImport(backupPassword)}else{Toast.makeText(context,"Enter your backup password.",Toast.LENGTH_SHORT).show()}}){Text("Restore encrypted cloud backup")}
+        if(cloudSyncEnabled)TextButton(onClick={CloudSyncManager.syncNow(context)}){Text("Sync now")}
         if(cloudSyncEnabled)TextButton(onClick=disableCloudSync){Text("Disable scheduled cloud backup")}else TextButton(onClick={if(backupPassword.length>=10)cloudSync(backupPassword)else Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable scheduled encrypted backup (12-hour interval)")}
         if(cloudConflict){Text("A cloud conflict was detected: both the phone and cloud copy changed since the last shared version. Choose which copy should replace the other.",color=Color(0xFFE0A45C));TextButton(onClick={resolveCloudConflict(true)}){Text("Keep this phone version")};TextButton(onClick={resolveCloudConflict(false)}){Text("Use the cloud version")}}
         Text("Scheduled backups run when Android reports a network connection. The selected provider must keep the destination available. Offline runs are retried by Android.")
