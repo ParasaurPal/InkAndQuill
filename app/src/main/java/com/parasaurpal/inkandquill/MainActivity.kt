@@ -240,6 +240,7 @@ class MainActivity:ComponentActivity(){
     var addField by remember{mutableStateOf(false)}
     var editingField by remember{mutableStateOf<TemplateField?>(null)}
     var applyingTemplate by remember{mutableStateOf<InkRecord?>(null)}
+    var restoreTemplatesDialog by remember{mutableStateOf(false)}
     var templateValues by remember{mutableStateOf<Map<String,String>>(emptyMap())}
     var templateDropdown by remember{mutableStateOf("")}
     var fieldName by remember{mutableStateOf("")}
@@ -255,7 +256,7 @@ class MainActivity:ComponentActivity(){
     var typeMenu by remember{mutableStateOf(false)}
     val types=listOf("Short text","Long text","Rich text","Number","Date","Dropdown","Multi-select","Checkbox","Image","Gallery","Attachment","Color","Rating","Table","Relationship","Repeatable group","Calculated")
     Column(Modifier.fillMaxSize().padding(16.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);TextButton(onClick={restoreTemplatesDialog=true}){Text("Restore starters")};Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
         Text("Build reusable forms and writing structures. Fields can be removed from the active template without destroying their stored definitions.")
         if(selectedTemplate!=null){
             val t=selectedTemplate!!
@@ -272,6 +273,7 @@ class MainActivity:ComponentActivity(){
             LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={applyingTemplate=t;templateValues=db.templateFields(t.id).associate{it.id to ""}}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")};TextButton(onClick={db.duplicateTemplate(t.id)}){Text("Duplicate")}}}}}}
         }
     }
+    if(restoreTemplatesDialog)AlertDialog(onDismissRequest={restoreTemplatesDialog=false},title={Text("Restore starter templates?")},text={Text("This replaces edits to built-in starter templates and restores their original field definitions. Your custom templates and writing documents are kept.")},confirmButton={TextButton(onClick={db.restoreStarterTemplates();selectedTemplate=null;restoreTemplatesDialog=false}){Text("Restore starters")}},dismissButton={TextButton(onClick={restoreTemplatesDialog=false}){Text("Cancel")}})
     if(applyingTemplate!=null){
         val template=applyingTemplate!!
         val fields=remember(template.id){db.templateFields(template.id)}
