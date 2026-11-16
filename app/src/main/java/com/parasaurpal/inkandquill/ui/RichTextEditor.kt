@@ -17,7 +17,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
 @Composable
-fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f){
+fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",lineSpacing:Float=1.65f,pageMode:Boolean=false){
     val callback by rememberUpdatedState(onValueChange)
     val web=remember{mutableStateOf<WebView?>(null)}
     var linkDialog by remember{mutableStateOf(false)}
@@ -52,7 +52,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 addJavascriptInterface(object{@JavascriptInterface fun changed(html:String){callback(html)}},"InkBridge")
                 val initial=JSONObject.quote(value)
                 val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-                body{font-family:sans-serif;font-size:${fontSize}px;line-height:1.65;padding:12px;margin:0;background:transparent;color:var(--ink,#eee8f5)}
+                body{font-family:${fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:12px;margin:0 auto;max-width:${if(pageMode) "760px" else "none"};background:transparent;color:var(--ink,#eee8f5)}
                 #editor{min-height:95vh;outline:none;overflow-wrap:anywhere} blockquote{border-left:3px solid #bfa7df;padding-left:12px;color:#aaa}
                 h1,h2,h3{line-height:1.25} a{color:#bfa7df}
                 </style></head><body><div id="editor" contenteditable="true"></div><script>
@@ -64,7 +64,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 loadDataWithBaseURL(null,page,"text/html","UTF-8",null)
             }.also{web.value=it}
         },update={view->
-            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px'",null)
+            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "760px" else "none"}'",null)
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
         })
     }
