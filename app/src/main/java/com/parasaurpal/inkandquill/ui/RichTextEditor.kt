@@ -22,7 +22,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
 @Composable
-fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",customFontData:String="",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",textColor:String="#eee8f5"){
+fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",customFontData:String="",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",backgroundImageData:String="",backgroundImageMime:String="image/jpeg",textColor:String="#eee8f5"){
     val callback by rememberUpdatedState(onValueChange)
     val context=LocalContext.current
     val web=remember{mutableStateOf<WebView?>(null)}
@@ -60,7 +60,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 val initial=JSONObject.quote(value)
                 val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
                 @font-face{font-family:Custom;src:url(data:font/ttf;base64,${customFontData})}
-                body{font-family:${fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:${pageMargin}px;margin:0 auto;max-width:${if(pageMode) "${pageWidth}px" else "none"};background:${backgroundColor};color:${textColor}} p{margin-bottom:${paragraphSpacing}px}
+                body{font-family:${fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:${pageMargin}px;margin:0 auto;max-width:${if(pageMode) "${pageWidth}px" else "none"};background:${backgroundColor};background-image:${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"};background-size:cover;background-attachment:fixed;color:${textColor}} p{margin-bottom:${paragraphSpacing}px}
                 #editor{min-height:95vh;outline:none;overflow-wrap:anywhere} blockquote{border-left:3px solid #bfa7df;padding-left:12px;color:#aaa}
                 h1,h2,h3{line-height:1.25} a{color:#bfa7df}
                 </style></head><body><div id="editor" contenteditable="true"></div><script>
@@ -72,7 +72,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 loadDataWithBaseURL(null,page,"text/html","UTF-8",null)
             }.also{web.value=it}
         },update={view->
-            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
+            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.backgroundImage='${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"}';document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
         })
     }
