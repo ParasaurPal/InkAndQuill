@@ -30,4 +30,4 @@ JDK 17 and Gradle 8.11.1:
 GitHub Actions builds and uploads `ink-and-quill-debug` on pushes to `main`.
 
 ## Product scope and remaining work
-See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The full requested product is still being built. Scheduled cloud backup is one-way encrypted backup, not bidirectional multi-device sync. Geographic map layers, complete visual planning workspaces, advanced template logic, inline image insertion, full page layout, conflict-aware sync, and extensive automated testing remain in the roadmap.
+See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The product is still under active implementation. Scheduled cloud backup is one-way encrypted backup, not bidirectional multi-device sync. Specialized geographic maps, family-tree layouts, complete timeline visualization, advanced template logic, true paginated layout, conflict-aware sync, PDF import, and extensive automated testing remain in the roadmap.
