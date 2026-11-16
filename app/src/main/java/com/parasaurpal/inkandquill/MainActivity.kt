@@ -47,7 +47,7 @@ class MainActivity:ComponentActivity(){
     var appearance by remember{mutableStateOf(db.setting("appearance","dark"))}
     val dark=appearance!="light"
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(db.exportJson().toByteArray())}}}
-    val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
+    val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
     MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=Plum,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=Color(0xFF72558F),background=Color(0xFFF5F0E8),surface=Color.White)){
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
@@ -65,7 +65,7 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{import.launch(arrayOf("application/json","text/*"))}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))}){settings=false}
     }
 }
 
@@ -161,12 +161,12 @@ class MainActivity:ComponentActivity(){
     AlertDialog(onDismissRequest=onDismiss,title={Text("Create something")},text={Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState())){kinds.forEach{TextButton(onClick={onChoose(it)}){Text(it)}}}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
 
-@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,import:()->Unit,close:()->Unit){
+@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,close:()->Unit){
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
         Text("Automatic mention links");var mode by remember{mutableStateOf(db.setting("autoLink","suggest"))};Row{listOf("off","suggest","auto").forEach{FilterChip(mode==it,{mode=it;db.setSetting("autoLink",it)},label={Text(it)})}}
         Text("Your writing remains in the app's local database. Internet is not needed.")
-        TextButton(onClick=export){Text("Export JSON backup")};TextButton(onClick=import){Text("Import JSON backup")}
+        TextButton(onClick=export){Text("Export JSON backup")};TextButton(onClick=importBackup){Text("Import JSON backup")}
     }},confirmButton={TextButton(onClick=close){Text("Done")}})
 }
