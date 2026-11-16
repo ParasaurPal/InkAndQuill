@@ -87,7 +87,7 @@ class MainActivity:ComponentActivity(){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
                         "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
-                        "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")}
+                        "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")})
                         else->HomeScreen(db,refresh,{selected=it},{create=true})
                     }
                 }
