@@ -1,6 +1,8 @@
 package com.parasaurpal.inkandquill
 
 import android.net.Uri
+import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -19,6 +21,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.platform.LocalContext
@@ -306,7 +310,7 @@ class MainActivity:ComponentActivity(){
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
             Text("Attachments",fontWeight=FontWeight.SemiBold)
             TextButton(onClick={attachmentPicker.launch(arrayOf("image/*","application/pdf","text/*","application/*"))}){Text("Add image or file")}
-            attachmentList.forEach{attachment->Text("• ${attachment["displayName"]?.ifBlank{"Attached file"} ?: "Attached file"}",fontSize=12.sp)}
+            attachmentList.forEach{attachment->AttachmentPreview(attachment){id->db.removeAttachment(id);attachmentRefresh++}}
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
             Text("Outgoing mention links",fontWeight=FontWeight.SemiBold)
@@ -317,6 +321,14 @@ class MainActivity:ComponentActivity(){
         if(history)Column{Text("Recent versions",fontWeight=FontWeight.SemiBold);db.revisions(record.id).take(5).forEach{rev->Row(verticalAlignment=Alignment.CenterVertically){Text("• ${rev.first} · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(rev.third))}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={title=rev.first;html=rev.second}){Text("Restore")}}}}
         Text("Offline · stored on this device",Modifier.padding(vertical=5.dp),fontSize=11.sp,color=Plum)
     }
+}
+
+@Composable private fun AttachmentPreview(attachment:Map<String,String>,remove:(String)->Unit){
+    val context=LocalContext.current
+    val uri=attachment["uri"].orEmpty()
+    val mime=attachment["mimeType"].orEmpty()
+    val bitmap=remember(uri){if(mime.startsWith("image/"))runCatching{context.contentResolver.openInputStream(Uri.parse(uri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()else null}
+    Card(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(Modifier.padding(8.dp)){Text(attachment["displayName"]?.ifBlank{"Attached file"}?: "Attached file",fontWeight=FontWeight.Medium);if(bitmap!=null)Image(bitmap=bitmap,contentDescription=attachment["displayName"],modifier=Modifier.fillMaxWidth().heightIn(max=180.dp),contentScale=ContentScale.Fit);Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(uri),mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))}}){Text("Open")};TextButton(onClick={remove(attachment["id"].orEmpty())}){Text("Remove")}}}}
 }
 
 @Composable private fun LockScreen(onUnlock:(String)->Unit){var pin by remember{mutableStateOf("")};Column(Modifier.fillMaxSize().padding(28.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.Lock,null,tint=Plum,modifier=Modifier.size(48.dp));Text("Ink & Quill is locked",style=MaterialTheme.typography.headlineSmall);OutlinedTextField(pin,{pin=it},label={Text("PIN or passphrase")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true);Button(onClick={onUnlock(pin)},enabled=pin.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Unlock")}}}
