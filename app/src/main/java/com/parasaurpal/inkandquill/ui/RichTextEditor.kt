@@ -17,7 +17,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
 @Composable
-fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",lineSpacing:Float=1.65f,pageMode:Boolean=false,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",textColor:String="#eee8f5"){
+fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",textColor:String="#eee8f5"){
     val callback by rememberUpdatedState(onValueChange)
     val web=remember{mutableStateOf<WebView?>(null)}
     var linkDialog by remember{mutableStateOf(false)}
@@ -30,7 +30,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
     )
     Column(modifier){
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(2.dp)){
-            commands.forEach{(cmd,label)->
+            commands.filter{enabledCommands==null||it.first in enabledCommands}.forEach{(cmd,label)->
                 TextButton(onClick={
                     val action=when{
                         cmd.startsWith("formatBlock:")->"document.execCommand('formatBlock',false,'${cmd.substringAfter(":")}')"
