@@ -225,8 +225,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val mediaIds=mutableSetOf<String>()
         db.rawQuery("SELECT id FROM attachments WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
         db.rawQuery("SELECT id FROM board_items WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+        val worldBoardIds=mutableListOf<String>()
         if(existing?.kind=="World"){
-            db.rawQuery("SELECT id FROM planning_boards WHERE worldId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+            db.rawQuery("SELECT id FROM planning_boards WHERE worldId=?",arrayOf(id)).use{while(it.moveToNext()){val boardId=it.getString(0);worldBoardIds.add(boardId);mediaIds.add(boardId)}}
             db.rawQuery("SELECT bi.id FROM board_items bi JOIN planning_boards pb ON pb.id=bi.boardId WHERE pb.worldId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
         }
         db.beginTransaction()
@@ -239,6 +240,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
             if(existing?.kind=="World"){
                 db.delete("timeline_events","worldId=?",arrayOf(id))
+                worldBoardIds.forEach{boardId->
+                    db.delete("board_links","boardId=?",arrayOf(boardId))
+                    db.delete("board_items","boardId=?",arrayOf(boardId))
+                }
                 db.delete("planning_boards","worldId=?",arrayOf(id))
                 db.delete("world_calendars","worldId=?",arrayOf(id))
             }
