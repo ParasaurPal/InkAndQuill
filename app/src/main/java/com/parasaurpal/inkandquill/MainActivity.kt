@@ -221,6 +221,7 @@ class MainActivity:ComponentActivity(){
     var html by remember(record.id){mutableStateOf(record.body)}
     var tags by remember(record.id){mutableStateOf(record.tags)}
     var aliases by remember(record.id){mutableStateOf(record.aliases)}
+    var excludeTerm by remember{mutableStateOf("")}
     var snapshotLabel by remember{mutableStateOf("Alternate version")}
     var relationTarget by remember{mutableStateOf("")}
     var relationLabel by remember{mutableStateOf("related to")}
@@ -279,6 +280,8 @@ class MainActivity:ComponentActivity(){
         
             OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Tags (comma separated)")})
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
+            Text("Exclude a phrase from automatic mention matching",fontWeight=FontWeight.SemiBold)
+            Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(excludeTerm,{excludeTerm=it},Modifier.weight(1f),label={Text("Excluded phrase")},singleLine=true);TextButton(onClick={if(excludeTerm.isNotBlank()){db.excludeLinkTerm(record.id,excludeTerm);excludeTerm=""}}){Text("Exclude")}}
             Text("Alternate versions and snapshots",fontWeight=FontWeight.SemiBold)
             Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(snapshotLabel,{snapshotLabel=it},Modifier.weight(1f),label={Text("Version label")},singleLine=true);TextButton(onClick={db.saveEntitySnapshot(record.copy(title=title,body=html,tags=tags,aliases=aliases),snapshotLabel.ifBlank{"Snapshot"});snapshotLabel="Alternate version"}){Text("Save snapshot")}}
             db.entitySnapshots(record.id).forEach{snapshot->Row(verticalAlignment=Alignment.CenterVertically){Text(snapshot.first,Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.restoreEntitySnapshot(record.id,snapshot.second);val restored=db.get(record.id);if(restored!=null){title=restored.title;html=restored.body;tags=restored.tags;aliases=restored.aliases}}){Text("Restore")}}}
@@ -306,6 +309,8 @@ class MainActivity:ComponentActivity(){
             attachmentList.forEach{attachment->Text("• ${attachment["displayName"]?.ifBlank{"Attached file"} ?: "Attached file"}",fontSize=12.sp)}
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
+            Text("Outgoing mention links",fontWeight=FontWeight.SemiBold)
+            db.linksFrom(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){Text("${link.first} · ${link.second}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.removeLink(record.id,db.all().firstOrNull{it.title==link.first}?.id?:"",link.second)}){Text("Unlink")}}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
         }
@@ -330,6 +335,8 @@ class MainActivity:ComponentActivity(){
         Text("Color palette");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Plum","Ocean","Forest","Rose","Amber").forEach{FilterChip(palette==it,{setPalette(it)},label={Text(it)})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
         Text("Automatic mention links");var mode by remember{mutableStateOf(db.setting("autoLink","suggest"))};Row{listOf("off","suggest","auto").forEach{FilterChip(mode==it,{mode=it;db.setSetting("autoLink",it)},label={Text(it)})}}
+        var aliasMatching by remember{mutableStateOf(db.setting("matchAliases","true")=="true")};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(aliasMatching,{aliasMatching=it;db.setSetting("matchAliases",it.toString())});Text("Match aliases")}
+        var caseSensitive by remember{mutableStateOf(db.setting("caseSensitive","false")=="true")};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(caseSensitive,{caseSensitive=it;db.setSetting("caseSensitive",it.toString())});Text("Case-sensitive matching")}
         Text("Your writing stays on this phone first. Cloud backup is optional and encrypted on this device before it is sent to the storage provider you choose.")
         OutlinedTextField(backupPassword,{backupPassword=it},Modifier.fillMaxWidth(),label={Text("Cloud backup password")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true)
         Text("Use at least 10 characters. Keep this password safe: it cannot be recovered if lost.")
