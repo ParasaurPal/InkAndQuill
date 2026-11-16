@@ -18,7 +18,7 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 - Local title/alias mention scanner with persisted backlinks.
 - Search, type filters, recent writing, editable starter templates.
 - Appearance and editor font-size preferences.
-- JSON export/import.
+- JSON backup/restore; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; text/Markdown/HTML/DOCX/EPUB import.
 - Android backup disabled; no INTERNET permission is declared.
 
 ## Build
