@@ -114,7 +114,7 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},customAccent,{customAccent=it;db.setSetting("customAccent",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)},AppLock.isEnabled(context),{pin->AppLock.setPin(context,pin)},{AppLock.disable(context)},CloudSyncManager.hasConflict(context),CloudSyncManager.lastSyncStatus(context),CloudSyncManager.lastSyncAt(context),{keepPhone->CloudSyncManager.resolveConflict(context,keepPhone)},{db.all().forEach{LocalLinkEngine(db).scan(it)};refresh++}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},customAccent,{customAccent=it;db.setSetting("customAccent",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)},AppLock.isEnabled(context),{pin->AppLock.setPin(context,pin)},{AppLock.disable(context)},CloudSyncManager.hasConflict(context),CloudSyncManager.lastSyncStatus(context),CloudSyncManager.lastSyncAt(context),CloudSyncManager.syncHistory(context),{keepPhone->CloudSyncManager.resolveConflict(context,keepPhone)},{db.all().forEach{LocalLinkEngine(db).scan(it)};refresh++}){settings=false}
         }
     }
 }
@@ -511,9 +511,10 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     AlertDialog(onDismissRequest=onDismiss,title={Text("Create something")},text={Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState())){kinds.forEach{TextButton(onClick={onChoose(it)}){Text(it)}}}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
 
-@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,customAccent:String,setCustomAccent:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,lockEnabled:Boolean,setPin:(String)->Unit,disableLock:()->Unit,cloudConflict:Boolean,cloudSyncStatus:String,cloudSyncAt:Long,resolveCloudConflict:(Boolean)->Unit,retroScan:()->Unit,close:()->Unit){
+@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,customAccent:String,setCustomAccent:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,lockEnabled:Boolean,setPin:(String)->Unit,disableLock:()->Unit,cloudConflict:Boolean,cloudSyncStatus:String,cloudSyncAt:Long,cloudSyncHistory:List<Pair<Long,String>>,resolveCloudConflict:(Boolean)->Unit,retroScan:()->Unit,close:()->Unit){
     val context=LocalContext.current
     var backupPassword by remember{mutableStateOf("")}
+    var showCloudHistory by remember{mutableStateOf(false)}
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(Modifier.heightIn(max=600.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(9.dp)){
         var lockActive by remember{mutableStateOf(lockEnabled)};Text("Local app lock");var pinEntry by remember{mutableStateOf("")};if(lockActive)TextButton(onClick={disableLock;lockActive=false}){Text("Disable PIN lock")}else{OutlinedTextField(pinEntry,{pinEntry=it},label={Text("Set PIN or passphrase (6+ characters)")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation());TextButton(onClick={if(pinEntry.length>=6){setPin(pinEntry);lockActive=true;pinEntry=""}else Toast.makeText(context,"Use at least 6 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable app lock")}}
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
@@ -535,6 +536,16 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         TextButton(onClick={if(backupPassword.isNotBlank()){cloudImport(backupPassword)}else{Toast.makeText(context,"Enter your backup password.",Toast.LENGTH_SHORT).show()}}){Text("Restore encrypted cloud backup")}
         Text("Cloud status: $cloudSyncStatus",fontSize=12.sp)
         if(cloudSyncAt>0)Text("Last checked: "+java.text.DateFormat.getDateTimeInstance().format(java.util.Date(cloudSyncAt)),fontSize=11.sp)
+        TextButton(onClick={showCloudHistory=!showCloudHistory}){Text(if(showCloudHistory)"Hide sync history" else "View sync history ("+cloudSyncHistory.size+")")}
+        if(showCloudHistory){
+            if(cloudSyncHistory.isEmpty())Text("No sync activity recorded yet.",fontSize=12.sp)
+            cloudSyncHistory.take(12).forEach{entry->
+                Column(Modifier.fillMaxWidth().padding(start=8.dp,top=2.dp,bottom=2.dp)){
+                    Text(entry.second,fontSize=12.sp,fontWeight=FontWeight.Medium)
+                    Text(java.text.DateFormat.getDateTimeInstance().format(java.util.Date(entry.first)),fontSize=10.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.65f))
+                }
+            }
+        }
         if(cloudSyncEnabled)TextButton(onClick={CloudSyncManager.syncNow(context)}){Text("Sync now")}
         if(cloudSyncEnabled)TextButton(onClick=disableCloudSync){Text("Disable cloud sync")}else TextButton(onClick={if(backupPassword.length>=10)cloudSync(backupPassword)else Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable encrypted cloud sync (12-hour schedule)")}
         if(cloudConflict){Text("A cloud conflict was detected: both the phone and cloud copy changed since the last shared version. Choose which copy should replace the other.",color=Color(0xFFE0A45C));TextButton(onClick={resolveCloudConflict(true)}){Text("Keep this phone version")};TextButton(onClick={resolveCloudConflict(false)}){Text("Use the cloud version")}}
