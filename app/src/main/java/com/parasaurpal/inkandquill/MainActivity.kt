@@ -440,7 +440,7 @@ class MainActivity:ComponentActivity(){
             attachmentList.forEach{attachment->AttachmentPreview(attachment){id->db.removeAttachment(id);attachmentRefresh++}}
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
-            Text("Outgoing mention links",fontWeight=FontWeight.SemiBold)
+            Row(verticalAlignment=Alignment.CenterVertically){Text("Outgoing mention links",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={if(db.undoLastLinkChange())linkCount++}){Text("Undo last change")}}
             db.outgoingLinks(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick={db.get(link.recordId)?.let(onOpen)},modifier=Modifier.weight(1f)){Text("${link.title} · ${link.label}")};TextButton(onClick={db.removeLink(record.id,link.recordId,link.label)}){Text("Unlink")}}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.incomingLinks(record.id).forEach{link->TextButton(onClick={db.get(link.recordId)?.let(onOpen)}){Text("• ${link.title} — ${link.label} (position ${link.position})",fontSize=12.sp)}}
