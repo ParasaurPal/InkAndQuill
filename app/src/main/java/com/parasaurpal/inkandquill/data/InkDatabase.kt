@@ -22,7 +22,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,3){
+class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,4){
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
@@ -34,10 +34,32 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
         db.execSQL("CREATE INDEX links_target ON links(targetId)")
         db.execSQL("INSERT INTO settings VALUES('appearance','system'),('fontSize','18'),('autoLink','suggest'),('caseSensitive','false')")
         seed(db)
+        db.execSQL("CREATE TABLE folders(id TEXT PRIMARY KEY,name TEXT NOT NULL,parentId TEXT,color TEXT,position INTEGER DEFAULT 0)")
+        db.execSQL("CREATE TABLE record_folders(recordId TEXT PRIMARY KEY,folderId TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
+        db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
+        db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
+        db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
+        db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
+        db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
     }
     override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int){
         if(oldVersion<2){db.execSQL("CREATE TABLE IF NOT EXISTS revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)");db.execSQL("CREATE TABLE IF NOT EXISTS template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER)")}
         if(oldVersion<3) seed(db)
+        if(oldVersion<4){
+            db.execSQL("CREATE TABLE IF NOT EXISTS folders(id TEXT PRIMARY KEY,name TEXT NOT NULL,parentId TEXT,color TEXT,position INTEGER DEFAULT 0)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS record_folders(recordId TEXT PRIMARY KEY,folderId TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS attachments_record ON attachments(recordId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS collection_records_record ON collection_records(recordId)")
+        }
     }
     private fun seed(db:SQLiteDatabase){
         val data=listOf(
@@ -112,5 +134,21 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun revisions(id:String)=readableDatabase.rawQuery("SELECT title,body,createdAt FROM revisions WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getLong(2)))}}
     fun exportJson():String{val arr=JSONArray();all().forEach{r->arr.put(JSONObject().put("id",r.id).put("title",r.title).put("body",r.body).put("kind",r.kind).put("parentId",r.parentId).put("scope",r.scope).put("tags",r.tags).put("aliases",r.aliases).put("createdAt",r.createdAt).put("favorite",r.favorite))};return JSONObject().put("format","inkandquill").put("version",2).put("records",arr).toString(2)}
     fun importJson(raw:String){val root=JSONObject(raw);val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray();for(i in 0 until arr.length()){val o=arr.getJSONObject(i);save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))}}
+
+    fun createFolder(name:String,parentId:String="",color:String=""):String { val id=UUID.randomUUID().toString(); val v=ContentValues().apply{put("id",id);put("name",name.trim());put("parentId",parentId);put("color",color);put("position",0)};writableDatabase.insert("folders",null,v);return id }
+    fun folders():List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,COALESCE(parentId,'') FROM folders ORDER BY position,name",null).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun moveToFolder(recordId:String,folderId:String?){if(folderId.isNullOrBlank())writableDatabase.delete("record_folders","recordId=?",arrayOf(recordId)) else {val v=ContentValues().apply{put("recordId",recordId);put("folderId",folderId)};writableDatabase.insertWithOnConflict("record_folders",null,v,SQLiteDatabase.CONFLICT_REPLACE)}}
+    fun folderFor(recordId:String)=readableDatabase.rawQuery("SELECT folderId FROM record_folders WHERE recordId=?",arrayOf(recordId)).use{if(it.moveToFirst())it.getString(0)else ""}
+    fun createCollection(name:String,description:String=""):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("name",name.trim());put("description",description);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("collections",null,v);return id}
+    fun addToCollection(collectionId:String,recordId:String){val v=ContentValues().apply{put("collectionId",collectionId);put("recordId",recordId)};writableDatabase.insertWithOnConflict("collection_records",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun collections():List<Pair<String,String>> = readableDatabase.rawQuery("SELECT id,name FROM collections ORDER BY name",null).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
+    fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("uri",uri);put("mimeType",mimeType);put("displayName",displayName);put("size",size);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("attachments",null,v)}
+    fun attachments(recordId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments WHERE recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"uri" to c.getString(1),"mimeType" to (c.getString(2)?: ""),"displayName" to (c.getString(3)?: "")))}}
+    fun removeAttachment(id:String){writableDatabase.delete("attachments","id=?",arrayOf(id))}
+    fun excludeLinkTerm(recordId:String,term:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("term",term.trim())};writableDatabase.insertWithOnConflict("link_exclusions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun isLinkExcluded(recordId:String,term:String)=readableDatabase.rawQuery("SELECT 1 FROM link_exclusions WHERE recordId=? AND lower(term)=lower(?)",arrayOf(recordId,term)).use{it.moveToFirst()}
+    fun saveOpenTabs(ids:List<String>){writableDatabase.beginTransaction();try{writableDatabase.delete("open_tabs",null,null);ids.distinct().forEachIndexed{index,id->val v=ContentValues().apply{put("position",index);put("recordId",id)};writableDatabase.insert("open_tabs",null,v)};writableDatabase.setTransactionSuccessful()}finally{writableDatabase.endTransaction()}}
+    fun openTabs():List<String> = readableDatabase.rawQuery("SELECT recordId FROM open_tabs ORDER BY position",null).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
+    fun replaceInRecord(id:String,find:String,replacement:String,matchCase:Boolean=false):Int{if(find.isEmpty())return 0;val r=get(id)?:return 0;val opts=if(matchCase) emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex(Regex.escape(find),opts);val count=regex.findAll(r.body).count();if(count>0)save(r.copy(body=regex.replace(r.body){replacement}));return count}
     fun recordsForRevision(id:String)=revisions(id)
 }
