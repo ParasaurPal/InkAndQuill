@@ -522,11 +522,12 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
             TextButton(onClick={if(relationTarget.isNotBlank()&&relationLabel.isNotBlank()){db.addRelationship(record.id,relationTarget,relationLabel);relationTarget=""}}){Text("Add relationship")}
             db.relationships(record.id).forEach{link->Text("• ${link.second}: ${link.first}",fontSize=12.sp)}
 
+            val descendantIds=db.descendants(record.id).map{it.id}.toSet()
             Box {
                 OutlinedButton(onClick={parentMenu=true},modifier=Modifier.fillMaxWidth()){Text("Parent: "+(db.get(parent)?.title?: "None"))}
                 DropdownMenu(expanded=parentMenu,onDismissRequest={parentMenu=false}){
                     DropdownMenuItem(text={Text("No parent")},onClick={parent="";parentMenu=false})
-                    db.all().filter{it.id!=record.id&&it.kind in listOf("World","Series","Story","Book","Chapter")}.forEach{candidate->
+                    db.all().filter{candidate->ProjectHierarchyRules.isValidAssignment(record.id,record.kind,candidate.id,candidate.kind,descendantIds)}.forEach{candidate->
                         DropdownMenuItem(text={Text(candidate.title+" · "+candidate.kind)},onClick={parent=candidate.id;parentMenu=false})
                     }
                 }
