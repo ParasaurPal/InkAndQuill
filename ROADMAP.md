@@ -21,7 +21,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, unlink, retroactive scan, clickable incoming/outgoing records
 - [x] Attachment metadata, image previews, open/remove controls, inline image insertion, and image bytes included in JSON/encrypted backups
 - [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images
-- [x] Password-encrypted AES-256-GCM backup/restore; optional scheduled provider-backed encrypted backup with Android Keystore-protected password, initial run, 12-hour WorkManager schedule, network constraint, and retry
+- [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, and explicit keep-phone/use-cloud conflict resolution
 - [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
@@ -33,7 +33,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Editor still needs a structured document model, true paginated page editor, page breaks, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
 - [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
 - [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
-- [ ] Scheduled cloud backup is one-way encrypted backup, not bidirectional multi-device sync. Provider-specific adapters, change journal, offline merge queue, conflict resolution, restore preview, sync status/history, and multi-device sync remain
+- [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, detailed sync history, and multi-device end-to-end testing remain
 - [ ] PDF import, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
 
 ## Non-negotiable product constraints
