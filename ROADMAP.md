@@ -1,42 +1,42 @@
 # Ink & Quill implementation tracker
 
-This tracker distinguishes working features from partial foundations and unfinished requirements. A checked item means the corresponding code and UI exist; it does not imply every edge case has been validated.
+This tracker distinguishes implemented code/UI from partial foundations and remaining product work.
 
 ## Implemented
-- [x] Native Kotlin / Jetpack Compose Android app with GitHub Actions debug APK builds
-- [x] Offline SQLite records, autosave, search, type filters, favorites, folders, collections, and persisted multi-document tabs
-- [x] Rich HTML editor with bold, italic, underline, strike, headings, ordered/unordered lists, alignment, indentation, block quotes, horizontal rules, links, text/highlight color, undo/redo
-- [x] Find and replace all within the current document; word count
-- [x] Revision history and restore; labeled alternate entity snapshots and restore
-- [x] World, Series, Story, Book, Chapter, Scene and worldbuilding record types; parent hierarchy and recursive world tree
-- [x] World-scoped creation, explicit labeled record relationships, selective sharing with chosen Series/Stories
-- [x] Custom world calendars with user-defined months, weekdays, seasons, moons, and dated entries
-- [x] World timelines and draggable planning boards with persistent card positions and explicit visual links between cards
-- [x] Reusable typed taxonomy tags (Category, Property, Use, Element, Planet, Zodiac, Relationship, Custom), per-record assignments, and aliases data foundation
-- [x] Starter template library and universal field designer with 17 field types, sections, required/optional, options, hints, field edit/reorder, recoverable removal/restore, template snapshots, rename, duplicate, and search
-- [x] Local deterministic title/alias mention scanner; ambiguous/generic terms are skipped; auto/suggest/off modes; case and alias settings; exclusions; persisted suggestions; approve/dismiss; outgoing unlink controls; retroactive scan action; backlinks
-- [x] Attachment references, image previews, open/remove controls
-- [x] Appearance system/light/dark, five saved palettes, editor size, font family, line spacing, narrow page mode, focus mode
-- [x] Customizable home sections and bottom navigation tab visibility
-- [x] Optional local PIN lock using salted PBKDF2 verification
-- [x] Comprehensive JSON backup/restore for records and app metadata tables
-- [x] Password-encrypted AES-256-GCM backup/restore; password protected by Android Keystore for optional scheduled provider-backed backups, initial run plus 12-hour WorkManager schedule with network constraint and retry
+- [x] Native Kotlin / Jetpack Compose Android app; GitHub Actions debug APK workflow
+- [x] Offline SQLite storage, autosave, search (including shared tags), type filters, favorites, nested folders, collections, and persisted multi-document tabs
+- [x] Rich HTML editor: bold, italic, underline, strike, headings, lists, alignment, indentation, quotes, horizontal rules, hyperlinks, inline images, editable HTML tables, undo/redo, text/highlight colors
+- [x] Find/replace all within a document; word count; revision history and restore
+- [x] Editor appearance: system/light/dark, five palettes, custom font import, font size, line spacing, paragraph spacing, page width/margins, narrow page mode, focus mode, background color/image texture, text color, configurable toolbar
+- [x] Customizable home section visibility and bottom navigation tab visibility
+- [x] Optional salted-PBKDF2 PIN lock with automatic relock when app leaves foreground
+- [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, recursive world tree, and world-scoped record creation
+- [x] Selective multi-project sharing with chosen Series/Stories; explicit labeled record relationships; labeled alternate entity snapshots and restore
+- [x] World timelines; custom calendars with user-defined months, weekdays, seasons, moons, dated entries, and yearly-repeat metadata
+- [x] Visual planning boards (corkboard, moodboard, map, flowchart, relationship graph, family tree, floor plan, reference board) with draggable cards, persistent positions, user-selected image backgrounds, and visual card-to-card links
+- [x] Shared reusable typed taxonomy tags across record types, assignment chips, and search integration
+- [x] Starter template gallery expanded across novels, series, stories, poetry, journals, nonfiction, research, characters, worldbuilding, systems, plotting, calendars, maps, and references
+- [x] Universal template field designer with 17 field types, sections, required/optional, dropdown/multi-select options, hints, conditional-visibility metadata, calculated formula metadata, repeatable-group metadata, field edit/reorder, recoverable removal/restore, snapshots, rename, duplicate, and search
+- [x] Dynamic template entry forms with required validation, dropdowns, multi-selects, checkboxes, and conditional visibility
+- [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, unlink, retroactive scan, clickable incoming/outgoing records
+- [x] Attachment metadata, image previews, open/remove controls, inline image insertion, and image bytes included in JSON/encrypted backups
+- [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images
+- [x] Password-encrypted AES-256-GCM backup/restore; optional scheduled provider-backed encrypted backup with Android Keystore-protected password, initial run, 12-hour WorkManager schedule, network constraint, and retry
 - [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
-- [ ] Full structured World → multiple Series → Books → Chapters → Scenes navigator, independent standalone Stories, project-aware hierarchy validation, and shared resources surfaced in every relevant project
-- [ ] Selective sharing UI exists, but full shared-record views, per-project permissions, and alternate depiction/version linking still need work
-- [ ] Template fields can be defined and edited, but conditional visibility, repeatable groups, calculated fields, tables/relationship field editors, section reorder, schema migration UI, original-template restore, import/export/share, and gallery categories/previews remain
-- [ ] Mention links need exact text-position navigation, ambiguity resolution UI, undo history, retroactive scan progress, and a dedicated filtered connection explorer
-- [ ] Collections and folders need full rename/delete/nesting management; favorites need a dedicated manager
-- [ ] Attachments have previews and open/remove controls, but inline editor image insertion, in-app gallery, copied attachment payloads in backups, and robust lifecycle handling remain
-- [ ] Editor still needs a structured document model, true paginated page editor, tables, font import, page margins, paragraph spacing, background/texture, toolbar customization, and verified export formatting fidelity
-- [ ] Planning boards support draggable cards and links, but true map layers/geographic coordinates, family-tree layouts, timeline visualization, flowcharts, inventory views, corkboard filters, moodboards, and reference-board tools remain
-- [ ] Custom calendar basics exist; date validation, era conversion, recurring-event handling, multiple synchronized calendars, and calendar visualization remain
-- [ ] Scheduled cloud backup is implemented, but this is one-way encrypted backup—not bidirectional sync. Provider-specific adapters, offline change journal, merge/conflict resolution, restore previews, sync status/history, and multi-device sync remain
-- [ ] PDF import, full round-trip fidelity, migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
+- [ ] Full project-aware World → multiple Series → Books → Chapters → Scenes navigator, richer standalone-story organization, project-specific resource views, and full multi-project shared-record navigation
+- [ ] Template designer still needs executable calculated fields, repeatable dynamic groups, true table/relationship/image/gallery/attachment field widgets, conditional logic beyond simple equality, section reorder, original-template restore, and template-only import/export/share
+- [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
+- [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
+- [ ] Attachments still need a full in-app gallery, file lifecycle cleanup, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
+- [ ] Editor still needs a structured document model, true paginated page editor, page breaks, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
+- [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
+- [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
+- [ ] Scheduled cloud backup is one-way encrypted backup, not bidirectional multi-device sync. Provider-specific adapters, change journal, offline merge queue, conflict resolution, restore preview, sync status/history, and multi-device sync remain
+- [ ] PDF import, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
 
 ## Non-negotiable product constraints
 - No AI features, SDKs, APIs, model downloads, or services.
-- Local phone storage remains the primary source of truth; writing and organization work offline.
+- Local phone storage is primary; writing and organization remain fully usable offline.
 - Cloud backup/sync is optional, encrypted on-device, and user-selected. No mandatory account or subscription.
