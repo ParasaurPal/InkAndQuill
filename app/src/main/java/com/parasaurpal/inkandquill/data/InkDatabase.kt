@@ -434,10 +434,13 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
 
     private fun finalizeImportedMedia(db:SQLiteDatabase,backups:Map<java.io.File,java.io.File?>) {
         var allPreviousRemoved=true
-        backups.values.filterNotNull().forEach{previous->
+        val previousFiles=backups.values.filterNotNull()
+        previousFiles.forEach{previous->
             if(previous.exists()&&!previous.delete())allPreviousRemoved=false
         }
-        if(allPreviousRemoved)db.delete("media_recovery",null,null)
+        if(allPreviousRemoved)previousFiles.forEach{previous->
+            db.delete("media_recovery","previousName=?",arrayOf(previous.name))
+        }
     }
 
     private fun rollbackImportedMedia(backups:Map<java.io.File,java.io.File?>,cause:Exception) {
@@ -485,7 +488,8 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             } finally { if(staged.exists())staged.delete() }
             mediaBackups[file]?.let{previous->
                 val journal=ContentValues().apply{put("previousName",previous.name);put("finalName",file.name)}
-                writableDatabase.insertWithOnConflict("media_recovery",null,journal,SQLiteDatabase.CONFLICT_REPLACE)
+                val recorded=writableDatabase.insertWithOnConflict("media_recovery",null,journal,SQLiteDatabase.CONFLICT_REPLACE)
+                if(recorded==-1L)throw java.io.IOException("Could not record media recovery information for ${file.name}.")
             }
             val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file)
             val values=ContentValues()
