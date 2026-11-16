@@ -207,6 +207,10 @@ class MainActivity:ComponentActivity(){
     var html by remember(record.id){mutableStateOf(record.body)}
     var tags by remember(record.id){mutableStateOf(record.tags)}
     var aliases by remember(record.id){mutableStateOf(record.aliases)}
+    var snapshotLabel by remember{mutableStateOf("Alternate version")}
+    var relationTarget by remember{mutableStateOf("")}
+    var relationLabel by remember{mutableStateOf("related to")}
+    var relationMenu by remember{mutableStateOf(false)}
     var parent by remember(record.id){mutableStateOf(record.parentId)}
     var scope by remember(record.id){mutableStateOf(record.scope)}
     var folderId by remember(record.id){mutableStateOf(db.folderFor(record.id))}
@@ -250,6 +254,15 @@ class MainActivity:ComponentActivity(){
         if(details)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
             OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Tags (comma separated)")})
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
+            Text("Alternate versions and snapshots",fontWeight=FontWeight.SemiBold)
+            Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(snapshotLabel,{snapshotLabel=it},Modifier.weight(1f),label={Text("Version label")},singleLine=true);TextButton(onClick={db.saveEntitySnapshot(record.copy(title=title,body=html,tags=tags,aliases=aliases),snapshotLabel.ifBlank{"Snapshot"});snapshotLabel="Alternate version"}){Text("Save snapshot")}}
+            db.entitySnapshots(record.id).forEach{snapshot->Row(verticalAlignment=Alignment.CenterVertically){Text(snapshot.first,Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.restoreEntitySnapshot(record.id,snapshot.second);val restored=db.get(record.id);if(restored!=null){title=restored.title;html=restored.body;tags=restored.tags;aliases=restored.aliases}}){Text("Restore")}}}
+            Text("Explicit relationships",fontWeight=FontWeight.SemiBold)
+            Box{OutlinedButton(onClick={relationMenu=true},modifier=Modifier.fillMaxWidth()){Text("Connect to: "+(db.get(relationTarget)?.title?: "Choose a record"))};DropdownMenu(expanded=relationMenu,onDismissRequest={relationMenu=false}){db.all().filter{it.id!=record.id}.forEach{candidate->DropdownMenuItem(text={Text(candidate.title+" · "+candidate.kind)},onClick={relationTarget=candidate.id;relationMenu=false})}}}
+            OutlinedTextField(relationLabel,{relationLabel=it},Modifier.fillMaxWidth(),label={Text("Relationship label (e.g. sibling, located in, member of)")},singleLine=true)
+            TextButton(onClick={if(relationTarget.isNotBlank()&&relationLabel.isNotBlank()){db.addRelationship(record.id,relationTarget,relationLabel);relationTarget=""}}){Text("Add relationship")}
+            db.relationships(record.id).forEach{link->Text("• ${link.second}: ${link.first}",fontSize=12.sp)}
+
             Box {
                 OutlinedButton(onClick={parentMenu=true},modifier=Modifier.fillMaxWidth()){Text("Parent: "+(db.get(parent)?.title?: "None"))}
                 DropdownMenu(expanded=parentMenu,onDismissRequest={parentMenu=false}){
