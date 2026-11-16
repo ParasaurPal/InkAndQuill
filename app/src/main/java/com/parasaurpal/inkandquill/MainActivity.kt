@@ -98,12 +98,19 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable private fun LibraryScreen(db:InkDatabase,query:String,setQuery:(String)->Unit,filter:String,setFilter:(String)->Unit,refresh:Int,open:(InkRecord)->Unit){
-    val records=remember(query,filter,refresh){db.all(query,filter)}
+    var folderFilter by remember{mutableStateOf("")}
+    var folderMenu by remember{mutableStateOf(false)}
+    var createFolder by remember{mutableStateOf(false)}
+    var newFolderName by remember{mutableStateOf("")}
+    val folders=remember(refresh){db.folders()}
+    val records=remember(query,filter,refresh,folderFilter){db.all(query,filter).filter{folderFilter.isBlank()||db.folderFor(it.id)==folderFilter}}
     Column(Modifier.fillMaxSize().padding(14.dp)){
         OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your writing")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
+        Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={folderMenu=true}){Text("Folder: "+(folders.firstOrNull{it.first==folderFilter}?.second?: "All"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("All folders")},onClick={folderFilter="";folderMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={folderFilter=f.first;folderMenu=false})}}};Spacer(Modifier.weight(1f));TextButton(onClick={createFolder=true}){Text("+ New folder")}}</Row>
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("All","Document","Novel","Story","Poem","Journal","Note","World","Series","Book","Chapter","Scene","Character","Location").forEach{FilterChip(filter==it,{setFilter(it)},label={Text(it)})}}
         LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(records){RecordCard(it,open)}}
     }
+    if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true)},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName);newFolderName="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
 @Composable private fun RecordCard(record:InkRecord,open:(InkRecord)->Unit){
     Card(Modifier.fillMaxWidth().clickable{open(record)}){
@@ -143,6 +150,8 @@ class MainActivity:ComponentActivity(){
     var aliases by remember(record.id){mutableStateOf(record.aliases)}
     var parent by remember(record.id){mutableStateOf(record.parentId)}
     var scope by remember(record.id){mutableStateOf(record.scope)}
+    var folderId by remember(record.id){mutableStateOf(db.folderFor(record.id))}
+    var folderMenu by remember{mutableStateOf(false)}
     var details by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
     var parentMenu by remember{mutableStateOf(false)}
@@ -190,6 +199,7 @@ class MainActivity:ComponentActivity(){
                     }
                 }
             }
+            Box { OutlinedButton(onClick={folderMenu=true},modifier=Modifier.fillMaxWidth()){Text("Folder: "+(db.folders().firstOrNull{it.first==folderId}?.second?: "Unfiled"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("Unfiled")},onClick={folderId="";db.moveToFolder(record.id,null);folderMenu=false});db.folders().forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={folderId=f.first;db.moveToFolder(record.id,f.first);folderMenu=false})}} }
             Text("Sharing scope")
             Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("World","Series","Story").forEach{FilterChip(scope==it,{scope=it},label={Text(it)})}}
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
