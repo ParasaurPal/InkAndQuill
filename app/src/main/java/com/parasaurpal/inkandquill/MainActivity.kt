@@ -121,15 +121,83 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun HomeScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit){
     val recent=remember(refresh){db.all().take(8)}
-    val homeDefault="Novels & Stories,Poetry,Journal,Documents,Notes,Creative Projects,Worldbuilding";val visibleSections=db.setting("homeSections",homeDefault).split(",").toSet();val sections=db.setting("homeOrder",homeDefault).split(",").filter{it in visibleSections}
-    LazyColumn(Modifier.fillMaxSize().padding(18.dp),verticalArrangement=Arrangement.spacedBy(13.dp)){
-        item{Text("A quiet place for big ideas.",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Your words, worlds, and everything between.",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.7f))}
-        item{Button(onClick=create,Modifier.fillMaxWidth()){Icon(Icons.Default.Add,null);Text("  Create new")}}
-        item{Text("Your studio",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
-        items(sections){label->Card(Modifier.fillMaxWidth().clickable{create()}){Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically){Text(label,Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null)}}}
-        item{Text("Recently edited",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
-        if(recent.isEmpty())item{Text("Your writing appears here. Create a document, poem, or world to begin.")}
+    val homeDefault="Novels & Stories,Poetry,Journal,Documents,Notes,Creative Projects,Worldbuilding"
+    val visibleSections=db.setting("homeSections",homeDefault).split(",").toSet()
+    val sections=db.setting("homeOrder",homeDefault).split(",").filter{it in visibleSections}
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal=18.dp),verticalArrangement=Arrangement.spacedBy(20.dp),contentPadding=PaddingValues(top=18.dp,bottom=28.dp)){
+        item{Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+            Text("YOUR CREATIVE SPACE",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp,color=Plum)
+            Text("Make room for\nyour imagination.",style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold,lineHeight=38.sp)
+            Text("Stories, ideas, and worlds—all in one place.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.68f))
+        }}
+        item{Card(onClick=create,modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=Color(0xFF33283F))){
+            Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=21.dp),verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(7.dp)){
+                    Text("A blank page awaits",fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=Color(0xFFFFF8FF))
+                    Text("Start something wonderful.",fontSize=13.sp,color=Color(0xFFD6C9E0))
+                    Row(verticalAlignment=Alignment.CenterVertically){Text("CREATE SOMETHING",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Color(0xFFE7D5FF));Icon(Icons.Default.ArrowForward,null,tint=Color(0xFFE7D5FF),modifier=Modifier.padding(start=6.dp).size(16.dp))}
+                }
+                Box(Modifier.size(58.dp).background(Color(0xFF554365),androidx.compose.foundation.shape.RoundedCornerShape(19.dp)),contentAlignment=Alignment.Center){Icon(Icons.Default.EditNote,null,tint=Color(0xFFF0DFFF),modifier=Modifier.size(31.dp))}
+            }
+        }}
+        item{Row(verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){Text("Explore your studio",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("Choose a space to work in",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))}
+            Text("${sections.size} SPACES",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
+        }}
+        item{Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+            sections.chunked(2).forEach{pair->Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                pair.forEach{label->Card(onClick=create,modifier=Modifier.weight(1f).height(112.dp),shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+                    Column(Modifier.fillMaxSize().padding(14.dp),verticalArrangement=Arrangement.SpaceBetween){
+                        val symbol=when(label){
+                            "Novels & Stories"->Icons.Default.AutoStories
+                            "Poetry"->Icons.Default.FormatQuote
+                            "Journal"->Icons.Default.Book
+                            "Documents"->Icons.Default.Description
+                            "Notes"->Icons.Default.StickyNote2
+                            "Creative Projects"->Icons.Default.Brush
+                            "Worldbuilding"->Icons.Default.Public
+                            else->Icons.Default.Folder
+                        }
+                        Box(Modifier.size(35.dp).background(Plum.copy(alpha=.16f),androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),contentAlignment=Alignment.Center){Icon(symbol,null,tint=Plum,modifier=Modifier.size(20.dp))}
+                        Row(verticalAlignment=Alignment.CenterVertically){Text(label,Modifier.weight(1f),fontSize=13.sp,fontWeight=FontWeight.SemiBold,maxLines=2);Icon(Icons.Default.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurface.copy(alpha=.45f),modifier=Modifier.size(18.dp))}
+                    }
+                }}
+                if(pair.size==1)Spacer(Modifier.weight(1f))
+            }}
+        }}
+        item{Row(verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){Text("Recently edited",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text("Pick up where you left off",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))}
+            if(recent.isNotEmpty())Text("${recent.size} ITEMS",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
+        }}
+        if(recent.isEmpty())item{Card(shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Column(Modifier.fillMaxWidth().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(7.dp)){
+                Icon(Icons.Default.AutoStories,null,tint=Plum,modifier=Modifier.size(30.dp))
+                Text("Your next idea starts here",fontWeight=FontWeight.SemiBold)
+                Text("Create a document, poem, or world and it will appear here.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.65f),textAlign=TextAlign.Center)
+            }
+        }}
         items(recent){RecordCard(db,it,open)}
+    }
+}
+
+@Composable private fun RecordCard(db:InkDatabase,record:InkRecord,open:(InkRecord)->Unit){
+    val sharedTags=db.allTags().filter{it.first in db.tagsForRecord(record.id)}.map{it.second}
+    Card(onClick={open(record)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+        Row(Modifier.fillMaxWidth().padding(15.dp),verticalAlignment=Alignment.Top){
+            Box(Modifier.size(42.dp).background(Plum.copy(alpha=.15f),androidx.compose.foundation.shape.RoundedCornerShape(13.dp)),contentAlignment=Alignment.Center){
+                Icon(when(record.kind){"World"->Icons.Default.Public;"Poem"->Icons.Default.FormatQuote;"Journal"->Icons.Default.Book;"Note"->Icons.Default.StickyNote2;"Character","Location"->Icons.Default.Person;else->Icons.Default.Description},null,tint=Plum,modifier=Modifier.size(21.dp))
+            }
+            Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Text(record.title.ifBlank{"Untitled"},Modifier.weight(1f),fontWeight=FontWeight.SemiBold,fontSize=15.sp,maxLines=1)
+                    Text(record.kind.uppercase(),fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=.7.sp,color=Plum)
+                }
+                if(record.body.isNotBlank())Text(android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().take(150).replace('\n',' '),maxLines=2,fontSize=12.sp,lineHeight=17.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.66f))
+                val tags=listOf(record.tags).filter{it.isNotBlank()}+sharedTags
+                if(tags.isNotEmpty())Text(tags.joinToString(" · "),maxLines=1,fontSize=10.sp,color=Plum.copy(alpha=.9f))
+            }
+            Icon(Icons.Default.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurface.copy(alpha=.4f),modifier=Modifier.padding(start=5.dp).size(18.dp))
+        }
     }
 }
 
