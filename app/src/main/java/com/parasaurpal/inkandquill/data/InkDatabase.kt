@@ -230,6 +230,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun boardItemPosition(id:String):Pair<Float,Float> = readableDatabase.rawQuery("SELECT COALESCE(x,0),COALESCE(y,0) FROM board_items WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.getFloat(0) to it.getFloat(1) else 0f to 0f}
     fun moveBoardItem(id:String,x:Float,y:Float){val v=ContentValues().apply{put("x",x.coerceAtLeast(0f));put("y",y.coerceAtLeast(0f))};writableDatabase.update("board_items",v,"id=?",arrayOf(id))}
     fun boardItems(boardId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,title,content FROM board_items WHERE boardId=? ORDER BY rowid",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun boardLinks(boardId:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT fromItem,toItem FROM board_links WHERE boardId=?",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun linkBoardItems(boardId:String,from:String,to:String,label:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("boardId",boardId);put("fromItem",from);put("toItem",to);put("label",label)};writableDatabase.insertWithOnConflict("board_links",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun recordsForRevision(id:String)=revisions(id)
 }
