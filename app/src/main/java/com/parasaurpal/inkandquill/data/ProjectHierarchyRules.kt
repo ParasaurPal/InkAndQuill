@@ -8,7 +8,7 @@ object ProjectHierarchyRules {
         "World" -> emptySet()
         "Series", "Story" -> setOf("World")
         "Book" -> setOf("Series")
-        "Chapter" -> setOf("Book")
+        "Chapter" -> setOf("Book", "Story")
         "Scene" -> setOf("Chapter")
         else -> resourceParentKinds
     }
