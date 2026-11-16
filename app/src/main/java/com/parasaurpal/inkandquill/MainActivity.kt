@@ -235,18 +235,6 @@ class MainActivity:ComponentActivity(){
     if(createCollection)AlertDialog(onDismissRequest={createCollection=false},title={Text("New collection")},text={OutlinedTextField(collectionName,{collectionName=it},label={Text("Collection name")})},confirmButton={TextButton(onClick={if(collectionName.isNotBlank()){db.createCollection(collectionName);collectionName="";createCollection=false}}){Text("Create")}},dismissButton={TextButton(onClick={createCollection=false}){Text("Cancel")}})
     if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={Column{OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true);Box{OutlinedButton(onClick={folderParentMenu=true}){Text("Parent: "+(folders.firstOrNull{it.first==newFolderParent}?.second?: "None"))};DropdownMenu(expanded=folderParentMenu,onDismissRequest={folderParentMenu=false}){DropdownMenuItem(text={Text("No parent")},onClick={newFolderParent="";folderParentMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={newFolderParent=f.first;folderParentMenu=false})}}}}},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName,newFolderParent);newFolderName="";newFolderParent="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
-@Composable private fun RecordCard(db:InkDatabase,record:InkRecord,open:(InkRecord)->Unit){
-    val sharedTags=db.allTags().filter{it.first in db.tagsForRecord(record.id)}.map{it.second}
-    Card(Modifier.fillMaxWidth().clickable{open(record)}){
-        Column(Modifier.padding(14.dp)){
-            Row(verticalAlignment=Alignment.CenterVertically){Text(record.title.ifBlank{"Untitled"},Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Text(record.kind,color=Plum,fontSize=11.sp)}
-            if(record.body.isNotBlank())Text(android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().take(150).replace('\n',' '),maxLines=2,fontSize=13.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.7f))
-            if(record.tags.isNotBlank())Text(record.tags,color=Plum,fontSize=11.sp)
-            if(sharedTags.isNotEmpty())Text(sharedTags.joinToString(" · "),color=Plum,fontSize=11.sp)
-        }
-    }
-}
-
 @Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit){
     val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
     var world by remember{mutableStateOf<InkRecord?>(null)}
