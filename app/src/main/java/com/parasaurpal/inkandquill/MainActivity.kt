@@ -469,6 +469,8 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     var newTagType by remember{mutableStateOf("Category")}
     var tagTypeMenu by remember{mutableStateOf(false)}
     var tagRefresh by remember{mutableIntStateOf(0)}
+    var shareRefresh by remember(record.id){mutableIntStateOf(0)}
+    val sharedProjects=remember(record.id,shareRefresh){db.sharedProjects(record.id)}
     val sharedTags=remember(record.id,tagRefresh){db.allTags()}
     val assignedTagIds=remember(record.id,tagRefresh){db.tagsForRecord(record.id)}
     var snapshotLabel by remember{mutableStateOf("Alternate version")}
@@ -579,7 +581,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
             }
             Box { OutlinedButton(onClick={folderMenu=true},modifier=Modifier.fillMaxWidth()){Text("Folder: "+(db.folders().firstOrNull{it.first==folderId}?.second?: "Unfiled"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("Unfiled")},onClick={folderId="";db.moveToFolder(record.id,null);folderMenu=false});db.folders().forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={folderId=f.first;db.moveToFolder(record.id,f.first);folderMenu=false})}} }
             Text("Share selectively with projects",fontWeight=FontWeight.SemiBold)
-            db.all().filter{it.kind=="Series"||it.kind=="Story"}.forEach{project->val checked=project.id in db.sharedProjects(record.id);Row(verticalAlignment=Alignment.CenterVertically){Checkbox(checked,{if(it)db.shareWithProject(record.id,project.id)else db.unshareFromProject(record.id,project.id)});Text(project.title,fontSize=12.sp)}}
+            db.all().filter{it.kind=="Series"||it.kind=="Story"}.forEach{project->val checked=project.id in sharedProjects;Row(verticalAlignment=Alignment.CenterVertically){Checkbox(checked,{value->if(value)db.shareWithProject(record.id,project.id)else db.unshareFromProject(record.id,project.id);shareRefresh++});TextButton(onClick={onOpen(project,"",0)}){Text(project.title+" · "+project.kind,fontSize=12.sp)}}}
             Text("Sharing scope")
             Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("World","Series","Story").forEach{FilterChip(scope==it,{scope=it},label={Text(it)})}}
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
