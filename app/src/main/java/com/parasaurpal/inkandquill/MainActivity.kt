@@ -235,6 +235,12 @@ class MainActivity:ComponentActivity(){
     var tags by remember(record.id){mutableStateOf(record.tags)}
     var aliases by remember(record.id){mutableStateOf(record.aliases)}
     var excludeTerm by remember{mutableStateOf("")}
+    var newTagName by remember{mutableStateOf("")}
+    var newTagType by remember{mutableStateOf("Category")}
+    var tagTypeMenu by remember{mutableStateOf(false)}
+    var tagRefresh by remember{mutableIntStateOf(0)}
+    val sharedTags=remember(record.id,tagRefresh){db.allTags()}
+    val assignedTagIds=remember(record.id,tagRefresh){db.tagsForRecord(record.id)}
     var snapshotLabel by remember{mutableStateOf("Alternate version")}
     var relationTarget by remember{mutableStateOf("")}
     var relationLabel by remember{mutableStateOf("related to")}
@@ -291,7 +297,10 @@ class MainActivity:ComponentActivity(){
             Text("Line spacing: ${"%.2f".format(lineSpacing)}");Slider(lineSpacing,{lineSpacing=it;db.setSetting("lineSpacing",it.toString())},valueRange=1.1f..2.3f)
             Row(verticalAlignment=Alignment.CenterVertically){Checkbox(pageMode,{pageMode=it;db.setSetting("pageMode",it.toString())});Text("Narrow page layout")}
         
-            OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Tags (comma separated)")})
+            OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Legacy / freeform tags")})
+            Text("Shared reusable taxonomy",fontWeight=FontWeight.SemiBold)
+            Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(newTagName,{newTagName=it},Modifier.weight(1f),label={Text("New tag")},singleLine=true);Box{TextButton(onClick={tagTypeMenu=true}){Text(newTagType)};DropdownMenu(expanded=tagTypeMenu,onDismissRequest={tagTypeMenu=false}){listOf("Category","Property","Use","Element","Planet","Zodiac","Relationship","Custom").forEach{DropdownMenuItem(text={Text(it)},onClick={newTagType=it;tagTypeMenu=false})}}};TextButton(onClick={if(newTagName.isNotBlank()){val id=db.createTag(newTagName,newTagType);db.assignTag(record.id,id);newTagName="";tagRefresh++}}){Text("Add")}}
+            sharedTags.groupBy{it.third}.forEach{(type,list)->Column{Text(type,fontSize=11.sp,color=Plum);Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){list.forEach{tag->FilterChip(tag.first in assignedTagIds,{if(tag.first in assignedTagIds)db.removeTag(record.id,tag.first)else db.assignTag(record.id,tag.first);tagRefresh++},label={Text(tag.second)})}}}}
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
             Text("Exclude a phrase from automatic mention matching",fontWeight=FontWeight.SemiBold)
             Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(excludeTerm,{excludeTerm=it},Modifier.weight(1f),label={Text("Excluded phrase")},singleLine=true);TextButton(onClick={if(excludeTerm.isNotBlank()){db.excludeLinkTerm(record.id,excludeTerm);excludeTerm=""}}){Text("Exclude")}}
