@@ -7,14 +7,17 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import java.io.IOException
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -59,28 +62,93 @@ object CloudSyncManager {
         return cipher.doFinal(bytes.copyOfRange(12, bytes.size)).toString(Charsets.UTF_8)
     }
 
+    private fun digest(value: String): String =
+        Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
+
     fun configure(context: Context, uri: Uri, password: String) {
         require(password.length >= 10) { "Use a password with at least 10 characters." }
         prefs(context).edit().putString("uri", uri.toString())
-            .putString("password", protect(password)).putBoolean("enabled", true).apply()
+            .putString("password", protect(password)).putBoolean("enabled", true)
+            .putBoolean("conflict", false).remove("last_hash").apply()
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        val request = PeriodicWorkRequestBuilder<CloudBackupWorker>(12, TimeUnit.HOURS)
-            .setConstraints(constraints).addTag(WORK).build()
         val manager = WorkManager.getInstance(context)
+        val request = PeriodicWorkRequestBuilder<CloudBackupWorker>(12, TimeUnit.HOURS)
+            .setConstraints(constraints).build()
         manager.enqueueUniqueWork(WORK + "_initial", ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<CloudBackupWorker>().setConstraints(constraints).build())
         manager.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
+    fun resolveConflict(context: Context, keepPhone: Boolean) {
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val data = Data.Builder().putString("resolution", if (keepPhone) "local" else "cloud").build()
+        val request = OneTimeWorkRequestBuilder<CloudBackupWorker>()
+            .setConstraints(constraints).setInputData(data).build()
+        WorkManager.getInstance(context).enqueueUniqueWork(WORK + "_resolve", ExistingWorkPolicy.REPLACE, request)
+    }
+
     fun disable(context: Context) {
         prefs(context).edit().clear().apply()
-        WorkManager.getInstance(context).cancelUniqueWork(WORK)
+        val manager = WorkManager.getInstance(context)
+        manager.cancelUniqueWork(WORK)
+        manager.cancelUniqueWork(WORK + "_initial")
+        manager.cancelUniqueWork(WORK + "_resolve")
     }
 
     fun isEnabled(context: Context) = prefs(context).getBoolean("enabled", false)
+    fun hasConflict(context: Context) = prefs(context).getBoolean("conflict", false)
     internal fun target(context: Context): Uri =
         Uri.parse(prefs(context).getString("uri", null)
             ?: throw IllegalStateException("Choose a cloud backup destination first."))
+
+    internal fun sync(context: Context, db: InkDatabase, uri: Uri, password: String, resolution: String?): String {
+        val preferences = prefs(context)
+        if (resolution == "cloud") {
+            val remote = EncryptedCloudBackup.read(context.contentResolver, uri, password)
+            db.replaceWithJson(remote)
+            preferences.edit().putString("last_hash", digest(remote)).putBoolean("conflict", false).apply()
+            return "downloaded"
+        }
+        val localJson = db.exportJson()
+        val localHash = digest(localJson)
+        if (resolution == "local") {
+            EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
+            preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
+            return "uploaded"
+        }
+
+        val remoteBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: throw IOException("Cloud provider could not open the backup destination.")
+        if (remoteBytes.isEmpty()) {
+            EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
+            preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
+            return "uploaded"
+        }
+        val remoteJson = EncryptedCloudBackup.decrypt(remoteBytes, password)
+        val remoteHash = digest(remoteJson)
+        val previousHash = preferences.getString("last_hash", null)
+
+        if (remoteHash == localHash) {
+            preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
+            return "current"
+        }
+        if (previousHash == null) {
+            preferences.edit().putBoolean("conflict", true).apply()
+            return "conflict"
+        }
+        if (remoteHash == previousHash) {
+            EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
+            preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
+            return "uploaded"
+        }
+        if (localHash == previousHash) {
+            db.replaceWithJson(remoteJson)
+            preferences.edit().putString("last_hash", remoteHash).putBoolean("conflict", false).apply()
+            return "downloaded"
+        }
+        preferences.edit().putBoolean("conflict", true).apply()
+        return "conflict"
+    }
 }
 
 class CloudBackupWorker(context: Context, params: WorkerParameters) :
@@ -91,8 +159,8 @@ class CloudBackupWorker(context: Context, params: WorkerParameters) :
             else {
                 val password = CloudSyncManager.unprotect(applicationContext)
                 val uri = CloudSyncManager.target(applicationContext)
-                val json = InkDatabase(applicationContext).exportJson()
-                EncryptedCloudBackup.write(applicationContext.contentResolver, uri, json, password)
+                val db = InkDatabase(applicationContext)
+                CloudSyncManager.sync(applicationContext, db, uri, password, inputData.getString("resolution"))
                 Result.success()
             }
         } catch (_: SecurityException) {
