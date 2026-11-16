@@ -7,18 +7,18 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Offline SQLite storage, autosave, search (including shared tags), type filters, favorites, nested folders, collections, and persisted multi-document tabs
 - [x] Rich HTML editor: bold, italic, underline, strike, headings, lists, alignment, indentation, quotes, horizontal rules, hyperlinks, inline images, editable HTML tables, undo/redo, text/highlight colors
 - [x] Find/replace all within a document; word count; revision history and restore
-- [x] Editor appearance: system/light/dark, five palettes, custom font import, font size, line spacing, paragraph spacing, page width/margins, narrow page mode, focus mode, background color/image texture, text color, configurable toolbar
+- [x] Editor appearance: system/light/dark, five palettes plus custom hex accent, custom font import, font size, line spacing, paragraph spacing, page width/margins, narrow page mode, focus mode, background color/image texture, text color, configurable toolbar
 - [x] Customizable home section visibility and bottom navigation tab visibility
 - [x] Optional salted-PBKDF2 PIN lock with automatic relock when app leaves foreground
 - [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, recursive world tree, and world-scoped record creation
 - [x] Selective multi-project sharing with chosen Series/Stories; explicit labeled record relationships; labeled alternate entity snapshots and restore
 - [x] World timelines; custom calendars with user-defined months, month lengths, weekdays, seasons, moons, eras, leap-rule notes, a month grid, dated entries, and yearly recurring events
-- [x] Visual planning boards (corkboard, moodboard, map, flowchart, relationship graph, family tree, floor plan, reference board) with draggable cards, persistent positions, user-selected image backgrounds, and visual card-to-card links
+- [x] Visual planning boards (corkboard, moodboard, map, flowchart, relationship graph, family tree, floor plan, reference board) with draggable image-backed colored cards, persistent positions, user-selected board backgrounds, linked record pins, and visual card-to-card links
 - [x] Shared reusable typed taxonomy tags across record types, assignment chips, and search integration
 - [x] Starter template gallery expanded across novels, series, stories, poetry, journals, nonfiction, research, characters, worldbuilding, systems, plotting, calendars, maps, and references
 - [x] Universal template field designer with 17 field types, sections, required/optional, dropdown/multi-select options, hints, conditional-visibility metadata, calculated formula metadata, repeatable-group metadata, field edit/reorder, recoverable removal/restore, snapshots, rename, duplicate, and search
 - [x] Dynamic template entry forms with required validation, dropdowns, multi-selects, checkboxes, and conditional visibility
-- [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, unlink, retroactive scan, clickable incoming/outgoing records
+- [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, exact matched text and character offsets, undoable link/unlink, retroactive scan, clickable backlinks that find and scroll to matched text
 - [x] Attachment metadata, image previews, open/remove controls, inline image insertion, and image bytes included in JSON/encrypted backups
 - [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images
 - [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, and explicit keep-phone/use-cloud conflict resolution
@@ -26,7 +26,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 
 ## Partially implemented; still needs completion
 - [ ] Full project-aware World → multiple Series → Books → Chapters → Scenes navigator, richer standalone-story organization, project-specific resource views, and full multi-project shared-record navigation
-- [ ] Template designer still needs more advanced calculated expressions, repeatable structured groups, true editable table widgets, multi-image galleries, conditional logic beyond simple equality, section reorder, and template schema migration UI
+- [ ] Template designer still needs more advanced calculated expressions, repeatable structured groups, multi-image galleries, conditional logic beyond simple equality, section reorder, and template schema migration UI
 - [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
 - [ ] Attachments still need a full in-app gallery, file lifecycle cleanup, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
