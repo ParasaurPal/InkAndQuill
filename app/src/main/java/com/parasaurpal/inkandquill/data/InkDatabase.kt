@@ -193,6 +193,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
 
     fun createFolder(name:String,parentId:String="",color:String=""):String { val id=UUID.randomUUID().toString(); val v=ContentValues().apply{put("id",id);put("name",name.trim());put("parentId",parentId);put("color",color);put("position",0)};writableDatabase.insert("folders",null,v);return id }
     fun folders():List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,COALESCE(parentId,'') FROM folders ORDER BY position,name",null).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun folderTreeIds(id:String):Set<String>{val result=mutableSetOf<String>();fun visit(parent:String){if(!result.add(parent))return;folders().filter{it.third==parent}.forEach{visit(it.first)}};visit(id);return result}
     fun moveToFolder(recordId:String,folderId:String?){if(folderId.isNullOrBlank())writableDatabase.delete("record_folders","recordId=?",arrayOf(recordId)) else {val v=ContentValues().apply{put("recordId",recordId);put("folderId",folderId)};writableDatabase.insertWithOnConflict("record_folders",null,v,SQLiteDatabase.CONFLICT_REPLACE)}}
     fun folderFor(recordId:String)=readableDatabase.rawQuery("SELECT folderId FROM record_folders WHERE recordId=?",arrayOf(recordId)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun renameFolder(id:String,name:String){val v=ContentValues().apply{put("name",name.trim())};writableDatabase.update("folders",v,"id=?",arrayOf(id))}
