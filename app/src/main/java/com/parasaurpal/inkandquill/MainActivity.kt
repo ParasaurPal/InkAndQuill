@@ -2,6 +2,7 @@ package com.parasaurpal.inkandquill
 
 import android.net.Uri
 import android.content.Intent
+import android.app.DatePickerDialog
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.Toast
@@ -297,6 +298,7 @@ class MainActivity:ComponentActivity(){
                     "Attachment"->TextButton(onClick={attachmentFieldId=field.id;templateAttachmentPicker.launch(arrayOf("*/*"))}){Text(if(attachmentValues[field.id].isNullOrBlank())"Choose file" else "File selected")}
                     "Rating"->{val rating=templateValues[field.id]?.toFloatOrNull()?:3f;Row(verticalAlignment=Alignment.CenterVertically){Text(rating.toInt().toString());Slider(rating,{templateValues=templateValues+(field.id to it.toInt().toString())},valueRange=0f..5f,steps=4)}}
                     "Number"->OutlinedTextField(templateValues[field.id].orEmpty(),{templateValues=templateValues+(field.id to it)},Modifier.fillMaxWidth(),label={Text("Number")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),singleLine=true)
+                    "Date"->TextButton(onClick={val cal=java.util.Calendar.getInstance();DatePickerDialog(context,{_,year,month,day->templateValues=templateValues+(field.id to "%04d-%02d-%02d".format(year,month+1,day))},cal.get(java.util.Calendar.YEAR),cal.get(java.util.Calendar.MONTH),cal.get(java.util.Calendar.DAY_OF_MONTH)).show()}){Text(templateValues[field.id]?.ifBlank{"Choose date"}?:"Choose date")}
                     "Relationship"->Box{OutlinedButton(onClick={templateDropdown=field.id}){Text(db.get(templateValues[field.id].orEmpty())?.title?: "Choose linked record")};DropdownMenu(expanded=templateDropdown==field.id,onDismissRequest={templateDropdown=""}){db.all().forEach{candidate->DropdownMenuItem(text={Text(candidate.title)},onClick={templateValues=templateValues+(field.id to candidate.id);templateDropdown=""})}}}
                     "Multi-select"->Row(Modifier.horizontalScroll(rememberScrollState())){field.options.split(",").map{it.trim()}.filter{it.isNotBlank()}.forEach{option->val selected=option in templateValues[field.id].orEmpty().split("|");FilterChip(selected,{templateValues=templateValues+(field.id to if(selected)(templateValues[field.id].orEmpty().split("|")-option).joinToString("|")else (templateValues[field.id].orEmpty().split("|").filter{it.isNotBlank()}+option).joinToString("|"))},label={Text(option)})}}
                     else->OutlinedTextField(templateValues[field.id].orEmpty(),{templateValues=templateValues+(field.id to it)},Modifier.fillMaxWidth(),label={Text(field.fieldType)},singleLine=field.fieldType in listOf("Short text","Number","Date","Color","Rating"))
