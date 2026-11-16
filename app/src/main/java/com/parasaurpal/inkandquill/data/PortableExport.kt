@@ -22,8 +22,8 @@ object PortableExport {
             val text=xml(DocumentExport.plain(content).let{if(bullet.isNotEmpty())bullet+it else it})
             return "<w:p><w:pPr>$style$indent</w:pPr><w:r><w:t xml:space=\"preserve\">$text</w:t></w:r></w:p>"
         }
-        val blocks=Regex("(?is)<(h1|h2|h3|p|li|blockquote)[^>]*>(.*?)</\\\\1>").findAll(html).toList()
-        val body=if(blocks.isEmpty())DocumentExport.plain(html).split("\\n").joinToString(""){line->"<w:p><w:r><w:t xml:space=\"preserve\">"+xml(line)+"</w:t></w:r></w:p>"}else blocks.joinToString(""){paragraph(it.groupValues[1].lowercase(),it.groupValues[2])}
+        val blocks=Regex("(?is)<(h1|h2|h3|p|li|blockquote)[^>]*>(.*?)</\\1>").findAll(html).toList()
+        val body=if(blocks.isEmpty())DocumentExport.plain(html).split("\n").joinToString(""){line->"<w:p><w:r><w:t xml:space=\"preserve\">"+xml(line)+"</w:t></w:r></w:p>"}else blocks.joinToString(""){paragraph(it.groupValues[1].lowercase(),it.groupValues[2])}
         val paragraphs=paragraph("h1",title)+body
         val types="""<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"""
         val rels="""<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"""
