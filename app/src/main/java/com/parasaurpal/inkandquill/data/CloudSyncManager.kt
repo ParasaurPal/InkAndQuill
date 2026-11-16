@@ -19,6 +19,8 @@ import java.io.IOException
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -101,13 +103,36 @@ object CloudSyncManager {
     fun hasConflict(context: Context) = prefs(context).getBoolean("conflict", false)
     fun lastSyncStatus(context: Context) = prefs(context).getString("last_status", "Not synced yet") ?: "Not synced yet"
     fun lastSyncAt(context: Context) = prefs(context).getLong("last_sync_at", 0L)
+    fun syncHistory(context: Context): List<Pair<Long, String>> {
+        val raw = prefs(context).getString("sync_history", "[]") ?: "[]"
+        return runCatching {
+            val entries = JSONArray(raw)
+            (0 until entries.length()).mapNotNull { index ->
+                val item = entries.optJSONObject(index) ?: return@mapNotNull null
+                item.optLong("at").takeIf { it > 0L }?.let { it to item.optString("status", "Sync event") }
+            }.asReversed()
+        }.getOrDefault(emptyList())
+    }
+    private fun recordEvent(context: Context, status: String) {
+        val preferences = prefs(context)
+        val now = System.currentTimeMillis()
+        val history = runCatching { JSONArray(preferences.getString("sync_history", "[]") ?: "[]") }.getOrDefault(JSONArray())
+        history.put(JSONObject().put("at", now).put("status", status))
+        while (history.length() > 30) history.remove(0)
+        preferences.edit().putString("sync_history", history.toString())
+            .putString("last_status", status).putLong("last_sync_at", now).apply()
+    }
+    internal fun recordWorkerFailure(context: Context, reason: String) {
+        recordEvent(context, "Sync failed: " + reason.take(120))
+    }
+
     internal fun target(context: Context): Uri =
         Uri.parse(prefs(context).getString("uri", null)
             ?: throw IllegalStateException("Choose a cloud backup destination first."))
 
     internal fun sync(context: Context, db: InkDatabase, uri: Uri, password: String, resolution: String?): String {
         val preferences = prefs(context)
-        fun finish(status:String):String { preferences.edit().putString("last_status",status).putLong("last_sync_at",System.currentTimeMillis()).apply();return status }
+        fun finish(status:String):String { recordEvent(context, status); return status }
         if (resolution == "cloud") {
             val remote = EncryptedCloudBackup.read(context.contentResolver, uri, password)
             db.replaceWithJson(remote)
@@ -172,11 +197,14 @@ class CloudBackupWorker(context: Context, params: WorkerParameters) :
                 CloudSyncManager.sync(applicationContext, db, uri, password, inputData.getString("resolution"))
                 Result.success()
             }
-        } catch (_: SecurityException) {
+        } catch (error: SecurityException) {
+            CloudSyncManager.recordWorkerFailure(applicationContext, "Storage permission was revoked")
             Result.failure()
-        } catch (_: IllegalArgumentException) {
+        } catch (error: IllegalArgumentException) {
+            CloudSyncManager.recordWorkerFailure(applicationContext, error.message ?: "Invalid backup data")
             Result.failure()
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            CloudSyncManager.recordWorkerFailure(applicationContext, error.message ?: "Temporary provider or network error")
             Result.retry()
         }
     }
