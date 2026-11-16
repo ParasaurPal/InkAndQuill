@@ -260,6 +260,12 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun get(id:String)=readableDatabase.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.record()else null}
     fun templates()=readableDatabase.rawQuery("SELECT * FROM records WHERE kind='Template' ORDER BY title",null).use{c->buildList{while(c.moveToNext())add(c.record())}}
     fun save(r:InkRecord){
+        if(r.parentId.isNotBlank()){
+            require(r.parentId!=r.id){"A record cannot be its own parent."}
+            if(get(r.parentId)!=null){
+                require(descendants(r.id).none{it.id==r.parentId}){"This parent would create a circular project hierarchy."}
+            }
+        }
         val db=writableDatabase
         val old=get(r.id)
         if(old!=null && old.body!=r.body){val rev=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",old.id);put("title",old.title);put("body",old.body);put("createdAt",System.currentTimeMillis())};db.insert("revisions",null,rev)}
