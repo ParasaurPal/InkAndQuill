@@ -184,7 +184,8 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
-    val templates=remember(refresh){db.templates()}
+    var templateQuery by remember{mutableStateOf("")}
+    val templates=remember(refresh,templateQuery){db.templates().filter{it.title.contains(templateQuery,true)}}
     var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
     var fieldRefresh by remember{mutableIntStateOf(0)}
     var addField by remember{mutableStateOf(false)}
@@ -211,7 +212,8 @@ class MainActivity:ComponentActivity(){
                 items(allFields){f->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(f.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Text(f.fieldType,color=Plum,fontSize=11.sp)};Text("Section: ${f.section} · ${if(f.required)"Required" else "Optional"}",fontSize=11.sp);if(f.options.isNotBlank())Text("Options: ${f.options}",fontSize=11.sp);Row{if(f.id !in activeFieldIds)TextButton(onClick={db.restoreTemplateField(f.id);fieldRefresh++}){Text("Restore") }else{TextButton(onClick={db.templateVersion(t.id);editingField=f;fieldName=f.name;fieldType=f.fieldType;required=f.required;fieldSection=f.section;fieldOptions=f.options;fieldHint=f.hint;addField=true}){Text("Edit")};TextButton(onClick={db.moveTemplateField(t.id,f.id,-1);fieldRefresh++}){Text("↑")};TextButton(onClick={db.moveTemplateField(t.id,f.id,1);fieldRefresh++}){Text("↓")};TextButton(onClick={db.removeTemplateField(f.id);fieldRefresh++}){Text("Remove")}}}}}}
             }
         }else{
-            LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")}}}}}}
+            OutlinedTextField(templateQuery,{templateQuery=it},Modifier.fillMaxWidth(),label={Text("Search templates")},singleLine=true)
+            LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")};TextButton(onClick={db.duplicateTemplate(t.id)}){Text("Duplicate")}}}}}}
         }
     }
     if(addField)AlertDialog(onDismissRequest={addField=false;editingField=null},title={Text(if(editingField==null)"Add template field" else "Edit template field")},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(7.dp)){
