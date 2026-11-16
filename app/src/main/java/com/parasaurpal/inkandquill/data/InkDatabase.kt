@@ -319,6 +319,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
             db.delete("board_items","recordId=?",arrayOf(id))
             if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
+            if(existing?.kind=="Series"||existing?.kind=="Story")db.delete("record_shares","projectId=?",arrayOf(id))
             if(existing?.kind=="World"){
                 db.delete("timeline_events","worldId=?",arrayOf(id))
                 worldBoardIds.forEach{boardId->
