@@ -2,6 +2,10 @@ package com.parasaurpal.inkandquill.data
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.content.Context
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.text.PDFTextStripper
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -30,6 +34,7 @@ object PortableExport {
             entry(z,"META-INF/container.xml",container);entry(z,"OEBPS/content.xhtml",xhtml);entry(z,"OEBPS/content.opf",opf);entry(z,"OEBPS/nav.xhtml",nav)
         }}
     }
+    fun extractPdf(context:Context,uri:Uri):String{PDFBoxResourceLoader.init(context);return context.contentResolver.openInputStream(uri)?.use{input->PDDocument.load(input).use{document->PDFTextStripper().getText(document)}}?: ""}
     fun extractDocx(resolver:ContentResolver,uri:Uri):String=extract(resolver,uri,"word/document.xml").replace(Regex("<w:p[ >].*?</w:p>",RegexOption.DOT_MATCHES_ALL)){p->Regex("<w:t[^>]*>(.*?)</w:t>",RegexOption.DOT_MATCHES_ALL).findAll(p.value).joinToString(""){unxml(it.groupValues[1])}+"\n"}.trim()
     fun extractEpub(resolver:ContentResolver,uri:Uri):String=DocumentExport.plain(extract(resolver,uri,"OEBPS/content.xhtml"))
     private fun extract(resolver:ContentResolver,uri:Uri,path:String):String{resolver.openInputStream(uri)?.use{input->ZipInputStream(input).use{zip->while(true){val e=zip.nextEntry?:break;if(e.name==path)return zip.readBytes().toString(Charsets.UTF_8)}}};return ""}
