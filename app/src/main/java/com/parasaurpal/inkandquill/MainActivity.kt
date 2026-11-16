@@ -287,6 +287,13 @@ class MainActivity:ComponentActivity(){
     var details by remember{mutableStateOf(false)}
     var focusMode by remember{mutableStateOf(false)}
     var pageMode by remember{mutableStateOf(db.setting("pageMode","false")=="true")}
+    var pageWidth by remember{mutableFloatStateOf(db.setting("pageWidth","760").toFloatOrNull()?:760f)}
+    var pageMargin by remember{mutableFloatStateOf(db.setting("pageMargin","12").toFloatOrNull()?:12f)}
+    var paragraphSpacing by remember{mutableFloatStateOf(db.setting("paragraphSpacing","12").toFloatOrNull()?:12f)}
+    var editorBackground by remember{mutableStateOf(db.setting("editorBackground","transparent"))}
+    var editorTextColor by remember{mutableStateOf(db.setting("editorTextColor","#eee8f5"))}
+    var backgroundMenu by remember{mutableStateOf(false)}
+    var textColorMenu by remember{mutableStateOf(false)}
     var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
     var lineSpacing by remember{mutableFloatStateOf(db.setting("lineSpacing","1.65").toFloatOrNull()?:1.65f)}
     var fontMenu by remember{mutableStateOf(false)}
@@ -325,12 +332,17 @@ class MainActivity:ComponentActivity(){
         if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum);Spacer(Modifier.weight(1f));TextButton(onClick={linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")};if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)}
         if(showFindReplace)Column(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) { OutlinedTextField(findText,{findText=it},Modifier.fillMaxWidth(),label={Text("Find")},singleLine=true);OutlinedTextField(replaceText,{replaceText=it},Modifier.fillMaxWidth(),label={Text("Replace with")},singleLine=true);Button(onClick={val count=db.replaceInRecord(record.id,findText,replaceText);html=db.get(record.id)?.body?:html;Toast.makeText(context,"Replaced $count occurrence(s).",Toast.LENGTH_SHORT).show()},enabled=findText.isNotEmpty()){Text("Replace all in this document")} }
         HorizontalDivider()
-        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,lineSpacing=lineSpacing,pageMode=pageMode)
+        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,lineSpacing=lineSpacing,pageMode=pageMode,pageWidth=pageWidth,pageMargin=pageMargin,paragraphSpacing=paragraphSpacing,backgroundColor=editorBackground,textColor=editorTextColor)
         if(details&&!focusMode)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
             Text("Typography and page layout",fontWeight=FontWeight.SemiBold)
             Box{OutlinedButton(onClick={fontMenu=true}){Text("Font: $fontFamily")};DropdownMenu(expanded=fontMenu,onDismissRequest={fontMenu=false}){listOf("sans-serif","serif","monospace","cursive").forEach{DropdownMenuItem(text={Text(it)},onClick={fontFamily=it;db.setSetting("fontFamily",it);fontMenu=false})}}}
             Text("Line spacing: ${"%.2f".format(lineSpacing)}");Slider(lineSpacing,{lineSpacing=it;db.setSetting("lineSpacing",it.toString())},valueRange=1.1f..2.3f)
             Row(verticalAlignment=Alignment.CenterVertically){Checkbox(pageMode,{pageMode=it;db.setSetting("pageMode",it.toString())});Text("Narrow page layout")}
+            if(pageMode){Text("Page width: ${pageWidth.toInt()} dp");Slider(pageWidth,{pageWidth=it;db.setSetting("pageWidth",it.toInt().toString())},valueRange=420f..900f)}
+            Text("Page margins: ${pageMargin.toInt()} dp");Slider(pageMargin,{pageMargin=it;db.setSetting("pageMargin",it.toInt().toString())},valueRange=4f..48f)
+            Text("Paragraph spacing: ${paragraphSpacing.toInt()} px");Slider(paragraphSpacing,{paragraphSpacing=it;db.setSetting("paragraphSpacing",it.toInt().toString())},valueRange=0f..32f)
+            Row{Box{TextButton(onClick={backgroundMenu=true}){Text("Editor background: $editorBackground")};DropdownMenu(expanded=backgroundMenu,onDismissRequest={backgroundMenu=false}){listOf("transparent","#17141E","#F5F0E8","#FFF8E8","#202020").forEach{DropdownMenuItem(text={Text(it)},onClick={editorBackground=it;db.setSetting("editorBackground",it);backgroundMenu=false})}}};Box{TextButton(onClick={textColorMenu=true}){Text("Text color")};DropdownMenu(expanded=textColorMenu,onDismissRequest={textColorMenu=false}){listOf("#eee8f5","#17141E","#FFFFFF","#2D2520","#D8D0E5").forEach{DropdownMenuItem(text={Text(it)},onClick={editorTextColor=it;db.setSetting("editorTextColor",it);textColorMenu=false})}}}}
+
         
             OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Legacy / freeform tags")})
             Text("Shared reusable taxonomy",fontWeight=FontWeight.SemiBold)
