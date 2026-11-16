@@ -35,9 +35,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
-    implementation("androidx.room:room-runtime:2.7.1")
-    implementation("androidx.room:room-ktx:2.7.1")
-    implementation("androidx.room:room-compiler:2.7.1")
     implementation("androidx.webkit:webkit:1.13.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
