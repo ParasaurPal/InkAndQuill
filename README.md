@@ -17,8 +17,8 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 - Writing types for documents, novels, series, stories, books, chapters, scenes, poetry, journals, notes, and worldbuilding records.
 - World/parent hierarchy fields, tags, aliases, and scope metadata.
 - Local title/alias mention scanner with persisted backlinks.
-- Search, type filters, folders, collections, favorites, multi-document tabs, recent writing, and a reusable template field designer.
-- World timelines, custom calendars, explicit relationships, alternate snapshots, selective project sharing, draggable planning boards, and reusable typed tags.
+- Search, type filters, folders, collections, favorites, multi-document tabs, recent writing, and a categorized template gallery, dynamic entry forms, editable reusable field designer, and individual template import/export/share.
+- World timelines and calendar grids (custom month lengths, eras, leap-rule notes, seasons, moons, recurring events), explicit relationships, alternate snapshots, selective project sharing, draggable image-backed planning boards, and reusable typed tags.
 - Appearance palettes, custom home/navigation visibility, focus mode, editor typography/page width, and optional local PIN lock.
 - Comprehensive JSON backup/restore; password-encrypted cloud backup/restore through Android's Storage Access Framework; optional scheduled encrypted provider-backed backups using Android Keystore and WorkManager; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; text/Markdown/HTML/DOCX/EPUB import.
 - Android automatic device backup is disabled to avoid unintended unencrypted cloud copies. User-initiated cloud backup is encrypted locally and saved to a provider the user selects.
