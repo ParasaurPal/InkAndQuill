@@ -224,6 +224,11 @@ class MainActivity:ComponentActivity(){
     var folderId by remember(record.id){mutableStateOf(db.folderFor(record.id))}
     var folderMenu by remember{mutableStateOf(false)}
     var details by remember{mutableStateOf(false)}
+    var focusMode by remember{mutableStateOf(false)}
+    var pageMode by remember{mutableStateOf(db.setting("pageMode","false")=="true")}
+    var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
+    var lineSpacing by remember{mutableFloatStateOf(db.setting("lineSpacing","1.65").toFloatOrNull()?:1.65f)}
+    var fontMenu by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
     var parentMenu by remember{mutableStateOf(false)}
     val latestRecordState=rememberUpdatedState(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))
@@ -245,21 +250,27 @@ class MainActivity:ComponentActivity(){
     val documentImport=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{val raw=context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->reader.readText()}?:return@let;val mime=context.contentResolver.getType(it).orEmpty();html=when{mime.contains("wordprocessingml")->DocumentExport.plainToHtml(PortableExport.extractDocx(context.contentResolver,it));mime.contains("epub")->DocumentExport.plainToHtml(PortableExport.extractEpub(context.contentResolver,it));mime.contains("markdown")->DocumentExport.markdownToHtml(raw);mime.contains("html")->raw;else->DocumentExport.plainToHtml(raw)}}}}
     LaunchedEffect(record.id,title,html,tags,aliases,parent,scope){delay(700);val updated=record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope);onSaved(updated);if(db.setting("autoLink","suggest")=="auto")LocalLinkEngine(db).scan(updated)}
     Column(Modifier.fillMaxSize().padding(horizontal=14.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){
+        if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){
             Text(record.kind,color=Plum,modifier=Modifier.weight(1f))
             TextButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))}){Text("Save")}
             IconButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,favorite=!record.favorite))}){Icon(if(record.favorite)Icons.Default.Star else Icons.Default.StarBorder,"Favorite")}
             IconButton(onClick={details=!details}){Icon(Icons.Default.Tune,"Details")}
+            IconButton(onClick={focusMode=!focusMode}){Icon(Icons.Default.CenterFocusStrong,"Focus mode")}
             IconButton(onClick={showFindReplace=!showFindReplace}){Icon(Icons.Default.FindReplace,"Find and replace")}
             IconButton(onClick={history=!history}){Icon(Icons.Default.History,"History")}
             IconButton(onClick={onDelete(record.id)}){Icon(Icons.Default.Delete,"Delete")}
         }
         BasicTextField(title,{title=it},Modifier.fillMaxWidth().padding(vertical=8.dp),textStyle=MaterialTheme.typography.headlineMedium.copy(color=MaterialTheme.colorScheme.onBackground,fontWeight=FontWeight.Bold),decorationBox={inner->if(title.isEmpty())Text("Untitled",style=MaterialTheme.typography.headlineMedium,color=Color.Gray);inner()})
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum);Spacer(Modifier.weight(1f));TextButton(onClick={linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")};if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)}
+        if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum);Spacer(Modifier.weight(1f));TextButton(onClick={linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")};if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)}
         if(showFindReplace)Column(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) { OutlinedTextField(findText,{findText=it},Modifier.fillMaxWidth(),label={Text("Find")},singleLine=true);OutlinedTextField(replaceText,{replaceText=it},Modifier.fillMaxWidth(),label={Text("Replace with")},singleLine=true);Button(onClick={val count=db.replaceInRecord(record.id,findText,replaceText);html=db.get(record.id)?.body?:html;Toast.makeText(context,"Replaced $count occurrence(s).",Toast.LENGTH_SHORT).show()},enabled=findText.isNotEmpty()){Text("Replace all in this document")} }
         HorizontalDivider()
-        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize)
-        if(details)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,lineSpacing=lineSpacing,pageMode=pageMode)
+        if(details&&!focusMode)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+            Text("Typography and page layout",fontWeight=FontWeight.SemiBold)
+            Box{OutlinedButton(onClick={fontMenu=true}){Text("Font: $fontFamily")};DropdownMenu(expanded=fontMenu,onDismissRequest={fontMenu=false}){listOf("sans-serif","serif","monospace","cursive").forEach{DropdownMenuItem(text={Text(it)},onClick={fontFamily=it;db.setSetting("fontFamily",it);fontMenu=false})}}}
+            Text("Line spacing: ${"%.2f".format(lineSpacing)}");Slider(lineSpacing,{lineSpacing=it;db.setSetting("lineSpacing",it.toString())},valueRange=1.1f..2.3f)
+            Row(verticalAlignment=Alignment.CenterVertically){Checkbox(pageMode,{pageMode=it;db.setSetting("pageMode",it.toString())});Text("Narrow page layout")}
+        
             OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Tags (comma separated)")})
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
             Text("Alternate versions and snapshots",fontWeight=FontWeight.SemiBold)
