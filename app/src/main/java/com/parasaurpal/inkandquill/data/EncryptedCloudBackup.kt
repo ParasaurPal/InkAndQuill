@@ -38,15 +38,19 @@ object EncryptedCloudBackup {
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
         val iv = ByteArray(IV_BYTES).also(random::nextBytes)
         val key = derive(password.toCharArray(), salt)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
-        val encrypted = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        val encrypted = try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
+            cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        } finally {
+            key.fill(0)
+        }
         return ByteArrayOutputStream().apply {
             write(magic)
             write(salt)
             write(iv)
             write(encrypted)
-        }.toByteArray().also { key.fill(0) }
+        }.toByteArray()
     }
 
     fun decrypt(payload: ByteArray, password: String): String {

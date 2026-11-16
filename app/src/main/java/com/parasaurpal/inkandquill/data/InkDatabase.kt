@@ -27,7 +27,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,17){
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,18){
     private val appContext=context.applicationContext
     init {
         seed(writableDatabase)
@@ -36,10 +36,34 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
 
     private fun cleanupAbandonedMediaStages() {
         val dir=java.io.File(appContext.filesDir,"attachments")
-        if(!dir.isDirectory)return
-        dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".stage." in it.name}?.forEach{staged->
-            runCatching{if(staged.exists()&&!staged.delete())android.util.Log.w("InkDatabase","Could not remove abandoned media staging file: ${staged.name}")}
+        val db=writableDatabase
+        val journal=linkedMapOf<String,String>()
+        db.rawQuery("SELECT previousName,finalName FROM media_recovery",null).use{cursor->
+            while(cursor.moveToNext())journal[cursor.getString(0)]=cursor.getString(1)
         }
+        journal.forEach{(previousName,finalName)->
+            val previous=java.io.File(dir,previousName)
+            val destination=java.io.File(dir,finalName)
+            val resolved=when{
+                !previous.exists()->true
+                destination.exists()->previous.delete()
+                else->previous.renameTo(destination)
+            }
+            if(resolved)db.delete("media_recovery","previousName=?",arrayOf(previousName))
+            else android.util.Log.e("InkDatabase","Could not recover media file: $previousName")
+        }
+        if(dir.isDirectory){
+            dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".previous." in it.name&&it.name !in journal.keys}?.forEach{previous->
+                val safeName=previous.name.removePrefix(".").substringBefore(".previous.")
+                val destination=java.io.File(dir,"$safeName.bin")
+                if(destination.exists())destination.delete()
+                if(!previous.renameTo(destination))android.util.Log.e("InkDatabase","Could not restore interrupted media replacement: ${previous.name}")
+            }
+            dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".stage." in it.name}?.forEach{staged->
+                runCatching{if(staged.exists()&&!staged.delete())android.util.Log.w("InkDatabase","Could not remove abandoned media staging file: ${staged.name}")}
+            }
+        }
+        cleanupOrphanedImportedMedia()
     }
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
@@ -57,6 +81,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
         db.execSQL("CREATE TABLE collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
         db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE media_recovery(previousName TEXT PRIMARY KEY,finalName TEXT NOT NULL)")
         db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
         db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
@@ -120,6 +145,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             db.execSQL("CREATE TABLE IF NOT EXISTS board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
             db.execSQL("CREATE TABLE IF NOT EXISTS board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         }
+        if(oldVersion<18)db.execSQL("CREATE TABLE IF NOT EXISTS media_recovery(previousName TEXT PRIMARY KEY,finalName TEXT NOT NULL)")
     }
     private fun seed(db:SQLiteDatabase){
         val data=listOf(
@@ -260,6 +286,12 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun get(id:String)=readableDatabase.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.record()else null}
     fun templates()=readableDatabase.rawQuery("SELECT * FROM records WHERE kind='Template' ORDER BY title",null).use{c->buildList{while(c.moveToNext())add(c.record())}}
     fun save(r:InkRecord){
+        if(r.parentId.isNotBlank()){
+            require(r.parentId!=r.id){"A record cannot be its own parent."}
+            if(get(r.parentId)!=null){
+                require(descendants(r.id).none{it.id==r.parentId}){"This parent would create a circular project hierarchy."}
+            }
+        }
         val db=writableDatabase
         val old=get(r.id)
         if(old!=null && old.body!=r.body){val rev=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",old.id);put("title",old.title);put("body",old.body);put("createdAt",System.currentTimeMillis())};db.insert("revisions",null,rev)}
@@ -282,11 +314,12 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         try{
             db.execSQL("UPDATE records SET parentId='' WHERE parentId=?",arrayOf(id))
             listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
-            listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
+            listOf("record_folders","record_tags","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
             db.delete("timeline_events","recordId=?",arrayOf(id))
             removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
             db.delete("board_items","recordId=?",arrayOf(id))
             if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
+            if(existing?.kind=="Series"||existing?.kind=="Story")db.delete("record_shares","projectId=?",arrayOf(id))
             if(existing?.kind=="World"){
                 db.delete("timeline_events","worldId=?",arrayOf(id))
                 worldBoardIds.forEach{boardId->
@@ -363,7 +396,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 importJsonInternal(raw,mediaBackups)
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
-            mediaBackups.values.filterNotNull().forEach{it.delete()}
+            finalizeImportedMedia(db,mediaBackups)
             cleanupOrphanedImportedMedia()
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
@@ -381,7 +414,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 importJsonInternal(raw,mediaBackups)
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
-            mediaBackups.values.filterNotNull().forEach{it.delete()}
+            finalizeImportedMedia(db,mediaBackups)
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
@@ -397,6 +430,17 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         if(!dir.isDirectory)return
         dir.listFiles()?.filter{file->file.isFile&&file.name.endsWith(".bin")&&file.name.removeSuffix(".bin") !in referenced}?.forEach{file->
             runCatching{if(file.exists()&&!file.delete())android.util.Log.w("InkDatabase","Could not remove obsolete imported media: ${file.name}")}
+        }
+    }
+
+    private fun finalizeImportedMedia(db:SQLiteDatabase,backups:Map<java.io.File,java.io.File?>) {
+        var allPreviousRemoved=true
+        val previousFiles=backups.values.filterNotNull()
+        previousFiles.forEach{previous->
+            if(previous.exists()&&!previous.delete())allPreviousRemoved=false
+        }
+        if(allPreviousRemoved)previousFiles.forEach{previous->
+            db.delete("media_recovery","previousName=?",arrayOf(previous.name))
         }
     }
 
@@ -443,6 +487,11 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 staged.writeBytes(bytes)
                 if(!staged.renameTo(file))throw java.io.IOException("Could not install restored media '$id'.")
             } finally { if(staged.exists())staged.delete() }
+            mediaBackups[file]?.let{previous->
+                val journal=ContentValues().apply{put("previousName",previous.name);put("finalName",file.name)}
+                val recorded=writableDatabase.insertWithOnConflict("media_recovery",null,journal,SQLiteDatabase.CONFLICT_REPLACE)
+                if(recorded==-1L)throw java.io.IOException("Could not record media recovery information for ${file.name}.")
+            }
             val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file)
             val values=ContentValues()
             val updated=when(kind){
@@ -489,6 +538,21 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun openTabs():List<String> = readableDatabase.rawQuery("SELECT recordId FROM open_tabs ORDER BY position",null).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
     fun replaceInRecord(id:String,find:String,replacement:String,matchCase:Boolean=false):Int{if(find.isEmpty())return 0;val r=get(id)?:return 0;val opts=if(matchCase) emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex(Regex.escape(find),opts);val count=regex.findAll(r.body).count();if(count>0)save(r.copy(body=regex.replace(r.body){replacement}));return count}
 
+    fun syncMentionLinks(source:String,desired:List<RecordLink>){
+        val current=outgoingLinks(source).filter{it.label=="mention"}
+        current.filterNot{old->desired.any{it.recordId==old.recordId&&it.position==old.position&&it.term==old.term}}
+            .forEach{removeLink(source,it.recordId,"mention",it.position)}
+        val remaining=outgoingLinks(source).filter{it.label=="mention"}
+        desired.filterNot{next->remaining.any{it.recordId==next.recordId&&it.position==next.position&&it.term==next.term}}
+            .forEach{addLink(source,it.recordId,"mention",it.position,it.term,it.position+it.term.length)}
+    }
+    fun syncLinkSuggestions(source:String,desired:List<RecordLink>){
+        val current=readableDatabase.rawQuery("SELECT targetId,term,position FROM link_suggestions WHERE sourceId=?",arrayOf(source)).use{cursor->buildList{while(cursor.moveToNext())add(Triple(cursor.getString(0),cursor.getString(1),cursor.getInt(2)))}}
+        current.filterNot{old->desired.any{it.recordId==old.first&&it.position==old.third&&it.term==old.second}}
+            .forEach{old->writableDatabase.delete("link_suggestions","sourceId=? AND targetId=? AND position=?",arrayOf(source,old.first,old.third.toString()))}
+        desired.filterNot{next->current.any{it.first==next.recordId&&it.third==next.position&&it.second==next.term}}
+            .forEach{addLinkSuggestion(source,it.recordId,it.term,it.position)}
+    }
     fun addLinkSuggestion(source:String,target:String,term:String,position:Int){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("term",term);put("position",position);put("status","pending")};writableDatabase.insertWithOnConflict("link_suggestions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun pendingLinkSuggestions(source:String):List<Triple<String,String,Int>> = readableDatabase.rawQuery("SELECT targetId,term,position FROM link_suggestions WHERE sourceId=? AND status='pending' ORDER BY position",arrayOf(source)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getInt(2)))}}
     fun resolveLinkSuggestion(source:String,target:String,position:Int,approve:Boolean){val term=pendingLinkSuggestions(source).firstOrNull{it.first==target&&it.third==position}?.second.orEmpty();writableDatabase.execSQL("UPDATE link_suggestions SET status=? WHERE sourceId=? AND targetId=? AND position=?",arrayOf(if(approve)"approved" else "dismissed",source,target,position));if(approve)addLink(source,target,"mention",position,term,position+term.length)}
@@ -523,6 +587,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun shareWithProject(recordId:String,projectId:String){val v=ContentValues().apply{put("recordId",recordId);put("projectId",projectId);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_shares",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun unshareFromProject(recordId:String,projectId:String){writableDatabase.delete("record_shares","recordId=? AND projectId=?",arrayOf(recordId,projectId))}
     fun sharedProjects(recordId:String):Set<String> = readableDatabase.rawQuery("SELECT projectId FROM record_shares WHERE recordId=?",arrayOf(recordId)).use{c->buildSet{while(c.moveToNext())add(c.getString(0))}}
+    fun sharedRecords(projectId:String):List<InkRecord> = readableDatabase.rawQuery("SELECT r.* FROM records r JOIN record_shares s ON s.recordId=r.id WHERE s.projectId=? AND r.kind!='Template' ORDER BY r.kind,r.title",arrayOf(projectId)).use{cursor->buildList{while(cursor.moveToNext())add(cursor.record())}}
     fun addRelationship(source:String,target:String,label:String,notes:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("notes",notes);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_relationships",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     fun relationships(id:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT r.title,rr.label,rr.targetId FROM record_relationships rr JOIN records r ON r.id=rr.targetId WHERE rr.sourceId=? UNION ALL SELECT r.title,rr.label,rr.sourceId FROM record_relationships rr JOIN records r ON r.id=rr.sourceId WHERE rr.targetId=?",arrayOf(id,id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
     fun saveEntitySnapshot(record:InkRecord,label:String){val payload=JSONObject().put("title",record.title).put("body",record.body).put("kind",record.kind).put("tags",record.tags).put("aliases",record.aliases).toString();val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",record.id);put("label",label);put("payload",payload);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("entity_snapshots",null,v)}
