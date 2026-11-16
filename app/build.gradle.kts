@@ -38,5 +38,6 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("androidx.webkit:webkit:1.13.0")
     implementation("androidx.work:work-runtime-ktx:2.10.1")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
