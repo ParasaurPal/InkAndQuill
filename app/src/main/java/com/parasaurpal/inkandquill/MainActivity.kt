@@ -58,6 +58,7 @@ class MainActivity:ComponentActivity(){
         cloudPassword=""
         Toast.makeText(context,result.fold({"Encrypted cloud backup saved."},{it.message?: "Backup failed."}),Toast.LENGTH_LONG).show()
     }}
+    val cloudSyncLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri:Uri?->uri?.let{val result=runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);CloudSyncManager.configure(context,it,cloudPassword)};cloudPassword="";Toast.makeText(context,result.fold({"Scheduled encrypted backup enabled."},{it.message?: "Could not enable scheduled backup."}),Toast.LENGTH_LONG).show()}}
     val cloudImportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{
         val result=runCatching{db.importJson(EncryptedCloudBackup.read(context.contentResolver,it,cloudPassword));refresh++}
         cloudPassword=""
@@ -80,7 +81,7 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)}){settings=false}
     }
 }
 
@@ -313,7 +314,7 @@ class MainActivity:ComponentActivity(){
     AlertDialog(onDismissRequest=onDismiss,title={Text("Create something")},text={Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState())){kinds.forEach{TextButton(onClick={onChoose(it)}){Text(it)}}}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
 
-@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,close:()->Unit){
+@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,close:()->Unit){
     val context=LocalContext.current
     var backupPassword by remember{mutableStateOf("")}
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
@@ -328,6 +329,8 @@ class MainActivity:ComponentActivity(){
         TextButton(onClick=importBackup){Text("Import local JSON backup")}
         TextButton(onClick={if(backupPassword.length>=10){cloudExport(backupPassword)}else{Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}}){Text("Save encrypted cloud backup")}
         TextButton(onClick={if(backupPassword.isNotBlank()){cloudImport(backupPassword)}else{Toast.makeText(context,"Enter your backup password.",Toast.LENGTH_SHORT).show()}}){Text("Restore encrypted cloud backup")}
+        if(cloudSyncEnabled)TextButton(onClick=disableCloudSync){Text("Disable scheduled cloud backup")}else TextButton(onClick={if(backupPassword.length>=10)cloudSync(backupPassword)else Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable scheduled encrypted backup (12-hour interval)")}
+        Text("Scheduled backups run when Android reports a network connection. The selected provider must keep the destination available. Offline runs are retried by Android.")
         Text("Choose any connected Android storage provider in the system picker (for example, a cloud drive app). The provider handles its own sign-in.")
     }},confirmButton={TextButton(onClick=close){Text("Done")}})
 }
