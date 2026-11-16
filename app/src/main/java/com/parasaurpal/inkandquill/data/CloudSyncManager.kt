@@ -9,6 +9,8 @@ import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -64,9 +66,10 @@ object CloudSyncManager {
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val request = PeriodicWorkRequestBuilder<CloudBackupWorker>(12, TimeUnit.HOURS)
             .setConstraints(constraints).addTag(WORK).build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK, ExistingPeriodicWorkPolicy.UPDATE, request
-        )
+        val manager = WorkManager.getInstance(context)
+        manager.enqueueUniqueWork(WORK + "_initial", ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<CloudBackupWorker>().setConstraints(constraints).build())
+        manager.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
     fun disable(context: Context) {
