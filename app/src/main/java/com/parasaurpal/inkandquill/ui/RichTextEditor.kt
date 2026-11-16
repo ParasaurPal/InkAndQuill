@@ -1,5 +1,6 @@
 package com.parasaurpal.inkandquill.ui
 
+import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.webkit.JavascriptInterface
@@ -60,7 +61,11 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 settings.mixedContentMode=android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 isVerticalScrollBarEnabled=true
                 webViewClient=object:WebViewClient(){
-                    override fun shouldOverrideUrlLoading(view:WebView?,request:android.webkit.WebResourceRequest?):Boolean = true
+                    override fun shouldOverrideUrlLoading(view:WebView?,request:android.webkit.WebResourceRequest?):Boolean {
+                        val uri=request?.url?:return true
+                        if(uri.scheme=="https"||uri.scheme=="http")runCatching{ctx.startActivity(Intent(Intent.ACTION_VIEW,uri))}
+                        return true
+                    }
                 }
                 addJavascriptInterface(object{@JavascriptInterface fun changed(html:String){callback(html)}},"InkBridge")
                 val initial=Base64.encodeToString(value.toByteArray(Charsets.UTF_8),Base64.NO_WRAP)
