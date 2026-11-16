@@ -50,6 +50,6 @@ object DocumentExport {
         closeList()
         return out.toString()
     }
-    fun htmlDocument(title:String,body:String):String = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>$title</title><style>body{max-width:760px;margin:40px auto;padding:0 20px;font:18px/1.7 Georgia,serif}img{max-width:100%}</style></head><body>$body</body></html>"""
+    fun htmlDocument(title:String,body:String):String = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${TextUtils.htmlEncode(title)}</title><style>body{max-width:760px;margin:40px auto;padding:0 20px;font:18px/1.7 Georgia,serif}img{max-width:100%}</style></head><body>$body</body></html>"""
     fun plainToHtml(text:String):String = TextUtils.htmlEncode(text).replace("\n","<br>")
 }
