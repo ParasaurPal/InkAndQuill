@@ -49,7 +49,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 }){Text(label)}
             }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState())){TextButton(onClick={linkDialog=true}){Text("Insert link")};TextButton(onClick={imagePicker.launch(arrayOf("image/*"))}){Text("Insert image")}}
+        Row(Modifier.horizontalScroll(rememberScrollState())){TextButton(onClick={linkDialog=true}){Text("Insert link")};TextButton(onClick={imagePicker.launch(arrayOf("image/*"))}){Text("Insert image")};TextButton(onClick={val table="""<table border="1" style="border-collapse:collapse;width:100%"><tr><td>Cell</td><td>Cell</td></tr><tr><td>Cell</td><td>Cell</td></tr></table><p></p>""";web.value?.evaluateJavascript("document.execCommand('insertHTML',false,"+JSONObject.quote(table)+")",null)}){Text("Insert table")}}
         AndroidView(modifier=Modifier.fillMaxSize(),factory={ctx->
             WebView(ctx).apply{
                 settings.javaScriptEnabled=true
