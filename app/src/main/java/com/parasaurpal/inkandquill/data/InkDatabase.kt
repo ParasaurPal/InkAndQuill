@@ -145,7 +145,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun all(query:String="",kind:String?=null):List<InkRecord>{
         val sql=StringBuilder("SELECT * FROM records WHERE kind!='Template'");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
-        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ?)");val q="%$query%";args.addAll(listOf(q,q,q,q))}
+        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ? OR EXISTS(SELECT 1 FROM record_tags rt JOIN tags t ON t.id=rt.tagId WHERE rt.recordId=records.id AND t.name LIKE ?))");val q="%$query%";args.addAll(listOf(q,q,q,q,q))}
         sql.append(" ORDER BY favorite DESC,updatedAt DESC")
         return readableDatabase.rawQuery(sql.toString(),args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.record())}}
     }
