@@ -142,7 +142,7 @@ class MainActivity:ComponentActivity(){
     var addCollectionMenu by remember{mutableStateOf(false)}
     val folders=db.folders()
     val collections=db.collections()
-    val records=remember(query,filter,refresh,folderFilter,collectionFilter,favoritesOnly){db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id)==folderFilter)&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}}
+    val records=remember(query,filter,refresh,folderFilter,collectionFilter,favoritesOnly){db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id) in db.folderTreeIds(folderFilter))&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}}
     Column(Modifier.fillMaxSize().padding(14.dp)){
         OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your writing")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
         Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={folderMenu=true}){Text("Folder: "+(folders.firstOrNull{it.first==folderFilter}?.second?: "All"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("All folders")},onClick={folderFilter="";folderMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(if(f.third.isBlank())f.second else "↳ "+f.second)},onClick={folderFilter=f.first;folderMenu=false})}}};Spacer(Modifier.weight(1f));TextButton(onClick={createFolder=true}){Text("+ New folder")}}
