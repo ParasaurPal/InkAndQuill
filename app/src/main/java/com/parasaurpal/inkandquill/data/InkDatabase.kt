@@ -8,6 +8,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
+data class TemplateField(val id:String,val templateId:String,val name:String,val fieldType:String,val required:Boolean,val position:Int,val section:String="",val options:String="",val hint:String="")
+
 data class InkRecord(
     val id:String=UUID.randomUUID().toString(),
     val title:String="Untitled",
@@ -22,13 +24,13 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,4){
+class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,5){
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
         db.execSQL("CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         db.execSQL("CREATE TABLE revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)")
-        db.execSQL("CREATE TABLE template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER)")
+        db.execSQL("CREATE TABLE template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER,section TEXT DEFAULT 'General',options TEXT DEFAULT '',hint TEXT DEFAULT '',removed INTEGER DEFAULT 0)")
         db.execSQL("CREATE INDEX records_kind ON records(kind)")
         db.execSQL("CREATE INDEX records_parent ON records(parentId)")
         db.execSQL("CREATE INDEX links_target ON links(targetId)")
@@ -42,6 +44,8 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
         db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
         db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
+        db.execSQL("CREATE TABLE template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
+        db.execSQL("CREATE TABLE template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
         db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
     }
@@ -59,6 +63,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
             db.execSQL("CREATE TABLE IF NOT EXISTS open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
             db.execSQL("CREATE INDEX IF NOT EXISTS attachments_record ON attachments(recordId)")
             db.execSQL("CREATE INDEX IF NOT EXISTS collection_records_record ON collection_records(recordId)")
+        }
+        if(oldVersion<5){
+            runCatching{db.execSQL("ALTER TABLE template_fields ADD COLUMN section TEXT DEFAULT 'General'")}
+            runCatching{db.execSQL("ALTER TABLE template_fields ADD COLUMN options TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE template_fields ADD COLUMN hint TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE template_fields ADD COLUMN removed INTEGER DEFAULT 0")}
+            db.execSQL("CREATE TABLE IF NOT EXISTS template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
         }
     }
     private fun seed(db:SQLiteDatabase){
@@ -154,5 +166,17 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun addLinkSuggestion(source:String,target:String,term:String,position:Int){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("term",term);put("position",position);put("status","pending")};writableDatabase.insertWithOnConflict("link_suggestions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun pendingLinkSuggestions(source:String):List<Triple<String,String,Int>> = readableDatabase.rawQuery("SELECT targetId,term,position FROM link_suggestions WHERE sourceId=? AND status='pending' ORDER BY position",arrayOf(source)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getInt(2)))}}
     fun resolveLinkSuggestion(source:String,target:String,position:Int,approve:Boolean){writableDatabase.execSQL("UPDATE link_suggestions SET status=? WHERE sourceId=? AND targetId=? AND position=?",arrayOf(if(approve)"approved" else "dismissed",source,target,position));if(approve)addLink(source,target,"mention",position)}
+    fun templateFields(templateId:String,includeRemoved:Boolean=false):List<TemplateField>{
+        val sql="SELECT id,templateId,name,fieldType,required,position,COALESCE(section,'General'),COALESCE(options,''),COALESCE(hint,'') FROM template_fields WHERE templateId=? "+(if(includeRemoved) "" else "AND COALESCE(removed,0)=0 ")+" ORDER BY position"
+        return readableDatabase.rawQuery(sql,arrayOf(templateId)).use{c->buildList{while(c.moveToNext())add(TemplateField(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getInt(4)==1,c.getInt(5),c.getString(6),c.getString(7),c.getString(8)))}}
+    }
+    fun addTemplateField(templateId:String,name:String,type:String,required:Boolean,section:String="General",options:String="",hint:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name.trim());put("fieldType",type);put("required",if(required)1 else 0);put("position",templateFields(templateId,true).size);put("section",section);put("options",options);put("hint",hint);put("removed",0)};writableDatabase.insert("template_fields",null,v)}
+    fun updateTemplateField(id:String,name:String,type:String,required:Boolean,section:String,options:String,hint:String){val v=ContentValues().apply{put("name",name);put("fieldType",type);put("required",if(required)1 else 0);put("section",section);put("options",options);put("hint",hint)};writableDatabase.update("template_fields",v,"id=?",arrayOf(id))}
+    fun removeTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=1 WHERE id=?",arrayOf(id))}
+    fun restoreTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=0 WHERE id=?",arrayOf(id))}
+    fun templateSections(templateId:String):List<String> = readableDatabase.rawQuery("SELECT name FROM template_sections WHERE templateId=? ORDER BY position",arrayOf(templateId)).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
+    fun addTemplateSection(templateId:String,name:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name);put("position",templateSections(templateId).size)};writableDatabase.insert("template_sections",null,v)}
+    fun templateVersion(templateId:String){val snapshot=JSONArray();templateFields(templateId,true).forEach{f->snapshot.put(JSONObject().put("id",f.id).put("name",f.name).put("type",f.fieldType).put("required",f.required).put("section",f.section).put("options",f.options).put("hint",f.hint).put("position",f.position))};val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("snapshot",snapshot.toString());put("createdAt",System.currentTimeMillis())};writableDatabase.insert("template_versions",null,v)}
+    fun templateVersionCount(templateId:String)=readableDatabase.rawQuery("SELECT COUNT(*) FROM template_versions WHERE templateId=?",arrayOf(templateId)).use{it.moveToFirst();it.getInt(0)}
     fun recordsForRevision(id:String)=revisions(id)
 }
