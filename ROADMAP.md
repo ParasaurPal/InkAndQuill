@@ -21,7 +21,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, exact matched text and character offsets, undoable link/unlink, retroactive scan, clickable backlinks that find and scroll to matched text
 - [x] Attachment metadata, image previews, open/remove controls, inline image insertion, and image bytes included in JSON/encrypted backups
 - [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images
-- [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, and explicit keep-phone/use-cloud conflict resolution
+- [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, explicit keep-phone/use-cloud conflict resolution, and a persistent 30-event sync history including failures
 - [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; PDF, TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
