@@ -297,6 +297,8 @@ class MainActivity:ComponentActivity(){
     var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
     var lineSpacing by remember{mutableFloatStateOf(db.setting("lineSpacing","1.65").toFloatOrNull()?:1.65f)}
     var fontMenu by remember{mutableStateOf(false)}
+    val toolbarOptions=listOf("undo","redo","bold","italic","underline","strikeThrough","formatBlock:H1","formatBlock:H2","formatBlock:H3","insertUnorderedList","insertOrderedList","hiliteColor","foreColor","justifyLeft","justifyCenter","justifyRight","indent","outdent","formatBlock:BLOCKQUOTE","insertHorizontalRule","removeFormat")
+    var toolbarCommands by remember(record.id){mutableStateOf(db.setting("toolbarCommands",toolbarOptions.joinToString("|")).split("|").toSet())}
     var history by remember{mutableStateOf(false)}
     var parentMenu by remember{mutableStateOf(false)}
     val latestRecordState=rememberUpdatedState(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))
@@ -332,8 +334,10 @@ class MainActivity:ComponentActivity(){
         if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum);Spacer(Modifier.weight(1f));TextButton(onClick={linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")};if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)}
         if(showFindReplace)Column(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) { OutlinedTextField(findText,{findText=it},Modifier.fillMaxWidth(),label={Text("Find")},singleLine=true);OutlinedTextField(replaceText,{replaceText=it},Modifier.fillMaxWidth(),label={Text("Replace with")},singleLine=true);Button(onClick={val count=db.replaceInRecord(record.id,findText,replaceText);html=db.get(record.id)?.body?:html;Toast.makeText(context,"Replaced $count occurrence(s).",Toast.LENGTH_SHORT).show()},enabled=findText.isNotEmpty()){Text("Replace all in this document")} }
         HorizontalDivider()
-        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,lineSpacing=lineSpacing,pageMode=pageMode,pageWidth=pageWidth,pageMargin=pageMargin,paragraphSpacing=paragraphSpacing,backgroundColor=editorBackground,textColor=editorTextColor)
+        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,lineSpacing=lineSpacing,pageMode=pageMode,enabledCommands=toolbarCommands,pageWidth=pageWidth,pageMargin=pageMargin,paragraphSpacing=paragraphSpacing,backgroundColor=editorBackground,textColor=editorTextColor)
         if(details&&!focusMode)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+            Text("Toolbar buttons",fontWeight=FontWeight.SemiBold)
+            toolbarOptions.forEach{command->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(command in toolbarCommands,{toolbarCommands=if(it)toolbarCommands+command else toolbarCommands-command;db.setSetting("toolbarCommands",toolbarCommands.joinToString("|"))});Text(command.substringAfter(":").replaceFirstChar(Char::uppercase),fontSize=12.sp)}}
             Text("Typography and page layout",fontWeight=FontWeight.SemiBold)
             Box{OutlinedButton(onClick={fontMenu=true}){Text("Font: $fontFamily")};DropdownMenu(expanded=fontMenu,onDismissRequest={fontMenu=false}){listOf("sans-serif","serif","monospace","cursive").forEach{DropdownMenuItem(text={Text(it)},onClick={fontFamily=it;db.setSetting("fontFamily",it);fontMenu=false})}}}
             Text("Line spacing: ${"%.2f".format(lineSpacing)}");Slider(lineSpacing,{lineSpacing=it;db.setSetting("lineSpacing",it.toString())},valueRange=1.1f..2.3f)
