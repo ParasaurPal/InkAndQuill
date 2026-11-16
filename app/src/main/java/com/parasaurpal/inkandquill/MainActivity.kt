@@ -131,6 +131,7 @@ class MainActivity:ComponentActivity(){
     var scope by remember(record.id){mutableStateOf(record.scope)}
     var details by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
+    var parentMenu by remember{mutableStateOf(false)}
     var linkCount by remember{mutableIntStateOf(0)}
     val context=LocalContext.current
     val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.plain(html).toByteArray())}}}
@@ -157,8 +158,17 @@ class MainActivity:ComponentActivity(){
         if(details)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
             OutlinedTextField(tags,{tags=it},Modifier.fillMaxWidth(),label={Text("Tags (comma separated)")})
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
-            OutlinedTextField(parent,{parent=it},Modifier.fillMaxWidth(),label={Text("Parent record ID (World/Series/Story/Chapter)")})
-            OutlinedTextField(scope,{scope=it},Modifier.fillMaxWidth(),label={Text("Sharing scope: World / Series / Story")})
+            Box {
+                OutlinedButton(onClick={parentMenu=true},modifier=Modifier.fillMaxWidth()){Text("Parent: "+(db.get(parent)?.title?: "None"))}
+                DropdownMenu(expanded=parentMenu,onDismissRequest={parentMenu=false}){
+                    DropdownMenuItem(text={Text("No parent")},onClick={parent="";parentMenu=false})
+                    db.all().filter{it.id!=record.id&&it.kind in listOf("World","Series","Story","Book","Chapter")}.forEach{candidate->
+                        DropdownMenuItem(text={Text(candidate.title+" · "+candidate.kind)},onClick={parent=candidate.id;parentMenu=false})
+                    }
+                }
+            }
+            Text("Sharing scope")
+            Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("World","Series","Story").forEach{FilterChip(scope==it,{scope=it},label={Text(it)})}}
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
