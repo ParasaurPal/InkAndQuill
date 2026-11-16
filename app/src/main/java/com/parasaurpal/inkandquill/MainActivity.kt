@@ -94,7 +94,7 @@ class MainActivity:ComponentActivity(){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
                         "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
-                        "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")})
+                        "Templates"->TemplateScreen(db,refresh,{selected=it},{template->selected=template.copy(id=UUID.randomUUID().toString(),kind="Document")})
                         else->HomeScreen(db,refresh,{selected=it},{create=true})
                     }
                 }
@@ -232,6 +232,9 @@ class MainActivity:ComponentActivity(){
     var fieldRefresh by remember{mutableIntStateOf(0)}
     var addField by remember{mutableStateOf(false)}
     var editingField by remember{mutableStateOf<TemplateField?>(null)}
+    var applyingTemplate by remember{mutableStateOf<InkRecord?>(null)}
+    var templateValues by remember{mutableStateOf<Map<String,String>>(emptyMap())}
+    var templateDropdown by remember{mutableStateOf("")}
     var fieldName by remember{mutableStateOf("")}
     var fieldSection by remember{mutableStateOf("General")}
     var fieldOptions by remember{mutableStateOf("")}
@@ -259,8 +262,25 @@ class MainActivity:ComponentActivity(){
             }
         }else{
             OutlinedTextField(templateQuery,{templateQuery=it},Modifier.fillMaxWidth(),label={Text("Search templates")},singleLine=true)
-            LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")};TextButton(onClick={db.duplicateTemplate(t.id)}){Text("Duplicate")}}}}}}
+            LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={applyingTemplate=t;templateValues=db.templateFields(t.id).associate{it.id to ""}}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")};TextButton(onClick={db.duplicateTemplate(t.id)}){Text("Duplicate")}}}}}}
         }
+    }
+    if(applyingTemplate!=null){
+        val template=applyingTemplate!!
+        val fields=remember(template.id){db.templateFields(template.id)}
+        val visibleFields=fields.filter{field->field.conditionField.isBlank()||templateValues[fields.firstOrNull{it.name.equals(field.conditionField,true)}?.id].orEmpty()==field.conditionValue}
+        AlertDialog(onDismissRequest={applyingTemplate=null},title={Text("New entry · ${template.title}")},text={Column(Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            visibleFields.forEach{field->
+                Text(field.name+(if(field.required)" *" else ""),fontWeight=FontWeight.SemiBold)
+                if(field.hint.isNotBlank())Text(field.hint,fontSize=11.sp,color=Plum)
+                when(field.fieldType){
+                    "Checkbox"->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(templateValues[field.id]=="true",{templateValues=templateValues+(field.id to it.toString())});Text("Yes")}
+                    "Dropdown"->Box{OutlinedButton(onClick={templateDropdown=field.id}){Text(templateValues[field.id]?.ifBlank{"Choose"}?:"Choose")};DropdownMenu(expanded=templateDropdown==field.id,onDismissRequest={templateDropdown=""}){field.options.split(",").map{it.trim()}.filter{it.isNotBlank()}.forEach{option->DropdownMenuItem(text={Text(option)},onClick={templateValues=templateValues+(field.id to option);templateDropdown=""})}}}
+                    "Multi-select"->Row(Modifier.horizontalScroll(rememberScrollState())){field.options.split(",").map{it.trim()}.filter{it.isNotBlank()}.forEach{option->val selected=option in templateValues[field.id].orEmpty().split("|");FilterChip(selected,{templateValues=templateValues+(field.id to if(selected)(templateValues[field.id].orEmpty().split("|")-option).joinToString("|")else (templateValues[field.id].orEmpty().split("|").filter{it.isNotBlank()}+option).joinToString("|"))},label={Text(option)})}}
+                    else->OutlinedTextField(templateValues[field.id].orEmpty(),{templateValues=templateValues+(field.id to it)},Modifier.fillMaxWidth(),label={Text(field.fieldType)},singleLine=field.fieldType in listOf("Short text","Number","Date","Color","Rating"))
+                }
+            }
+        }},confirmButton={TextButton(onClick={val missing=visibleFields.firstOrNull{it.required&&templateValues[it.id].isNullOrBlank()};if(missing==null){val body=visibleFields.joinToString("\n\n"){f->(if(f.section.isNotBlank())f.section+"\n" else "")+f.name+":\n"+templateValues[f.id].orEmpty()};use(InkRecord(title=template.title,body=DocumentExport.plainToHtml(body),kind="Document"));applyingTemplate=null}else Toast.makeText(LocalContext.current,"Required: ${missing.name}",Toast.LENGTH_SHORT).show()}){Text("Create document")}},dismissButton={TextButton(onClick={applyingTemplate=null}){Text("Cancel")}})
     }
     if(addField)AlertDialog(onDismissRequest={addField=false;editingField=null},title={Text(if(editingField==null)"Add template field" else "Edit template field")},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(7.dp)){
         OutlinedTextField(fieldName,{fieldName=it},label={Text("Field name")},singleLine=true)
