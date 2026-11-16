@@ -3,8 +3,9 @@
 This tracker distinguishes implemented code/UI from partial foundations and remaining product work.
 
 ## Implemented
-- [x] Native Kotlin / Jetpack Compose Android app; GitHub Actions debug APK workflow
+- [x] Native Kotlin / Jetpack Compose Android app; GitHub Actions unit-test and debug APK workflow
 - [x] Offline SQLite storage, autosave, search (including shared tags), type filters, favorites, nested folders, collections, and persisted multi-document tabs
+- [x] Rich HTML editor WebView isolated with a restrictive CSP, no file/content access, no mixed content, and no navigation from document content; initial HTML is Base64-encoded before bootstrap injection
 - [x] Rich HTML editor: bold, italic, underline, strike, headings, lists, alignment, indentation, quotes, horizontal rules, hyperlinks, inline images, editable HTML tables, undo/redo, text/highlight colors
 - [x] Find/replace all within a document; word count; revision history and restore
 - [x] Editor appearance: system/light/dark, five palettes plus custom hex accent, custom font import, font size, line spacing, paragraph spacing, page width/margins, page-like layout mode with explicit page breaks, focus mode, background color/image texture, text color, configurable toolbar
@@ -21,7 +22,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Deterministic local mention matching; ambiguous/generic names skipped; auto/suggest/off, alias/case settings, exclusions, persistent suggestions, approve/dismiss, exact matched text and character offsets, undoable link/unlink, retroactive scan, clickable backlinks that find and scroll to matched text
 - [x] Attachment metadata, image previews, open/remove controls, inline image insertion, image bytes included in JSON/encrypted backups, strict media-restore validation (invalid, duplicate, missing, unsupported, or unlinked blobs fail instead of being silently skipped), staged media installation with restoration of previous files if the database import fails, startup cleanup of abandoned temporary staging files, and cleanup of app-imported attachment and board-image blobs when their records are deleted, removal of orphaned board connectors and board contents with deleted records/worlds, and cleanup of obsolete imported blobs after successful full replacement
 - [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images; imports and full cloud restores are transactional so malformed data cannot leave a partially replaced library; backup export stops with a clear error instead of silently omitting inaccessible media
-- [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, explicit keep-phone/use-cloud conflict resolution, and a persistent 30-event sync history including failures
+- [x] Password-encrypted AES-256-GCM backup/restore; derived encryption keys are cleared on every exit path; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, explicit keep-phone/use-cloud conflict resolution, and a persistent 30-event sync history including failures
 - [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; PDF, TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
@@ -32,7 +33,8 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Attachments still need a full in-app gallery, recovery of preserved previous-media files after process termination (requires commit-aware recovery before safe deletion), cleanup of obsolete blobs after successful full replacement, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
 - [ ] Editor still needs a structured document model, true automatic multi-page pagination, page headers/footers, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
 - [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
-- [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
+- [x] Custom calendar month/day validation, weekday-aligned month grids, supported recurring leap-day rules, and recurring-event suppression on years where the date does not exist
+- [ ] Calendars still need era conversion, richer recurrence rules, and timeline/calendar cross-linking
 - [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, change journal, field-level merge, provider-specific adapters, and multi-device end-to-end testing remain
 - [ ] PDF import fidelity tests, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
 
