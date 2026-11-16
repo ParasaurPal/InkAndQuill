@@ -70,7 +70,7 @@ data class WorldCalendarSpec private constructor(
     companion object {
         const val MAX_YEAR = 1_000_000
         private val leapPattern = Regex(
-            """(?i)^every\\s+(\\d+)\\s+years?,?\\s+add\\s+(\\d+)\\s+days?\\s+to\\s+month\\s+(\\d+)$"""
+            """(?i)^every\s+(\d+)\s+years?,?\s+add\s+(\d+)\s+days?\s+to\s+month\s+(\d+)$"""
         )
 
         fun parse(
