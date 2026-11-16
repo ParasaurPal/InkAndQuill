@@ -55,16 +55,22 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
             WebView(ctx).apply{
                 settings.javaScriptEnabled=true
                 settings.domStorageEnabled=false
+                settings.allowFileAccess=false
+                settings.allowContentAccess=false
+                settings.mixedContentMode=android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 isVerticalScrollBarEnabled=true
-                webViewClient=WebViewClient()
+                webViewClient=object:WebViewClient(){
+                    override fun shouldOverrideUrlLoading(view:WebView?,request:android.webkit.WebResourceRequest?):Boolean = true
+                }
                 addJavascriptInterface(object{@JavascriptInterface fun changed(html:String){callback(html)}},"InkBridge")
                 val initial=JSONObject.quote(value)
-                val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+                val nonce=java.util.UUID.randomUUID().toString().replace("-","")
+                val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: content:; font-src data:; style-src 'unsafe-inline'; script-src 'nonce-$nonce'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><style>
                 @font-face{font-family:Custom;src:url(data:${customFontMime};base64,${customFontData})}
                 body{font-family:${if(customFontData.isNotBlank()) "Custom" else fontFamily};font-size:${fontSize}px;line-height:${lineSpacing};padding:${pageMargin}px;margin:0 auto;max-width:${if(pageMode) "${pageWidth}px" else "none"};min-height:${if(pageMode) "1056px" else "95vh"};box-sizing:border-box;${if(pageMode) "box-shadow:0 4px 22px rgba(0,0,0,.25);border:1px solid #8b8495;" else ""}background:${backgroundColor};background-image:${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"};background-size:cover;background-attachment:fixed;color:${textColor}} p{margin-bottom:${paragraphSpacing}px}
                 #editor{min-height:95vh;outline:none;overflow-wrap:anywhere} blockquote{border-left:3px solid #bfa7df;padding-left:12px;color:#aaa}
                 h1,h2,h3{line-height:1.25} a{color:#bfa7df} .page-break{break-after:page;page-break-after:always;height:1px} @media print{.page-break{break-after:page;page-break-after:always}}
-                </style></head><body><div id="editor" contenteditable="true"></div><script>
+                </style></head><body><div id="editor" contenteditable="true"></div><script nonce="$nonce">
                 const editor=document.getElementById('editor');
                 editor.innerHTML=$initial;
                 editor.addEventListener('input',()=>InkBridge.changed(editor.innerHTML));
@@ -73,7 +79,19 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 loadDataWithBaseURL(null,page,"text/html","UTF-8",null)
             }.also{web.value=it}
         },update={view->
-            view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${if(customFontData.isNotBlank()) "Custom" else fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.minHeight='${if(pageMode) "1056px" else "95vh"}';document.body.style.boxSizing='border-box';document.body.style.boxShadow='${if(pageMode) "0 4px 22px rgba(0,0,0,.25)" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.backgroundImage='${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"}';document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
+            val style=JSONObject()
+                .put("fontSize","${fontSize}px")
+                .put("fontFamily",if(customFontData.isNotBlank()) "Custom" else fontFamily)
+                .put("lineHeight",lineSpacing.toString())
+                .put("maxWidth",if(pageMode) "${pageWidth}px" else "none")
+                .put("minHeight",if(pageMode) "1056px" else "95vh")
+                .put("boxShadow",if(pageMode) "0 4px 22px rgba(0,0,0,.25)" else "none")
+                .put("padding","${pageMargin}px")
+                .put("background",backgroundColor)
+                .put("backgroundImage",if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none")
+                .put("textColor",textColor)
+                .put("paragraphSpacing","${paragraphSpacing}px")
+            view.evaluateJavascript("""(()=>{const s=${style};const b=document.body;b.style.fontSize=s.fontSize;b.style.fontFamily=s.fontFamily;b.style.lineHeight=s.lineHeight;b.style.maxWidth=s.maxWidth;b.style.minHeight=s.minHeight;b.style.boxSizing='border-box';b.style.boxShadow=s.boxShadow;b.style.padding=s.padding;b.style.background=s.background;b.style.backgroundImage=s.backgroundImage;b.style.backgroundSize='cover';b.style.backgroundAttachment='fixed';b.style.color=s.textColor;document.querySelectorAll('p').forEach(p=>p.style.marginBottom=s.paragraphSpacing)})()""",null)
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
             if(findTerm.isNotBlank()){view.setFindListener{_,count,done->if(done){if(count>0)repeat(findOccurrence.coerceIn(0,count-1)){view.findNext(true)};findCallback()}};view.findAllAsync(findTerm)}
         })
