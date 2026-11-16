@@ -224,7 +224,8 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val db=writableDatabase
         val mediaIds=mutableSetOf<String>()
         db.rawQuery("SELECT id FROM attachments WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
-        db.rawQuery("SELECT id FROM board_items WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+        val removedBoardItemIds=mutableListOf<String>()
+        db.rawQuery("SELECT id FROM board_items WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext()){val itemId=it.getString(0);mediaIds.add(itemId);removedBoardItemIds.add(itemId)}}
         val worldBoardIds=mutableListOf<String>()
         if(existing?.kind=="World"){
             db.rawQuery("SELECT id FROM planning_boards WHERE worldId=?",arrayOf(id)).use{while(it.moveToNext()){val boardId=it.getString(0);worldBoardIds.add(boardId);mediaIds.add(boardId)}}
@@ -236,6 +237,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
             listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
             db.delete("timeline_events","recordId=?",arrayOf(id))
+            removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
             db.delete("board_items","recordId=?",arrayOf(id))
             if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
             if(existing?.kind=="World"){
