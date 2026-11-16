@@ -102,7 +102,7 @@ class MainActivity:ComponentActivity(){
     var folderMenu by remember{mutableStateOf(false)}
     var createFolder by remember{mutableStateOf(false)}
     var newFolderName by remember{mutableStateOf("")}
-    val folders=remember(refresh){db.folders()}
+    val folders=db.folders()
     val records=remember(query,filter,refresh,folderFilter){db.all(query,filter).filter{folderFilter.isBlank()||db.folderFor(it.id)==folderFilter}}
     Column(Modifier.fillMaxSize().padding(14.dp)){
         OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your writing")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
@@ -163,6 +163,7 @@ class MainActivity:ComponentActivity(){
     var replaceText by remember{mutableStateOf("")}
     var attachmentRefresh by remember{mutableIntStateOf(0)}
     val context=LocalContext.current
+    val attachmentList=remember(record.id,attachmentRefresh){db.attachments(record.id)}
     val attachmentPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};db.addAttachment(record.id,it.toString(),context.contentResolver.getType(it).orEmpty(),it.lastPathSegment.orEmpty());attachmentRefresh++}}
     val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.plain(html).toByteArray())}}}
     val mdExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.markdown(html).toByteArray())}}}
@@ -205,7 +206,7 @@ class MainActivity:ComponentActivity(){
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
             Text("Attachments",fontWeight=FontWeight.SemiBold)
             TextButton(onClick={attachmentPicker.launch(arrayOf("image/*","application/pdf","text/*","application/*"))}){Text("Add image or file")}
-            db.attachments(record.id).forEach{attachment->Text("• ${attachment["displayName"]?.ifBlank{"Attached file"} ?: "Attached file"}",fontSize=12.sp)}
+            attachmentList.forEach{attachment->Text("• ${attachment["displayName"]?.ifBlank{"Attached file"} ?: "Attached file"}",fontSize=12.sp)}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
         }
