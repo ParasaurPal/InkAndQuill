@@ -128,9 +128,15 @@ class MainActivity:ComponentActivity(){
         Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
         Text("Each world connects its series, standalone stories, characters, places, cultures, lore, and timelines.")
         Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(worlds){world->RecordCard(world,open);db.all().filter{it.parentId==world.id}.forEach{child->Row(Modifier.padding(start=18.dp)){RecordCard(child,open)}}}}
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(worlds){world->RecordCard(world,open);WorldTreeChildren(db,world.id,1,open)}}
         if(worlds.isEmpty())Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp))
     }
+}
+
+@Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit){
+    if(depth>8)return
+    val children=db.all().filter{it.parentId==parentId}
+    children.forEach{child->Column(Modifier.padding(start=(depth*12).dp)){RecordCard(child,open);WorldTreeChildren(db,child.id,depth+1,open)}}
 }
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
