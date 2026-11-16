@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -18,11 +20,13 @@ import org.json.JSONObject
 fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f){
     val callback by rememberUpdatedState(onValueChange)
     val web=remember{mutableStateOf<WebView?>(null)}
+    var linkDialog by remember{mutableStateOf(false)}
+    var linkUrl by remember{mutableStateOf("https://")}
     val commands=listOf(
         "undo" to "↶","redo" to "↷","bold" to "B","italic" to "I","underline" to "U","strikeThrough" to "S",
         "formatBlock:H1" to "H1","formatBlock:H2" to "H2","formatBlock:H3" to "H3",
         "insertUnorderedList" to "•","insertOrderedList" to "1.","hiliteColor" to "Highlight","foreColor" to "Color",
-        "justifyLeft" to "⇤","justifyCenter" to "↔","justifyRight" to "⇥","removeFormat" to "Tx"
+        "justifyLeft" to "⇤","justifyCenter" to "↔","justifyRight" to "⇥","indent" to "Indent","outdent" to "Outdent","formatBlock:BLOCKQUOTE" to "Quote","insertHorizontalRule" to "Rule","removeFormat" to "Tx"
     )
     Column(modifier){
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(2.dp)){
@@ -38,6 +42,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 }){Text(label)}
             }
         }
+        TextButton(onClick={linkDialog=true}){Text("Insert link")}
         AndroidView(modifier=Modifier.fillMaxSize(),factory={ctx->
             WebView(ctx).apply{
                 settings.javaScriptEnabled=true
@@ -63,4 +68,5 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
         })
     }
+    if(linkDialog)AlertDialog(onDismissRequest={linkDialog=false},title={Text("Insert hyperlink")},text={OutlinedTextField(linkUrl,{linkUrl=it},label={Text("URL")},singleLine=true)},confirmButton={TextButton(onClick={if(linkUrl.startsWith("https://")||linkUrl.startsWith("http://")){web.value?.evaluateJavascript("document.execCommand('createLink',false,"+JSONObject.quote(linkUrl)+")",null);linkDialog=false}}){Text("Insert")}},dismissButton={TextButton(onClick={linkDialog=false}){Text("Cancel")}})
 }
