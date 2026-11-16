@@ -90,7 +90,7 @@ class MainActivity:ComponentActivity(){
             Column(Modifier.fillMaxSize().padding(padding)){
                 if(openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id)selected=null}){Text("×")}}}
                 Box(Modifier.weight(1f).fillMaxWidth()){
-                    if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);openTabs=openTabs.filterNot{it==id};db.saveOpenTabs(openTabs);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size}) else when(screen){
+                    if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);openTabs=openTabs.filterNot{it==id};db.saveOpenTabs(openTabs);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size},onOpen={selected=it}) else when(screen){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
                         "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
@@ -276,7 +276,7 @@ class MainActivity:ComponentActivity(){
         Row(verticalAlignment=Alignment.CenterVertically){Checkbox(required,{required=it});Text("Required field")}
     }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)};editingField=null;fieldName="";fieldHint="";fieldOptions="";fieldConditionField="";fieldConditionValue="";fieldFormula="";fieldRepeatable=false;required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
 }
-@Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int){
+@Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int,onOpen:(InkRecord)->Unit){
     var title by remember(record.id){mutableStateOf(record.title)}
     var html by remember(record.id){mutableStateOf(record.body)}
     var tags by remember(record.id){mutableStateOf(record.tags)}
@@ -397,9 +397,9 @@ class MainActivity:ComponentActivity(){
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
             Text("Outgoing mention links",fontWeight=FontWeight.SemiBold)
-            db.linksFrom(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){Text("${link.first} · ${link.second}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.removeLink(record.id,link.third,link.second)}){Text("Unlink")}}}
+            db.outgoingLinks(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick={db.get(link.recordId)?.let(onOpen)},modifier=Modifier.weight(1f)){Text("${link.title} · ${link.label}")};TextButton(onClick={db.removeLink(record.id,link.recordId,link.label)}){Text("Unlink")}}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
-            db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
+            db.incomingLinks(record.id).forEach{link->TextButton(onClick={db.get(link.recordId)?.let(onOpen)}){Text("• ${link.title} — ${link.label} (position ${link.position})",fontSize=12.sp)}}
         }
         if(history)Column{Text("Recent versions",fontWeight=FontWeight.SemiBold);db.revisions(record.id).take(5).forEach{rev->Row(verticalAlignment=Alignment.CenterVertically){Text("• ${rev.first} · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(rev.third))}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={title=rev.first;html=rev.second}){Text("Restore")}}}}
         Text("Offline · stored on this device",Modifier.padding(vertical=5.dp),fontSize=11.sp,color=Plum)
