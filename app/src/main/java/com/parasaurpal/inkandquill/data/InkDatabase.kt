@@ -29,7 +29,18 @@ data class InkRecord(
 
 class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,17){
     private val appContext=context.applicationContext
-    init { seed(writableDatabase) }
+    init {
+        seed(writableDatabase)
+        cleanupAbandonedMediaStages()
+    }
+
+    private fun cleanupAbandonedMediaStages() {
+        val dir=java.io.File(appContext.filesDir,"attachments")
+        if(!dir.isDirectory)return
+        dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".stage." in it.name}?.forEach{staged->
+            runCatching{if(staged.exists()&&!staged.delete())android.util.Log.w("InkDatabase","Could not remove abandoned media staging file: ${staged.name}")}
+        }
+    }
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,term TEXT,endPosition INTEGER,UNIQUE(sourceId,targetId,label,position))")
