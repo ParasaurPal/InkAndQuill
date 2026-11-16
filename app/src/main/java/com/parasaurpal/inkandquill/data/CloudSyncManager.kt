@@ -79,6 +79,7 @@ object CloudSyncManager {
         manager.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
+    fun syncNow(context: Context) {val constraints=Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build();val request=OneTimeWorkRequestBuilder<CloudBackupWorker>().setConstraints(constraints).build();WorkManager.getInstance(context).enqueueUniqueWork(WORK+"_manual",ExistingWorkPolicy.REPLACE,request)}
     fun resolveConflict(context: Context, keepPhone: Boolean) {
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val data = Data.Builder().putString("resolution", if (keepPhone) "local" else "cloud").build()
@@ -93,6 +94,7 @@ object CloudSyncManager {
         manager.cancelUniqueWork(WORK)
         manager.cancelUniqueWork(WORK + "_initial")
         manager.cancelUniqueWork(WORK + "_resolve")
+        manager.cancelUniqueWork(WORK + "_manual")
     }
 
     fun isEnabled(context: Context) = prefs(context).getBoolean("enabled", false)
