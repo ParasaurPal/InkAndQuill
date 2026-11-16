@@ -47,6 +47,8 @@ class MainActivity:ComponentActivity(){
     var unlocked by remember{mutableStateOf(!AppLock.isEnabled(context))}
     var screen by remember{mutableStateOf("Home")}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
+    var openTabs by remember{mutableStateOf(db.openTabs().filter{db.get(it)!=null})}
+    LaunchedEffect(selected?.id){selected?.let{openTabs=(openTabs.filterNot{id->id==it.id}+it.id).takeLast(8);db.saveOpenTabs(openTabs)}}
     var refresh by remember{mutableIntStateOf(0)}
     var query by remember{mutableStateOf("")}
     var filter by remember{mutableStateOf("All")}
@@ -78,13 +80,16 @@ class MainActivity:ComponentActivity(){
             topBar={TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={if(selected==null)IconButton(onClick={settings=true}){Icon(Icons.Default.Settings,"Settings")}})},
             bottomBar={if(selected==null)NavigationBar{listOf("Home","Library","Worlds","Templates","Settings").forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
         ){padding->
-            Box(Modifier.fillMaxSize().padding(padding)){
-                if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size}) else when(screen){
-                    "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
-                    "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
-                    "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
-                    "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")})
-                    else->HomeScreen(db,refresh,{selected=it},{create=true})
+            Column(Modifier.fillMaxSize().padding(padding)){
+                if(openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id)selected=null}){Text("×")}}}
+                Box(Modifier.weight(1f).fillMaxWidth()){
+                    if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);openTabs=openTabs.filterNot{it==id};db.saveOpenTabs(openTabs);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size}) else when(screen){
+                        "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
+                        "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
+                        "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
+                        "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")}
+                        else->HomeScreen(db,refresh,{selected=it},{create=true})
+                    }
                 }
             }
         }
