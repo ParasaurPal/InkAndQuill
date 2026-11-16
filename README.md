@@ -17,9 +17,10 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 - Writing types for documents, novels, series, stories, books, chapters, scenes, poetry, journals, notes, and worldbuilding records.
 - World/parent hierarchy fields, tags, aliases, and scope metadata.
 - Local title/alias mention scanner with persisted backlinks.
-- Search, type filters, recent writing, editable starter templates.
-- Appearance and editor font-size preferences.
-- JSON backup/restore; password-encrypted cloud backup/restore through Android's Storage Access Framework; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; text/Markdown/HTML/DOCX/EPUB import.
+- Search, type filters, folders, collections, favorites, multi-document tabs, recent writing, and a reusable template field designer.
+- World timelines, custom calendars, explicit relationships, alternate snapshots, selective project sharing, draggable planning boards, and reusable typed tags.
+- Appearance palettes, custom home/navigation visibility, focus mode, editor typography/page width, and optional local PIN lock.
+- Comprehensive JSON backup/restore; password-encrypted cloud backup/restore through Android's Storage Access Framework; optional scheduled encrypted provider-backed backups using Android Keystore and WorkManager; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; text/Markdown/HTML/DOCX/EPUB import.
 - Android automatic device backup is disabled to avoid unintended unencrypted cloud copies. User-initiated cloud backup is encrypted locally and saved to a provider the user selects.
 
 ## Build
@@ -29,4 +30,4 @@ JDK 17 and Gradle 8.11.1:
 GitHub Actions builds and uploads `ink-and-quill-debug` on pushes to `main`.
 
 ## Product scope and remaining work
-See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The full requested product is larger than the current implemented foundation; maps, visual relationship tools, a universal template designer, automatic scheduled cloud sync/offline retry/conflict handling, and extensive automated testing remain future implementation work.
+See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The full requested product is still being built. Scheduled cloud backup is one-way encrypted backup, not bidirectional multi-device sync. Geographic map layers, complete visual planning workspaces, advanced template logic, inline image insertion, full page layout, conflict-aware sync, and extensive automated testing remain in the roadmap.
