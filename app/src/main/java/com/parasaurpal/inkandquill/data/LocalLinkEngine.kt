@@ -5,8 +5,8 @@ class LocalLinkEngine(private val db:InkDatabase){
     fun findMentions(text:String,sourceId:String):List<Found>{
         val candidates=db.all().filter{it.id!=sourceId}.flatMap{r->(listOf(r.title)+r.aliases.split(",").map(String::trim).filter(String::isNotBlank)).distinct().map{it to r}}.sortedByDescending{it.first.length}
         val used=mutableListOf<IntRange>();val found=mutableListOf<Found>()
-        candidates.forEach{(name,r)->if(name.length>=3){val flags=if(db.setting("caseSensitive","false")=="true")emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex("(?<![\\p{L}\\p{N}_])"+Regex.escape(name)+"(?![\\p{L}\\p{N}_])",flags);regex.findAll(text).forEach{m->if(used.none{it.first<=m.range.last&&m.range.first<=it.last}){used.add(m.range);found.add(Found(r,m.range.first,m.range.last+1))}}}}
+        candidates.forEach{(name,r)->if(name.length>=3 && !db.isLinkExcluded(sourceId,name)){val flags=if(db.setting("caseSensitive","false")=="true")emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex("(?<![\\p{L}\\p{N}_])"+Regex.escape(name)+"(?![\\p{L}\\p{N}_])",flags);regex.findAll(text).forEach{m->if(used.none{it.first<=m.range.last&&m.range.first<=it.last}){used.add(m.range);found.add(Found(r,m.range.first,m.range.last+1))}}}}
         return found.sortedBy{it.start}
     }
-    fun scan(source:InkRecord):List<Found>{val matches=findMentions(source.body,source.id);matches.forEach{db.addLink(source.id,it.record.id,"mention",it.start)};return matches}
+    fun scan(source:InkRecord):List<Found>{val matches=findMentions(source.body,source.id);when(db.setting("autoLink","suggest")){"auto"->matches.forEach{db.addLink(source.id,it.record.id,"mention",it.start)};"suggest"->matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.record.title,it.start)}};return matches}
 }
