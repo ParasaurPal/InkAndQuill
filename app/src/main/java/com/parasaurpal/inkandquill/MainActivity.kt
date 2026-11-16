@@ -310,7 +310,7 @@ class MainActivity:ComponentActivity(){
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
             Text("Outgoing mention links",fontWeight=FontWeight.SemiBold)
-            db.linksFrom(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){Text("${link.first} · ${link.second}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.removeLink(record.id,db.all().firstOrNull{it.title==link.first}?.id?:"",link.second)}){Text("Unlink")}}}
+            db.linksFrom(record.id).forEach{link->Row(verticalAlignment=Alignment.CenterVertically){Text("${link.first} · ${link.second}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.removeLink(record.id,link.third,link.second)}){Text("Unlink")}}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
         }
