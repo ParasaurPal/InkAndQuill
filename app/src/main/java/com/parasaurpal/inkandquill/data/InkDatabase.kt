@@ -139,7 +139,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun all(query:String="",kind:String?=null):List<InkRecord>{
         val sql=StringBuilder("SELECT * FROM records WHERE kind!='Template'");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
-        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ?)");val q="%$query%";args.addAll(listOf(q,q,q))}
+        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ?)");val q="%$query%";args.addAll(listOf(q,q,q,q))}
         sql.append(" ORDER BY favorite DESC,updatedAt DESC")
         return readableDatabase.rawQuery(sql.toString(),args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.record())}}
     }
@@ -167,6 +167,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun folderFor(recordId:String)=readableDatabase.rawQuery("SELECT folderId FROM record_folders WHERE recordId=?",arrayOf(recordId)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun createCollection(name:String,description:String=""):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("name",name.trim());put("description",description);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("collections",null,v);return id}
     fun addToCollection(collectionId:String,recordId:String){val v=ContentValues().apply{put("collectionId",collectionId);put("recordId",recordId)};writableDatabase.insertWithOnConflict("collection_records",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun collectionRecords(collectionId:String):List<InkRecord> = readableDatabase.rawQuery("SELECT r.* FROM records r JOIN collection_records cr ON cr.recordId=r.id WHERE cr.collectionId=? ORDER BY r.updatedAt DESC",arrayOf(collectionId)).use{c->buildList{while(c.moveToNext())add(c.record())}}
+    fun removeFromCollection(collectionId:String,recordId:String){writableDatabase.delete("collection_records","collectionId=? AND recordId=?",arrayOf(collectionId,recordId))}
+    fun recordCollections(recordId:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT c.id,c.name FROM collections c JOIN collection_records cr ON cr.collectionId=c.id WHERE cr.recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun collections():List<Pair<String,String>> = readableDatabase.rawQuery("SELECT id,name FROM collections ORDER BY name",null).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("uri",uri);put("mimeType",mimeType);put("displayName",displayName);put("size",size);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("attachments",null,v)}
     fun attachments(recordId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments WHERE recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"uri" to c.getString(1),"mimeType" to (c.getString(2)?: ""),"displayName" to (c.getString(3)?: "")))}}
