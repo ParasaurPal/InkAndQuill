@@ -12,7 +12,7 @@
 - [x] Search and type filters
 - [x] Appearance and font-size preferences
 - [x] JSON backup export and import
-- [x] Android cloud backup disabled; no network permission in manifest
+- [x] Offline-first local database remains primary; cloud transfer is explicitly user-initiated through Android's Storage Access Framework, so the selected provider handles its own authentication and network access
 - [x] GitHub Actions debug APK build workflow
 
 ## Remaining to complete the full requested product
@@ -27,7 +27,7 @@
 - [x] TXT, Markdown, HTML, DOCX, and EPUB import
 - [ ] PDF import and round-trip fidelity tests
 - [ ] Custom font import, palettes, margins, page widths, line spacing, toolbar and home layout customization
-- [ ] Encrypted client-side, provider-flexible optional cloud backup/sync
+- [x] Password-encrypted AES-256-GCM backup files, encrypted locally before export through Android's user-selected document provider (cloud-drive apps can be selected)\n- [ ] Automatic scheduled background cloud sync, offline retry queue, conflict handling, and provider-specific sync status
 - [ ] Restore validation, database migrations, unit/instrumentation/UI/accessibility/performance tests
 
 The app must continue to function completely offline when these optional integrations are added.
