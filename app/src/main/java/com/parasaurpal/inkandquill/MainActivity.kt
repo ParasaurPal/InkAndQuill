@@ -310,7 +310,7 @@ class MainActivity:ComponentActivity(){
     children.forEach{child->Column(Modifier.padding(start=(depth*12).dp)){RecordCard(db,child,open);WorldTreeChildren(db,child.id,depth+1,open)}}
 }
 
-private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField>,values:Map<String,String>):String{val formula=field.formula.trim();if(formula.isBlank())return "";val match=Regex("^(sum|concat|uppercase|count)\\((.*)\\)$",RegexOption.IGNORE_CASE).matchEntire(formula);val refs=if(match!=null)match.groupValues[2].split(",").map{it.trim()}else formula.split("+").map{it.trim()};val parts=refs.map{ref->values[fields.firstOrNull{it.name.equals(ref,true)}?.id].orEmpty()};return when(match?.groupValues?.get(1)?.lowercase()){ "sum"->parts.mapNotNull{it.toDoubleOrNull()}.sum().toString(); "concat"->parts.joinToString(""); "uppercase"->parts.firstOrNull().orEmpty().uppercase(); "count"->parts.firstOrNull().orEmpty().trim().split(Regex("\\s+")).count{it.isNotBlank()}.toString(); else->if(formula.contains("+")&&parts.all{it.toDoubleOrNull()!=null})parts.sumOf{it.toDouble()}.toString()else parts.joinToString(" ")}}
+private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField>,values:Map<String,String>):String = TemplateFormula.evaluate(field.formula,fields,values)
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val context=LocalContext.current
