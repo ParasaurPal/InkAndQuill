@@ -219,7 +219,34 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val v=ContentValues().apply{put("id",r.id);put("title",r.title);put("body",r.body);put("kind",r.kind);put("parentId",r.parentId);put("scope",r.scope);put("tags",r.tags);put("aliases",r.aliases);put("createdAt",r.createdAt);put("updatedAt",System.currentTimeMillis());put("favorite",if(r.favorite)1 else 0)}
         db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE)
     }
-    fun delete(id:String){val existing=get(id);val db=writableDatabase;db.beginTransaction();try{db.execSQL("UPDATE records SET parentId='' WHERE parentId=?",arrayOf(id));listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))};listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->val column=if(table=="collection_records")"recordId" else if(table=="open_tabs")"recordId" else "recordId";db.delete(table,"$column=?",arrayOf(id))};db.delete("timeline_events","recordId=?",arrayOf(id));db.delete("board_items","recordId=?",arrayOf(id));if(existing?.kind=="Template"){listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}};if(existing?.kind=="World"){db.delete("timeline_events","worldId=?",arrayOf(id));db.delete("planning_boards","worldId=?",arrayOf(id));db.delete("world_calendars","worldId=?",arrayOf(id))};db.delete("records","id=?",arrayOf(id));db.setTransactionSuccessful()}finally{db.endTransaction()}}
+    fun delete(id:String){
+        val existing=get(id)
+        val db=writableDatabase
+        val mediaIds=mutableSetOf<String>()
+        db.rawQuery("SELECT id FROM attachments WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+        db.rawQuery("SELECT id FROM board_items WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+        if(existing?.kind=="World"){
+            db.rawQuery("SELECT id FROM planning_boards WHERE worldId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+            db.rawQuery("SELECT bi.id FROM board_items bi JOIN planning_boards pb ON pb.id=bi.boardId WHERE pb.worldId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
+        }
+        db.beginTransaction()
+        try{
+            db.execSQL("UPDATE records SET parentId='' WHERE parentId=?",arrayOf(id))
+            listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
+            listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
+            db.delete("timeline_events","recordId=?",arrayOf(id))
+            db.delete("board_items","recordId=?",arrayOf(id))
+            if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
+            if(existing?.kind=="World"){
+                db.delete("timeline_events","worldId=?",arrayOf(id))
+                db.delete("planning_boards","worldId=?",arrayOf(id))
+                db.delete("world_calendars","worldId=?",arrayOf(id))
+            }
+            db.delete("records","id=?",arrayOf(id))
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        mediaIds.forEach(::deleteImportedMediaBlob)
+    }
     fun setting(key:String,fallback:String="")=readableDatabase.rawQuery("SELECT value FROM settings WHERE key=?",arrayOf(key)).use{if(it.moveToFirst())it.getString(0)else fallback}
     fun setSetting(key:String,value:String){val v=ContentValues().apply{put("key",key);put("value",value)};writableDatabase.insertWithOnConflict("settings",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     fun addLink(source:String,target:String,label:String="mention",position:Int=0,term:String="",endPosition:Int=position){val db=writableDatabase;val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("position",position);put("term",term);put("endPosition",endPosition)};val inserted=db.insertWithOnConflict("links",null,v,SQLiteDatabase.CONFLICT_IGNORE);if(inserted!=-1L){val h=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("position",position);put("action","added");put("createdAt",System.currentTimeMillis());put("term",term);put("endPosition",endPosition)};db.insert("link_history",null,h)}}
