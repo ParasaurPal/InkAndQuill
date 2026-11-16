@@ -6,7 +6,7 @@ package com.parasaurpal.inkandquill.data
  * Supported leap rule: "every 4 years add 1 day to month 2".
  * Leap years are multiples of the interval, beginning with year 1 as the epoch.
  */
-data class WorldCalendarSpec private constructor(
+class WorldCalendarSpec private constructor(
     val months: List<String>,
     val monthLengths: List<Int>,
     val weekdays: List<String>,
