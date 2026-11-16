@@ -495,6 +495,15 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun openTabs():List<String> = readableDatabase.rawQuery("SELECT recordId FROM open_tabs ORDER BY position",null).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
     fun replaceInRecord(id:String,find:String,replacement:String,matchCase:Boolean=false):Int{if(find.isEmpty())return 0;val r=get(id)?:return 0;val opts=if(matchCase) emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex(Regex.escape(find),opts);val count=regex.findAll(r.body).count();if(count>0)save(r.copy(body=regex.replace(r.body){replacement}));return count}
 
+    fun syncMentionLinks(source:String,desired:List<RecordLink>){
+        val current=outgoingLinks(source).filter{it.label=="mention"}
+        current.filterNot{old->desired.any{it.recordId==old.recordId&&it.position==old.position&&it.term==old.term}}
+            .forEach{removeLink(source,it.recordId,"mention",it.position)}
+        val remaining=outgoingLinks(source).filter{it.label=="mention"}
+        desired.filterNot{next->remaining.any{it.recordId==next.recordId&&it.position==next.position&&it.term==next.term}}
+            .forEach{addLink(source,it.recordId,"mention",it.position,it.term,it.position+it.term.length)}
+    }
+    fun clearPendingLinkSuggestions(source:String){writableDatabase.delete("link_suggestions","sourceId=? AND status='pending'",arrayOf(source))}
     fun addLinkSuggestion(source:String,target:String,term:String,position:Int){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("term",term);put("position",position);put("status","pending")};writableDatabase.insertWithOnConflict("link_suggestions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun pendingLinkSuggestions(source:String):List<Triple<String,String,Int>> = readableDatabase.rawQuery("SELECT targetId,term,position FROM link_suggestions WHERE sourceId=? AND status='pending' ORDER BY position",arrayOf(source)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getInt(2)))}}
     fun resolveLinkSuggestion(source:String,target:String,position:Int,approve:Boolean){val term=pendingLinkSuggestions(source).firstOrNull{it.first==target&&it.third==position}?.second.orEmpty();writableDatabase.execSQL("UPDATE link_suggestions SET status=? WHERE sourceId=? AND targetId=? AND position=?",arrayOf(if(approve)"approved" else "dismissed",source,target,position));if(approve)addLink(source,target,"mention",position,term,position+term.length)}
