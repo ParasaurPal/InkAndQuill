@@ -282,7 +282,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         try{
             db.execSQL("UPDATE records SET parentId='' WHERE parentId=?",arrayOf(id))
             listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
-            listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
+            listOf("record_folders","record_tags","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
             db.delete("timeline_events","recordId=?",arrayOf(id))
             removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
             db.delete("board_items","recordId=?",arrayOf(id))
