@@ -24,7 +24,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,6){
+class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,7){
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
@@ -52,6 +52,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
         db.execSQL("CREATE TABLE planning_boards(id TEXT PRIMARY KEY,worldId TEXT,name TEXT NOT NULL,boardType TEXT NOT NULL,createdAt INTEGER)")
         db.execSQL("CREATE TABLE board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
         db.execSQL("CREATE TABLE board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
+        db.execSQL("CREATE TABLE record_shares(recordId TEXT NOT NULL,projectId TEXT NOT NULL,createdAt INTEGER,PRIMARY KEY(recordId,projectId))")
         db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
     }
@@ -78,6 +79,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
             db.execSQL("CREATE TABLE IF NOT EXISTS template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
             db.execSQL("CREATE TABLE IF NOT EXISTS template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
         }
+        if(oldVersion<7){db.execSQL("CREATE TABLE IF NOT EXISTS record_shares(recordId TEXT NOT NULL,projectId TEXT NOT NULL,createdAt INTEGER,PRIMARY KEY(recordId,projectId))")}
         if(oldVersion<6){
             db.execSQL("CREATE TABLE IF NOT EXISTS record_relationships(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,createdAt INTEGER,UNIQUE(sourceId,targetId,label))")
             db.execSQL("CREATE TABLE IF NOT EXISTS entity_snapshots(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,label TEXT NOT NULL,payload TEXT NOT NULL,createdAt INTEGER)")
@@ -160,7 +162,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun removeLink(source:String,target:String,label:String="mention"){writableDatabase.delete("links","sourceId=? AND targetId=? AND label=?",arrayOf(source,target,label))}
     fun backlinks(id:String)=readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.sourceId WHERE l.targetId=?",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(1),c.getString(2),c.getInt(3)))}}
     fun revisions(id:String)=readableDatabase.rawQuery("SELECT title,body,createdAt FROM revisions WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getLong(2)))}}
-    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links")
+    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","record_shares")
     private fun exportTable(table:String):JSONArray{val arr=JSONArray();readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){val o=JSONObject();for(i in 0 until c.columnCount){val name=c.getColumnName(i);when(c.getType(i)){android.database.Cursor.FIELD_TYPE_NULL->o.put(name,JSONObject.NULL);android.database.Cursor.FIELD_TYPE_INTEGER->o.put(name,c.getLong(i));android.database.Cursor.FIELD_TYPE_FLOAT->o.put(name,c.getDouble(i));android.database.Cursor.FIELD_TYPE_BLOB->o.put(name,android.util.Base64.encodeToString(c.getBlob(i),android.util.Base64.NO_WRAP));else->o.put(name,c.getString(i))}};arr.put(o)}};return arr}
     fun exportJson():String{val records=exportTable("records");val root=JSONObject().put("format","inkandquill").put("version",3).put("records",records);backupTables.forEach{root.put(it,exportTable(it))};return root.toString(2)}
     private fun importTable(table:String,arr:JSONArray){
@@ -171,7 +173,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
             "link_exclusions"->setOf("id","recordId","term");"link_suggestions"->setOf("id","sourceId","targetId","term","position","status");"open_tabs"->setOf("position","recordId");
             "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
             "entity_snapshots"->setOf("id","recordId","label","payload","createdAt");"timeline_events"->setOf("id","worldId","title","startDate","endDate","description","recordId");
-            "planning_boards"->setOf("id","worldId","name","boardType","createdAt");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color");"board_links"->setOf("id","boardId","fromItem","toItem","label");else->emptySet()}
+            "planning_boards"->setOf("id","worldId","name","boardType","createdAt");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color");"board_links"->setOf("id","boardId","fromItem","toItem","label");"record_shares"->setOf("recordId","projectId","createdAt");else->emptySet()}
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     }
     fun importJson(raw:String){val root=JSONObject(raw);val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray();for(i in 0 until arr.length()){val o=arr.getJSONObject(i);save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))};backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}}}
@@ -210,6 +212,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun addTemplateSection(templateId:String,name:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name);put("position",templateSections(templateId).size)};writableDatabase.insert("template_sections",null,v)}
     fun templateVersion(templateId:String){val snapshot=JSONArray();templateFields(templateId,true).forEach{f->snapshot.put(JSONObject().put("id",f.id).put("name",f.name).put("type",f.fieldType).put("required",f.required).put("section",f.section).put("options",f.options).put("hint",f.hint).put("position",f.position))};val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("snapshot",snapshot.toString());put("createdAt",System.currentTimeMillis())};writableDatabase.insert("template_versions",null,v)}
     fun templateVersionCount(templateId:String)=readableDatabase.rawQuery("SELECT COUNT(*) FROM template_versions WHERE templateId=?",arrayOf(templateId)).use{it.moveToFirst();it.getInt(0)}
+    fun shareWithProject(recordId:String,projectId:String){val v=ContentValues().apply{put("recordId",recordId);put("projectId",projectId);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_shares",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun unshareFromProject(recordId:String,projectId:String){writableDatabase.delete("record_shares","recordId=? AND projectId=?",arrayOf(recordId,projectId))}
+    fun sharedProjects(recordId:String):Set<String> = readableDatabase.rawQuery("SELECT projectId FROM record_shares WHERE recordId=?",arrayOf(recordId)).use{c->buildSet{while(c.moveToNext())add(c.getString(0))}}
     fun addRelationship(source:String,target:String,label:String,notes:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("notes",notes);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_relationships",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     fun relationships(id:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT r.title,rr.label,rr.targetId FROM record_relationships rr JOIN records r ON r.id=rr.targetId WHERE rr.sourceId=? UNION ALL SELECT r.title,rr.label,rr.sourceId FROM record_relationships rr JOIN records r ON r.id=rr.sourceId WHERE rr.targetId=?",arrayOf(id,id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
     fun saveEntitySnapshot(record:InkRecord,label:String){val payload=JSONObject().put("title",record.title).put("body",record.body).put("kind",record.kind).put("tags",record.tags).put("aliases",record.aliases).toString();val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",record.id);put("label",label);put("payload",payload);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("entity_snapshots",null,v)}
