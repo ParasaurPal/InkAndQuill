@@ -241,7 +241,9 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val context=LocalContext.current
     var templateQuery by remember{mutableStateOf("")}
-    val templates=remember(refresh,templateQuery){db.templates().filter{it.title.contains(templateQuery,true)}}
+    var templateCategory by remember{mutableStateOf("All")}
+    val templateCategories=listOf("All","Writing","Characters & Worldbuilding","Magic & Systems","Plot & Structure","Timeline & Calendar","Visual Planning","Research & Reference","Other")
+    val templates=remember(refresh,templateQuery,templateCategory){db.templates().filter{it.title.contains(templateQuery,true)&&(templateCategory=="All"||it.tags==templateCategory)}}
     var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
     var fieldRefresh by remember{mutableIntStateOf(0)}
     val exportTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->val template=selectedTemplate;if(uri!=null&&template!=null)runCatching{context.contentResolver.openOutputStream(uri)?.use{out->out.write(db.exportTemplateJson(template.id).toByteArray())}}}
@@ -271,7 +273,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     var typeMenu by remember{mutableStateOf(false)}
     val types=listOf("Short text","Long text","Rich text","Number","Date","Dropdown","Multi-select","Checkbox","Image","Gallery","Attachment","Color","Rating","Table","Relationship","Repeatable group","Calculated")
     Column(Modifier.fillMaxSize().padding(16.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);TextButton(onClick={importTemplateLauncher.launch(arrayOf("application/json","text/*"))}){Text("Import")};TextButton(onClick={restoreTemplatesDialog=true}){Text("Restore starters")};Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);TextButton(onClick={importTemplateLauncher.launch(arrayOf("application/json","text/*"))}){Text("Import")};TextButton(onClick={restoreTemplatesDialog=true}){Text("Restore starters")};Button(onClick={val t=InkRecord(title="My custom template",kind="Template",tags="Other",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
         Text("Build reusable forms and writing structures. Fields can be removed from the active template without destroying their stored definitions.")
         if(selectedTemplate!=null){
             val t=selectedTemplate!!
@@ -285,6 +287,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
             }
         }else{
             OutlinedTextField(templateQuery,{templateQuery=it},Modifier.fillMaxWidth(),label={Text("Search templates")},singleLine=true)
+            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){templateCategories.forEach{category->FilterChip(templateCategory==category,{templateCategory=category},label={Text(category)})}}
             LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={applyingTemplate=t;templateValues=db.templateFields(t.id).associate{it.id to ""}}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")};TextButton(onClick={db.duplicateTemplate(t.id)}){Text("Duplicate")}}}}}}
         }
     }
