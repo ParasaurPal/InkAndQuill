@@ -16,12 +16,11 @@ class LocalLinkEngine(private val db:InkDatabase){
         val matches=findMentions(source.body,source.id)
         when(db.setting("autoLink","suggest")){
             "auto"->{
-                db.clearPendingLinkSuggestions(source.id)
+                db.syncLinkSuggestions(source.id,emptyList())
                 db.syncMentionLinks(source.id,matches.map{RecordLink(it.record.id,it.record.title,"mention",it.start,it.term)})
             }
             "suggest"->{
-                db.clearPendingLinkSuggestions(source.id)
-                matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.term,it.start)}
+                db.syncLinkSuggestions(source.id,matches.map{RecordLink(it.record.id,it.record.title,"mention",it.start,it.term)})
             }
         }
         return matches
