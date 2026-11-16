@@ -27,7 +27,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,17){
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,18){
     private val appContext=context.applicationContext
     init {
         seed(writableDatabase)
@@ -36,10 +36,34 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
 
     private fun cleanupAbandonedMediaStages() {
         val dir=java.io.File(appContext.filesDir,"attachments")
-        if(!dir.isDirectory)return
-        dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".stage." in it.name}?.forEach{staged->
-            runCatching{if(staged.exists()&&!staged.delete())android.util.Log.w("InkDatabase","Could not remove abandoned media staging file: ${staged.name}")}
+        val db=writableDatabase
+        val journal=linkedMapOf<String,String>()
+        db.rawQuery("SELECT previousName,finalName FROM media_recovery",null).use{cursor->
+            while(cursor.moveToNext())journal[cursor.getString(0)]=cursor.getString(1)
         }
+        journal.forEach{(previousName,finalName)->
+            val previous=java.io.File(dir,previousName)
+            val destination=java.io.File(dir,finalName)
+            val resolved=when{
+                !previous.exists()->true
+                destination.exists()->previous.delete()
+                else->previous.renameTo(destination)
+            }
+            if(resolved)db.delete("media_recovery","previousName=?",arrayOf(previousName))
+            else android.util.Log.e("InkDatabase","Could not recover media file: $previousName")
+        }
+        if(dir.isDirectory){
+            dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".previous." in it.name&&it.name !in journal.keys}?.forEach{previous->
+                val safeName=previous.name.removePrefix(".").substringBefore(".previous.")
+                val destination=java.io.File(dir,"$safeName.bin")
+                if(destination.exists())destination.delete()
+                if(!previous.renameTo(destination))android.util.Log.e("InkDatabase","Could not restore interrupted media replacement: ${previous.name}")
+            }
+            dir.listFiles()?.filter{it.isFile&&it.name.startsWith(".")&&".stage." in it.name}?.forEach{staged->
+                runCatching{if(staged.exists()&&!staged.delete())android.util.Log.w("InkDatabase","Could not remove abandoned media staging file: ${staged.name}")}
+            }
+        }
+        cleanupOrphanedImportedMedia()
     }
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
@@ -57,6 +81,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
         db.execSQL("CREATE TABLE collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
         db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE media_recovery(previousName TEXT PRIMARY KEY,finalName TEXT NOT NULL)")
         db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
         db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
@@ -120,6 +145,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             db.execSQL("CREATE TABLE IF NOT EXISTS board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
             db.execSQL("CREATE TABLE IF NOT EXISTS board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         }
+        if(oldVersion<18)db.execSQL("CREATE TABLE IF NOT EXISTS media_recovery(previousName TEXT PRIMARY KEY,finalName TEXT NOT NULL)")
     }
     private fun seed(db:SQLiteDatabase){
         val data=listOf(
@@ -369,7 +395,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 importJsonInternal(raw,mediaBackups)
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
-            mediaBackups.values.filterNotNull().forEach{it.delete()}
+            finalizeImportedMedia(db,mediaBackups)
             cleanupOrphanedImportedMedia()
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
@@ -387,7 +413,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 importJsonInternal(raw,mediaBackups)
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
-            mediaBackups.values.filterNotNull().forEach{it.delete()}
+            finalizeImportedMedia(db,mediaBackups)
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
@@ -404,6 +430,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         dir.listFiles()?.filter{file->file.isFile&&file.name.endsWith(".bin")&&file.name.removeSuffix(".bin") !in referenced}?.forEach{file->
             runCatching{if(file.exists()&&!file.delete())android.util.Log.w("InkDatabase","Could not remove obsolete imported media: ${file.name}")}
         }
+    }
+
+    private fun finalizeImportedMedia(db:SQLiteDatabase,backups:Map<java.io.File,java.io.File?>) {
+        var allPreviousRemoved=true
+        backups.values.filterNotNull().forEach{previous->
+            if(previous.exists()&&!previous.delete())allPreviousRemoved=false
+        }
+        if(allPreviousRemoved)db.delete("media_recovery",null,null)
     }
 
     private fun rollbackImportedMedia(backups:Map<java.io.File,java.io.File?>,cause:Exception) {
@@ -449,6 +483,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 staged.writeBytes(bytes)
                 if(!staged.renameTo(file))throw java.io.IOException("Could not install restored media '$id'.")
             } finally { if(staged.exists())staged.delete() }
+            mediaBackups[file]?.let{previous->
+                val journal=ContentValues().apply{put("previousName",previous.name);put("finalName",file.name)}
+                writableDatabase.insertWithOnConflict("media_recovery",null,journal,SQLiteDatabase.CONFLICT_REPLACE)
+            }
             val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file)
             val values=ContentValues()
             val updated=when(kind){
