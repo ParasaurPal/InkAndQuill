@@ -12,7 +12,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Optional salted-PBKDF2 PIN lock with automatic relock when app leaves foreground
 - [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, recursive world tree, and world-scoped record creation
 - [x] Selective multi-project sharing with chosen Series/Stories; explicit labeled record relationships; labeled alternate entity snapshots and restore
-- [x] World timelines; custom calendars with user-defined months, weekdays, seasons, moons, dated entries, and yearly-repeat metadata
+- [x] World timelines; custom calendars with user-defined months, month lengths, weekdays, seasons, moons, eras, leap-rule notes, a month grid, dated entries, and yearly recurring events
 - [x] Visual planning boards (corkboard, moodboard, map, flowchart, relationship graph, family tree, floor plan, reference board) with draggable cards, persistent positions, user-selected image backgrounds, and visual card-to-card links
 - [x] Shared reusable typed taxonomy tags across record types, assignment chips, and search integration
 - [x] Starter template gallery expanded across novels, series, stories, poetry, journals, nonfiction, research, characters, worldbuilding, systems, plotting, calendars, maps, and references
@@ -22,11 +22,11 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Attachment metadata, image previews, open/remove controls, inline image insertion, and image bytes included in JSON/encrypted backups
 - [x] Portable JSON backup/restore includes records, settings, tags, folders, collections, tabs, templates, relationships, boards, calendars, attachment bytes, and board background images
 - [x] Password-encrypted AES-256-GCM backup/restore; optional provider-backed bidirectional sync with Android Keystore-protected password, initial run, manual sync, 12-hour WorkManager schedule, network constraint/retry, hash-based change detection, and explicit keep-phone/use-cloud conflict resolution
-- [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; TXT, Markdown, HTML, DOCX, EPUB import
+- [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; PDF, TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
 - [ ] Full project-aware World → multiple Series → Books → Chapters → Scenes navigator, richer standalone-story organization, project-specific resource views, and full multi-project shared-record navigation
-- [ ] Template designer still needs executable calculated fields, repeatable dynamic groups, true table/relationship/image/gallery/attachment field widgets, conditional logic beyond simple equality, section reorder, original-template restore, and template-only import/export/share
+- [ ] Template designer still needs more advanced calculated expressions, repeatable structured groups, true editable table widgets, multi-image galleries, conditional logic beyond simple equality, section reorder, and template schema migration UI
 - [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
 - [ ] Attachments still need a full in-app gallery, file lifecycle cleanup, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
@@ -34,7 +34,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
 - [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
 - [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, detailed sync history, and multi-device end-to-end testing remain
-- [ ] PDF import, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
+- [ ] PDF import fidelity tests, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
 
 ## Non-negotiable product constraints
 - No AI features, SDKs, APIs, model downloads, or services.
