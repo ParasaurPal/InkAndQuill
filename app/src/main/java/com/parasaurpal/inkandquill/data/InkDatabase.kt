@@ -27,7 +27,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,13){
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,14){
     private val appContext=context.applicationContext
     init { seed(writableDatabase) }
     override fun onCreate(db:SQLiteDatabase){
@@ -55,7 +55,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE entity_snapshots(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,label TEXT NOT NULL,payload TEXT NOT NULL,createdAt INTEGER)")
         db.execSQL("CREATE TABLE timeline_events(id TEXT PRIMARY KEY,worldId TEXT NOT NULL,title TEXT NOT NULL,startDate TEXT NOT NULL,endDate TEXT,description TEXT,recordId TEXT)")
         db.execSQL("CREATE TABLE planning_boards(id TEXT PRIMARY KEY,worldId TEXT,name TEXT NOT NULL,boardType TEXT NOT NULL,createdAt INTEGER,backgroundUri TEXT)")
-        db.execSQL("CREATE TABLE board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
+        db.execSQL("CREATE TABLE board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT,imageUri TEXT)")
         db.execSQL("CREATE TABLE board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         db.execSQL("CREATE TABLE record_shares(recordId TEXT NOT NULL,projectId TEXT NOT NULL,createdAt INTEGER,PRIMARY KEY(recordId,projectId))")
         db.execSQL("CREATE TABLE tags(id TEXT PRIMARY KEY,name TEXT NOT NULL,tagType TEXT NOT NULL,color TEXT,UNIQUE(name,tagType))")
@@ -91,6 +91,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             db.execSQL("CREATE TABLE IF NOT EXISTS template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
         }
         if(oldVersion<7){db.execSQL("CREATE TABLE IF NOT EXISTS record_shares(recordId TEXT NOT NULL,projectId TEXT NOT NULL,createdAt INTEGER,PRIMARY KEY(recordId,projectId))")}
+        if(oldVersion<14){runCatching{db.execSQL("ALTER TABLE board_items ADD COLUMN imageUri TEXT")}}
         if(oldVersion<13){runCatching{db.execSQL("ALTER TABLE world_calendars ADD COLUMN monthLengths TEXT")};runCatching{db.execSQL("ALTER TABLE world_calendars ADD COLUMN eras TEXT")};runCatching{db.execSQL("ALTER TABLE world_calendars ADD COLUMN leapRules TEXT")}}
         if(oldVersion<12){db.execSQL("CREATE TABLE IF NOT EXISTS link_history(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT,position INTEGER,action TEXT,createdAt INTEGER)")}
         if(oldVersion<11){runCatching{db.execSQL("ALTER TABLE planning_boards ADD COLUMN backgroundUri TEXT")}}
@@ -225,7 +226,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             "link_exclusions"->setOf("id","recordId","term");"link_suggestions"->setOf("id","sourceId","targetId","term","position","status");"open_tabs"->setOf("position","recordId");
             "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
             "entity_snapshots"->setOf("id","recordId","label","payload","createdAt");"timeline_events"->setOf("id","worldId","title","startDate","endDate","description","recordId");
-            "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color");"board_links"->setOf("id","boardId","fromItem","toItem","label");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt");else->emptySet()}
+            "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color","imageUri");"board_links"->setOf("id","boardId","fromItem","toItem","label");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt");else->emptySet()}
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     }
     fun replaceWithJson(raw:String){val db=writableDatabase;db.beginTransaction();try{backupTables.forEach{db.delete(it,null,null)};db.delete("records",null,null);db.setTransactionSuccessful()}finally{db.endTransaction()};importJson(raw)}
@@ -299,7 +300,8 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun setBoardBackground(boardId:String,uri:String){val v=ContentValues().apply{put("backgroundUri",uri)};writableDatabase.update("planning_boards",v,"id=?",arrayOf(boardId))}
     fun boardBackground(boardId:String):String = readableDatabase.rawQuery("SELECT COALESCE(backgroundUri,'') FROM planning_boards WHERE id=?",arrayOf(boardId)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun boards(worldId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,boardType FROM planning_boards WHERE worldId=? ORDER BY createdAt DESC",arrayOf(worldId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
-    fun addBoardItem(boardId:String,title:String,content:String="",recordId:String="",x:Float=0f,y:Float=0f,color:String="#D9C7EE"){val count=boardItems(boardId).size;val px=if(x==0f&&y==0f)(count%2)*170f else x;val py=if(x==0f&&y==0f)(count/2)*130f else y;val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("boardId",boardId);put("title",title);put("content",content);put("recordId",recordId);put("x",px);put("y",py);put("color",color)};writableDatabase.insert("board_items",null,v)}
+    fun addBoardItem(boardId:String,title:String,content:String="",recordId:String="",x:Float=0f,y:Float=0f,color:String="#D9C7EE",imageUri:String=""):String{val count=boardItems(boardId).size;val px=if(x==0f&&y==0f)(count%2)*170f else x;val py=if(x==0f&&y==0f)(count/2)*130f else y;val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("boardId",boardId);put("title",title);put("content",content);put("recordId",recordId);put("x",px);put("y",py);put("color",color);put("imageUri",imageUri)};writableDatabase.insert("board_items",null,v);return id}
+    fun boardItemImage(id:String):String=readableDatabase.rawQuery("SELECT COALESCE(imageUri,'') FROM board_items WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun boardItemPosition(id:String):Pair<Float,Float> = readableDatabase.rawQuery("SELECT COALESCE(x,0),COALESCE(y,0) FROM board_items WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.getFloat(0) to it.getFloat(1) else 0f to 0f}
     fun moveBoardItem(id:String,x:Float,y:Float){val v=ContentValues().apply{put("x",x.coerceAtLeast(0f));put("y",y.coerceAtLeast(0f))};writableDatabase.update("board_items",v,"id=?",arrayOf(id))}
     fun boardItems(boardId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,title,content FROM board_items WHERE boardId=? ORDER BY rowid",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
