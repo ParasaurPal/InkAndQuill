@@ -30,7 +30,7 @@ JDK 17 and Gradle 8.11.1:
 GitHub Actions builds and uploads `ink-and-quill-debug` on pushes to `main`.
 
 ## Product scope and remaining work
-See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The product is still under active implementation. Optional cloud sync now supports encrypted bidirectional whole-backup exchange, offline WorkManager retry, hash-based change detection, and explicit keep-phone/use-cloud conflict choices. Field-level merging and detailed sync history remain unfinished. Geographic map coordinates/layers, advanced family-tree layout tuning, inventory-specific views, more advanced template formulas and conditional logic, automatic multi-page pagination, richer DOCX/PDF formatting fidelity, detailed sync history/field-level merging, and extensive automated testing remain in the roadmap.
+See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The product is still under active implementation. Optional cloud sync now supports encrypted bidirectional whole-backup exchange, offline WorkManager retry, hash-based change detection, explicit keep-phone/use-cloud conflict choices, and a persistent recent sync history including failures. Field-level merging and detailed sync history remain unfinished. Geographic map coordinates/layers, advanced family-tree layout tuning, inventory-specific views, more advanced template formulas and conditional logic, automatic multi-page pagination, richer DOCX/PDF formatting fidelity, detailed sync history/field-level merging, and extensive automated testing remain in the roadmap.
 
 
 Cloud sync setup and conflict behavior: [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md).
