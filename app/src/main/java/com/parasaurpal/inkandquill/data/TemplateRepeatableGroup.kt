@@ -54,12 +54,11 @@ object TemplateRepeatableGroup {
         parse(raw, options).any { group -> fields(options).any { !group[it].isNullOrBlank() } }
 
     fun format(raw: String, options: String): String =
-        parse(raw, options).mapIndexed { index, group ->
-            "Item ${index + 1}\n" + fields(options)
-                .filter { !group[it].isNullOrBlank() }
+        parse(raw, options).mapIndexedNotNull { index, group ->
+            val details = fields(options).filter { !group[it].isNullOrBlank() }
                 .joinToString("\n") { "$it: ${group[it]}" }
-        }.filter { it != "Item ${parse(raw, options).indexOfFirst { g -> g == it }}\n" }
-            .joinToString("\n\n")
+            if (details.isBlank()) null else "Item ${index + 1}\n$details"
+        }.joinToString("\n\n")
 
     private fun serialize(groups: List<Map<String, String>>): String =
         PREFIX + groups.joinToString(";") { group ->
