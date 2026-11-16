@@ -26,7 +26,8 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] TXT, Markdown, HTML, paginated PDF, DOCX, EPUB export; PDF, TXT, Markdown, HTML, DOCX, EPUB import
 
 ## Partially implemented; still needs completion
-- [ ] Full project-aware World → multiple Series → Books → Chapters → Scenes navigator, richer standalone-story organization, project-specific resource views, and full multi-project shared-record navigation
+- [x] World → multiple Series → Books → Chapters → Scenes and standalone Story → Chapters → Scenes navigation; project-specific workspaces list books/chapters and explicitly shared worldbuilding records
+- [ ] Cross-project shared-record manager with filtering, bulk sharing, and navigation across every linked project
 - [x] Calculated template fields support arithmetic, parentheses, field references, aggregates, text functions, conditional expressions, coalesce, rounding, and safe error reporting
 - [x] Repeatable template groups use versioned structured storage with editable subfields, add/remove controls, required-value checks, and readable document output
 - [x] Conditional template visibility supports equality, inequality, numeric comparisons, contains/starts/ends, set membership, and empty checks
