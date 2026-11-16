@@ -327,12 +327,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
         backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}}
         val blobs=root.optJSONArray("attachment_blobs")?:JSONArray()
+        val seenMediaIds=mutableSetOf<String>()
         val dir=java.io.File(appContext.filesDir,"attachments").apply{if(!exists()&&!mkdirs())throw java.io.IOException("Could not create the attachment storage directory.")}
         for(i in 0 until blobs.length()){
             val o=blobs.optJSONObject(i)?:throw IllegalArgumentException("Backup contains an invalid media entry at index $i.")
             val id=o.optString("id")
             val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
             require(safeName.isNotBlank()&&safeName==id){"Backup contains an invalid media identifier."}
+            require(seenMediaIds.add(id)){"Backup contains duplicate media identifier '$id'."}
             val kind=o.optString("kind","attachment")
             val bytes=try{android.util.Base64.decode(o.getString("data"),android.util.Base64.DEFAULT)}catch(e:Exception){throw IllegalArgumentException("Media data for '$id' is invalid or incomplete.",e)}
             require(bytes.isNotEmpty()){"Media data for '$id' is empty."}
