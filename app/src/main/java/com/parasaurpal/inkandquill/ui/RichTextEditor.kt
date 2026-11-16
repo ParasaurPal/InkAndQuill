@@ -22,7 +22,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
 @Composable
-fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",customFontData:String="",customFontMime:String="font/ttf",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",backgroundImageData:String="",backgroundImageMime:String="image/jpeg",textColor:String="#eee8f5",findTerm:String="",onFindHandled:()->Unit={}){
+fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",customFontData:String="",customFontMime:String="font/ttf",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",backgroundImageData:String="",backgroundImageMime:String="image/jpeg",textColor:String="#eee8f5",findTerm:String="",findOccurrence:Int=0,onFindHandled:()->Unit={}){
     val callback by rememberUpdatedState(onValueChange)
     val findCallback by rememberUpdatedState(onFindHandled)
     val context=LocalContext.current
@@ -75,7 +75,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
         },update={view->
             view.evaluateJavascript("document.body.style.fontSize='${fontSize}px';document.body.style.fontFamily='${fontFamily}';document.body.style.lineHeight='${lineSpacing}';document.body.style.maxWidth='${if(pageMode) "${pageWidth}px" else "none"}';document.body.style.padding='${pageMargin}px';document.body.style.background='${backgroundColor}';document.body.style.backgroundImage='${if(backgroundImageData.isNotBlank()) "url(data:${backgroundImageMime};base64,${backgroundImageData})" else "none"}';document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';document.body.style.color='${textColor}';document.querySelectorAll('p').forEach(p=>p.style.marginBottom='${paragraphSpacing}px')",null)
             if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}
-            if(findTerm.isNotBlank()){view.findAllAsync(findTerm);view.findNext(true);findCallback()}
+            if(findTerm.isNotBlank()){view.setFindListener{_,count,done->if(done){if(count>0)repeat(findOccurrence.coerceIn(0,count-1)){view.findNext(true)};findCallback()}};view.findAllAsync(findTerm)}
         })
     }
     if(linkDialog)AlertDialog(onDismissRequest={linkDialog=false},title={Text("Insert hyperlink")},text={OutlinedTextField(linkUrl,{linkUrl=it},label={Text("URL")},singleLine=true)},confirmButton={TextButton(onClick={if(linkUrl.startsWith("https://")||linkUrl.startsWith("http://")){web.value?.evaluateJavascript("document.execCommand('createLink',false,"+JSONObject.quote(linkUrl)+")",null);linkDialog=false}}){Text("Insert")}},dismissButton={TextButton(onClick={linkDialog=false}){Text("Cancel")}})
