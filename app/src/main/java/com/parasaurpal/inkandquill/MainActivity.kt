@@ -74,7 +74,7 @@ class MainActivity:ComponentActivity(){
                     "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
                     "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
                     "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
-                    "Templates"->TemplateScreen(db,refresh,{selected=it},{template->selected=InkRecord(title=template.title,body=template.body,kind="Document")})
+                    "Templates"->TemplateScreen(db,refresh,{selected=it},{template->val fields=db.templateFields(template.id);val structured=fields.joinToString("\n\n"){f->"## ${f.section}\n${f.name}:\n"};selected=InkRecord(title=template.title,body=if(fields.isEmpty())template.body else structured,kind="Document")})
                     else->HomeScreen(db,refresh,{selected=it},{create=true})
                 }
             }
@@ -141,14 +141,41 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val templates=remember(refresh){db.templates()}
+    var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
+    var fieldRefresh by remember{mutableIntStateOf(0)}
+    var addField by remember{mutableStateOf(false)}
+    var fieldName by remember{mutableStateOf("")}
+    var fieldSection by remember{mutableStateOf("General")}
+    var fieldOptions by remember{mutableStateOf("")}
+    var fieldHint by remember{mutableStateOf("")}
+    var fieldType by remember{mutableStateOf("Long text")}
+    var required by remember{mutableStateOf(false)}
+    var typeMenu by remember{mutableStateOf(false)}
+    val types=listOf("Short text","Long text","Rich text","Number","Date","Dropdown","Multi-select","Checkbox","Image","Gallery","Attachment","Color","Rating","Table","Relationship","Repeatable group","Calculated")
     Column(Modifier.fillMaxSize().padding(16.dp)){
-        Button(onClick={edit(InkRecord(title="My custom template",kind="Template",body="Section 1:\\n"))}){Text("Create custom template")}
-        Text("Template gallery",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
-        Text("Start with a structure, use it for a new record, or edit the template itself.")
-        LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace('\n',' '),fontSize=12.sp);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={edit(t)}){Text("Edit template")}}}}}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
+        Text("Build reusable forms and writing structures. Fields can be removed from the active template without destroying their stored definitions.")
+        if(selectedTemplate!=null){
+            val t=selectedTemplate!!
+            Row(verticalAlignment=Alignment.CenterVertically){Text(t.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge);TextButton(onClick={selectedTemplate=null}){Text("Done")}}
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={db.templateVersion(t.id);addField=true}){Text("Add field")};TextButton(onClick={db.addTemplateSection(t.id,"Section ${db.templateSections(t.id).size+1}");fieldRefresh++}){Text("Add section")}}
+            Text("Saved template versions: ${db.templateVersionCount(t.id)}",fontSize=12.sp)
+            LazyColumn(verticalArrangement=Arrangement.spacedBy(6.dp)){
+                items(db.templateFields(t.id,true)){f->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(f.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Text(f.fieldType,color=Plum,fontSize=11.sp)};Text("Section: ${f.section} · ${if(f.required)"Required" else "Optional"}",fontSize=11.sp);if(f.options.isNotBlank())Text("Options: ${f.options}",fontSize=11.sp);Row{if(f.id.isNotBlank()&&db.templateFields(t.id,false).none{it.id==f.id})TextButton(onClick={db.restoreTemplateField(f.id);fieldRefresh++}){Text("Restore") }else TextButton(onClick={db.removeTemplateField(f.id);fieldRefresh++}){Text("Remove (recoverable)")}}}}}
+            }
+        }else{
+            LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace("\\n"," "),fontSize=12.sp);Text("${db.templateFields(t.id).size} custom fields",fontSize=11.sp,color=Plum);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={selectedTemplate=t;fieldRefresh++}){Text("Design fields")};TextButton(onClick={edit(t)}){Text("Edit content")}}}}}}
+        }
     }
+    if(addField)AlertDialog(onDismissRequest={addField=false},title={Text("Add template field")},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(7.dp)){
+        OutlinedTextField(fieldName,{fieldName=it},label={Text("Field name")},singleLine=true)
+        Box{OutlinedButton(onClick={typeMenu=true},modifier=Modifier.fillMaxWidth()){Text("Type: $fieldType")};DropdownMenu(expanded=typeMenu,onDismissRequest={typeMenu=false}){types.forEach{DropdownMenuItem(text={Text(it)},onClick={fieldType=it;typeMenu=false})}}}
+        OutlinedTextField(fieldSection,{fieldSection=it},label={Text("Section")},singleLine=true)
+        OutlinedTextField(fieldHint,{fieldHint=it},label={Text("Help text / hint")})
+        if(fieldType=="Dropdown"||fieldType=="Multi-select")OutlinedTextField(fieldOptions,{fieldOptions=it},label={Text("Options (comma separated)")})
+        Row(verticalAlignment=Alignment.CenterVertically){Checkbox(required,{required=it});Text("Required field")}
+    }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint)};fieldName="";fieldHint="";fieldOptions="";required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false}){Text("Cancel")}})
 }
-
 @Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int){
     var title by remember(record.id){mutableStateOf(record.title)}
     var html by remember(record.id){mutableStateOf(record.body)}
