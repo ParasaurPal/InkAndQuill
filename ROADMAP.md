@@ -6,7 +6,8 @@
 - [x] Autosaving rich-text HTML editor with bold, italic, underline, strike, headings, lists, alignment, undo/redo, and text/highlight colors
 - [x] Local revision snapshots on content changes
 - [x] World/parent/scope metadata and story record types
-- [x] Expanded starter template gallery for writing, character, culture, magic, plot, timeline, map, and research records\n- [x] Create and edit custom template records
+- [x] Expanded starter template gallery for writing, character, culture, magic, plot, timeline, map, and research records
+- [x] Create and edit custom template records
 - [x] Deterministic local exact-title and alias mention scanning
 - [x] Persisted backlinks
 - [x] Search and type filters
