@@ -83,7 +83,7 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)},AppLock.isEnabled(context),{pin->AppLock.setPin(context,pin)},{AppLock.disable(context)}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)},AppLock.isEnabled(context),{pin->AppLock.setPin(context,pin)},{AppLock.disable(context)},{db.all().forEach{LocalLinkEngine(db).scan(it)};refresh++}){settings=false}
         }
     }
 }
@@ -326,7 +326,7 @@ class MainActivity:ComponentActivity(){
     AlertDialog(onDismissRequest=onDismiss,title={Text("Create something")},text={Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState())){kinds.forEach{TextButton(onClick={onChoose(it)}){Text(it)}}}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
 
-@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,lockEnabled:Boolean,setPin:(String)->Unit,disableLock:()->Unit,close:()->Unit){
+@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,lockEnabled:Boolean,setPin:(String)->Unit,disableLock:()->Unit,retroScan:()->Unit,close:()->Unit){
     val context=LocalContext.current
     var backupPassword by remember{mutableStateOf("")}
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
@@ -334,6 +334,7 @@ class MainActivity:ComponentActivity(){
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
         Text("Color palette");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Plum","Ocean","Forest","Rose","Amber").forEach{FilterChip(palette==it,{setPalette(it)},label={Text(it)})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
+        TextButton(onClick=retroScan){Text("Scan all existing documents for mentions")}
         Text("Automatic mention links");var mode by remember{mutableStateOf(db.setting("autoLink","suggest"))};Row{listOf("off","suggest","auto").forEach{FilterChip(mode==it,{mode=it;db.setSetting("autoLink",it)},label={Text(it)})}}
         var aliasMatching by remember{mutableStateOf(db.setting("matchAliases","true")=="true")};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(aliasMatching,{aliasMatching=it;db.setSetting("matchAliases",it.toString())});Text("Match aliases")}
         var caseSensitive by remember{mutableStateOf(db.setting("caseSensitive","false")=="true")};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(caseSensitive,{caseSensitive=it;db.setSetting("caseSensitive",it.toString())});Text("Case-sensitive matching")}
