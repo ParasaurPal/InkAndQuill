@@ -2,6 +2,11 @@ package com.parasaurpal.inkandquill.data
 
 import java.math.BigDecimal
 
+private fun Double.toDisplayString(): String {
+    require(isFinite()) { "result is not finite" }
+    return BigDecimal(toString()).stripTrailingZeros().toPlainString()
+}
+
 /** Safe, deterministic expression evaluator for calculated template fields. */
 object TemplateFormula {
     fun evaluate(formula: String, fields: List<TemplateField>, values: Map<String, String>): String {
@@ -15,7 +20,7 @@ object TemplateFormula {
 
     private data class Value(val raw: Any) {
         fun text(): String = when (raw) {
-            is Double -> raw.display()
+            is Double -> raw.toDisplayString()
             is Boolean -> raw.toString()
             else -> raw.toString()
         }
@@ -31,11 +36,6 @@ object TemplateFormula {
             else -> raw.toString().isNotBlank() && !raw.toString().equals("false", true)
         }
         fun display(): String = text()
-    }
-
-    private fun Double.display(): String {
-        require(isFinite()) { "result is not finite" }
-        return BigDecimal(toString()).stripTrailingZeros().toPlainString()
     }
 
     private class Parser(
@@ -213,7 +213,7 @@ object TemplateFormula {
         }
 
         private fun numberToken(): Double? {
-            val match = Regex("""(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?""")
+            val match = Regex("""(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?""")
                 .find(source, index)?.takeIf { it.range.first == index } ?: return null
             index = match.range.last + 1
             return match.value.toDoubleOrNull()
