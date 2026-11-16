@@ -259,36 +259,53 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     }
     fun replaceWithJson(raw:String){
-        val parsed = JSONObject(raw)
-        require(parsed.optJSONArray("records") != null || parsed.optJSONArray("items") != null) {
-            "Backup does not contain a records array."
-        }
-        val db = writableDatabase
-        db.beginTransaction()
+        val parsed=JSONObject(raw)
+        require(parsed.optJSONArray("records")!=null||parsed.optJSONArray("items")!=null){"Backup does not contain a records array."}
+        val db=writableDatabase
+        val mediaBackups=linkedMapOf<java.io.File,java.io.File?>()
         try {
-            backupTables.forEach { db.delete(it, null, null) }
-            db.delete("records", null, null)
-            importJsonInternal(raw)
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
+            db.beginTransaction()
+            try {
+                backupTables.forEach{db.delete(it,null,null)}
+                db.delete("records",null,null)
+                importJsonInternal(raw,mediaBackups)
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+            mediaBackups.values.filterNotNull().forEach{it.delete()}
+        } catch(error:Exception) {
+            rollbackImportedMedia(mediaBackups)
+            throw error
         }
     }
 
     fun importJson(raw:String) {
-        // Validate before opening a transaction so malformed input cannot partially modify the library.
         JSONObject(raw)
-        val db = writableDatabase
-        db.beginTransaction()
+        val db=writableDatabase
+        val mediaBackups=linkedMapOf<java.io.File,java.io.File?>()
         try {
-            importJsonInternal(raw)
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
+            db.beginTransaction()
+            try {
+                importJsonInternal(raw,mediaBackups)
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+            mediaBackups.values.filterNotNull().forEach{it.delete()}
+        } catch(error:Exception) {
+            rollbackImportedMedia(mediaBackups)
+            throw error
         }
     }
 
-    private fun importJsonInternal(raw:String){
+    private fun rollbackImportedMedia(backups:Map<java.io.File,java.io.File?>) {
+        backups.forEach{(destination,previous)->
+            runCatching {
+                if(destination.exists()&&!destination.delete())throw java.io.IOException("Could not remove incomplete imported media.")
+                if(previous!=null&&previous.exists()&&!previous.renameTo(destination))
+                    throw java.io.IOException("Could not restore the previous media file.")
+            }
+        }
+    }
+
+    private fun importJsonInternal(raw:String,mediaBackups:MutableMap<java.io.File,java.io.File?>){
         val root=JSONObject(raw)
         val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray()
         for(i in 0 until arr.length()){
@@ -307,7 +324,16 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             val bytes=try{android.util.Base64.decode(o.getString("data"),android.util.Base64.DEFAULT)}catch(e:Exception){throw IllegalArgumentException("Media data for '$id' is invalid or incomplete.",e)}
             require(bytes.isNotEmpty()){"Media data for '$id' is empty."}
             val file=java.io.File(dir,"$safeName.bin")
-            file.writeBytes(bytes)
+            if(!mediaBackups.containsKey(file)){
+                val previous=if(file.exists())java.io.File(dir,".$safeName.previous.${UUID.randomUUID()}")else null
+                mediaBackups[file]=previous
+                if(previous!=null&&!file.renameTo(previous))throw java.io.IOException("Could not safely stage existing media '$id'.")
+            }
+            val staged=java.io.File(dir,".$safeName.stage.${UUID.randomUUID()}")
+            try {
+                staged.writeBytes(bytes)
+                if(!staged.renameTo(file))throw java.io.IOException("Could not install restored media '$id'.")
+            } finally { if(staged.exists())staged.delete() }
             val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file)
             val values=ContentValues()
             val updated=when(kind){
