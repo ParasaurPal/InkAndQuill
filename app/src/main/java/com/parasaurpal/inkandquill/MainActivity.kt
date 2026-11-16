@@ -238,6 +238,7 @@ class MainActivity:ComponentActivity(){
 @Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit){
     val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
     var world by remember{mutableStateOf<InkRecord?>(null)}
+    LaunchedEffect(world?.id,refresh){world?.id?.let{id->world=db.get(id)}}
     var selectedProject by remember{mutableStateOf<InkRecord?>(null)}
     LaunchedEffect(selectedProject?.id,refresh){selectedProject?.id?.let{id->selectedProject=db.get(id)}}
     var createChild by remember{mutableStateOf(false)}
