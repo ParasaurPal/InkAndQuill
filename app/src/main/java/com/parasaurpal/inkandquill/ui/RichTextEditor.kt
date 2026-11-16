@@ -63,7 +63,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                     override fun shouldOverrideUrlLoading(view:WebView?,request:android.webkit.WebResourceRequest?):Boolean = true
                 }
                 addJavascriptInterface(object{@JavascriptInterface fun changed(html:String){callback(html)}},"InkBridge")
-                val initial=JSONObject.quote(value)
+                val initial=Base64.encodeToString(value.toByteArray(Charsets.UTF_8),Base64.NO_WRAP)
                 val nonce=java.util.UUID.randomUUID().toString().replace("-","")
                 val page="""<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: content:; font-src data:; style-src 'unsafe-inline'; script-src 'nonce-$nonce'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><style>
                 @font-face{font-family:Custom;src:url(data:${customFontMime};base64,${customFontData})}
@@ -72,7 +72,9 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 h1,h2,h3{line-height:1.25} a{color:#bfa7df} .page-break{break-after:page;page-break-after:always;height:1px} @media print{.page-break{break-after:page;page-break-after:always}}
                 </style></head><body><div id="editor" contenteditable="true"></div><script nonce="$nonce">
                 const editor=document.getElementById('editor');
-                editor.innerHTML=$initial;
+                const encoded=atob('$initial');
+                const bytes=Uint8Array.from(encoded,c=>c.charCodeAt(0));
+                editor.innerHTML=new TextDecoder('utf-8').decode(bytes);
                 editor.addEventListener('input',()=>InkBridge.changed(editor.innerHTML));
                 function setEditorHtml(v){if(document.activeElement!==editor)editor.innerHTML=v;}
                 </script></body></html>"""
