@@ -273,7 +273,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             } finally { db.endTransaction() }
             mediaBackups.values.filterNotNull().forEach{it.delete()}
         } catch(error:Exception) {
-            rollbackImportedMedia(mediaBackups)
+            rollbackImportedMedia(mediaBackups,error)
             throw error
         }
     }
@@ -295,12 +295,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
     }
 
-    private fun rollbackImportedMedia(backups:Map<java.io.File,java.io.File?>) {
+    private fun rollbackImportedMedia(backups:Map<java.io.File,java.io.File?>,cause:Exception) {
         backups.forEach{(destination,previous)->
-            runCatching {
-                if(destination.exists()&&!destination.delete())throw java.io.IOException("Could not remove incomplete imported media.")
+            try {
+                if(destination.exists()&&!destination.delete())throw java.io.IOException("Could not remove incomplete imported media at ${destination.name}.")
                 if(previous!=null&&previous.exists()&&!previous.renameTo(destination))
-                    throw java.io.IOException("Could not restore the previous media file.")
+                    throw java.io.IOException("Could not restore the previous media file at ${destination.name}.")
+            } catch(rollbackError:Exception) {
+                cause.addSuppressed(rollbackError)
             }
         }
     }
