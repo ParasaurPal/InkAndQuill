@@ -318,7 +318,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     if(restoreTemplatesDialog)AlertDialog(onDismissRequest={restoreTemplatesDialog=false},title={Text("Restore starter templates?")},text={Text("This replaces edits to built-in starter templates and restores their original field definitions. Your custom templates and writing documents are kept.")},confirmButton={TextButton(onClick={db.restoreStarterTemplates();selectedTemplate=null;restoreTemplatesDialog=false}){Text("Restore starters")}},dismissButton={TextButton(onClick={restoreTemplatesDialog=false}){Text("Cancel")}})
     if(applyingTemplate!=null){
         val template=applyingTemplate!!
-        val fields=remember(template.id){db.templateFields(template.id)}
+        val fields=remember(template.id){val order=db.templateSections(template.id);db.templateFields(template.id).withIndex().sortedWith(compareBy<IndexedValue<TemplateField>>{val index=order.indexOf(it.value.section);if(index<0)Int.MAX_VALUE else index}.thenBy{it.index}).map{it.value}}
         val visibleFields=fields.filter{field->field.conditionField.isBlank()||templateValues[fields.firstOrNull{it.name.equals(field.conditionField,true)}?.id].orEmpty()==field.conditionValue}
         AlertDialog(onDismissRequest={applyingTemplate=null},title={Text("New entry · ${template.title}")},text={Column(Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
             visibleFields.forEach{field->
