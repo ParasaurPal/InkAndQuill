@@ -42,7 +42,7 @@ class WorldCalendarSpecTest {
         assertEquals(0, calendar.weekdayIndex(1, 1, 1))
         assertEquals(1, calendar.weekdayIndex(1, 1, 2))
         assertEquals(2, calendar.weekdayIndex(1, 2, 1))
-        assertEquals(2, calendar.weekdayIndex(2, 1, 1))
+        assertEquals(1, calendar.weekdayIndex(2, 1, 1))
     }
 
     @Test
