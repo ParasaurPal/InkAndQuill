@@ -431,9 +431,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     }
     private fun deleteImportedMediaBlob(id:String) {
         val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
-        if(safeName.isBlank())return
-        val file=java.io.File(java.io.File(appContext.filesDir,"attachments"),"$safeName.bin")
-        if(file.isFile)file.delete()
+        if(safeName.isBlank()||safeName!=id)return
+        val dir=java.io.File(appContext.filesDir,"attachments")
+        val file=java.io.File(dir,"$safeName.bin")
+        if(file.isFile&&!file.delete())android.util.Log.w("InkDatabase","Could not remove imported media: ${file.name}")
     }
     fun excludeLinkTerm(recordId:String,term:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("term",term.trim())};writableDatabase.insertWithOnConflict("link_exclusions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun isLinkExcluded(recordId:String,term:String)=readableDatabase.rawQuery("SELECT 1 FROM link_exclusions WHERE recordId=? AND lower(term)=lower(?)",arrayOf(recordId,term)).use{it.moveToFirst()}
