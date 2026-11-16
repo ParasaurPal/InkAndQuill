@@ -12,5 +12,18 @@ class LocalLinkEngine(private val db:InkDatabase){
         unique.sortedByDescending{it.first.length}.forEach{(name,r)->val flags=if(db.setting("caseSensitive","false")=="true")emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex("(?<![\\p{L}\\p{N}_])"+Regex.escape(name)+"(?![\\p{L}\\p{N}_])",flags);regex.findAll(text).forEach{m->if(used.none{it.first<=m.range.last&&m.range.first<=it.last}){used.add(m.range);found.add(Found(r,m.range.first,m.range.last+1,text.substring(m.range.first,m.range.last+1)))}}}
         return found.sortedBy{it.start}
     }
-    fun scan(source:InkRecord):List<Found>{val matches=findMentions(source.body,source.id);when(db.setting("autoLink","suggest")){"auto"->matches.forEach{db.addLink(source.id,it.record.id,"mention",it.start,it.term,it.end)};"suggest"->matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.term,it.start)}};return matches}
+    fun scan(source:InkRecord):List<Found>{
+        val matches=findMentions(source.body,source.id)
+        when(db.setting("autoLink","suggest")){
+            "auto"->{
+                db.clearPendingLinkSuggestions(source.id)
+                db.syncMentionLinks(source.id,matches.map{RecordLink(it.record.id,it.record.title,"mention",it.start,it.term)})
+            }
+            "suggest"->{
+                db.clearPendingLinkSuggestions(source.id)
+                matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.term,it.start)}
+            }
+        }
+        return matches
+    }
 }
