@@ -111,7 +111,9 @@ object CloudSyncManager {
         if (resolution == "cloud") {
             val remote = EncryptedCloudBackup.read(context.contentResolver, uri, password)
             db.replaceWithJson(remote)
-            preferences.edit().putString("last_hash", digest(remote)).putBoolean("conflict", false).apply()
+            val restoredJson=db.exportJson()
+            EncryptedCloudBackup.write(context.contentResolver,uri,restoredJson,password)
+            preferences.edit().putString("last_hash", digest(restoredJson)).putBoolean("conflict", false).apply()
             return finish("Downloaded cloud copy")
         }
         val localJson = db.exportJson()
@@ -148,7 +150,9 @@ object CloudSyncManager {
         }
         if (localHash == previousHash) {
             db.replaceWithJson(remoteJson)
-            preferences.edit().putString("last_hash", remoteHash).putBoolean("conflict", false).apply()
+            val restoredJson=db.exportJson()
+            EncryptedCloudBackup.write(context.contentResolver,uri,restoredJson,password)
+            preferences.edit().putString("last_hash", digest(restoredJson)).putBoolean("conflict", false).apply()
             return finish("Downloaded cloud copy")
         }
         preferences.edit().putBoolean("conflict", true).apply()
