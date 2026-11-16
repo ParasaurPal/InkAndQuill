@@ -375,7 +375,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     if(applyingTemplate!=null){
         val template=applyingTemplate!!
         val fields=remember(template.id){val order=db.templateSections(template.id);db.templateFields(template.id).withIndex().sortedWith(compareBy<IndexedValue<TemplateField>>{val index=order.indexOf(it.value.section);if(index<0)Int.MAX_VALUE else index}.thenBy{it.index}).map{it.value}}
-        val visibleFields=fields.filter{field->field.conditionField.isBlank()||templateValues[fields.firstOrNull{it.name.equals(field.conditionField,true)}?.id].orEmpty()==field.conditionValue}
+        val visibleFields=fields.filter{field->TemplateConditions.isVisible(field.conditionField,field.conditionValue,fields,templateValues)}
         AlertDialog(onDismissRequest={applyingTemplate=null},title={Text("New entry · ${template.title}")},text={Column(Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
             visibleFields.forEach{field->
                 Text(field.name+(if(field.required)" *" else ""),fontWeight=FontWeight.SemiBold)
@@ -406,7 +406,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         OutlinedTextField(fieldHint,{fieldHint=it},label={Text("Help text / hint")})
         Text("Conditional visibility (optional)",fontWeight=FontWeight.SemiBold)
         OutlinedTextField(fieldConditionField,{fieldConditionField=it},label={Text("Show when field has this name")},singleLine=true)
-        OutlinedTextField(fieldConditionValue,{fieldConditionValue=it},label={Text("Equals this value")},singleLine=true)
+        OutlinedTextField(fieldConditionValue,{fieldConditionValue=it},label={Text("Condition")},supportingText={Text("Examples: value, !=value, >10, contains:text, in:one|two, is empty")},singleLine=true)
         if(fieldType=="Calculated")OutlinedTextField(fieldFormula,{fieldFormula=it},label={Text("Calculated field formula")},supportingText={Text("Supports arithmetic, {Field Name}, sum, avg, min, max, count, concat, uppercase, lowercase, if, coalesce, and round.")})
         if(fieldType=="Repeatable group")Row(verticalAlignment=Alignment.CenterVertically){Checkbox(fieldRepeatable,{fieldRepeatable=it});Text("Allow repeated groups") }
         if(fieldType=="Dropdown"||fieldType=="Multi-select")OutlinedTextField(fieldOptions,{fieldOptions=it},label={Text("Options (comma separated)")})
