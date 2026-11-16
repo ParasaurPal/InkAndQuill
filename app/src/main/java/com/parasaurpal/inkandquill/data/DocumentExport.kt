@@ -18,6 +18,10 @@ object DocumentExport {
             .replace(Regex("(?i)<li[^>]*>"),"- ").replace(Regex("(?i)</li>"),"\n")
             .replace(Regex("(?i)</?(ul|ol)[^>]*>"),"\n")
             .replace(Regex("(?i)<blockquote[^>]*>"),"> ").replace(Regex("(?i)</blockquote>"),"\n")
+            .replace(Regex("(?i)<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>"),"[$2]($1)")
+            .replace(Regex("(?i)<img[^>]*src=\"([^\"]+)\"[^>]*>"),"![]($1)")
+            .replace(Regex("(?i)<del>|<s>"),"~~").replace(Regex("(?i)</del>|</s>"),"~~")
+            .replace(Regex("(?i)<code>"),"`").replace(Regex("(?i)</code>"),"`")
         return Html.fromHtml(s,Html.FROM_HTML_MODE_COMPACT).toString().trim()
     }
     fun markdownToHtml(markdown:String):String {
