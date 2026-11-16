@@ -132,8 +132,8 @@ class MainActivity:ComponentActivity(){
     var details by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
     var parentMenu by remember{mutableStateOf(false)}
-    val latestRecord by rememberUpdatedState(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))
-    DisposableEffect(record.id){onDispose{db.save(latestRecord)}}
+    val latestRecordState=rememberUpdatedState(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))
+    DisposableEffect(record.id){onDispose{db.save(latestRecordState.value)}}
     var linkCount by remember{mutableIntStateOf(0)}
     val context=LocalContext.current
     val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.plain(html).toByteArray())}}}
