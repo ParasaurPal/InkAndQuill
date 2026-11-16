@@ -233,8 +233,37 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color","imageUri");"board_links"->setOf("id","boardId","fromItem","toItem","label");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt","term","endPosition");else->emptySet()}
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     }
-    fun replaceWithJson(raw:String){val db=writableDatabase;db.beginTransaction();try{backupTables.forEach{db.delete(it,null,null)};db.delete("records",null,null);db.setTransactionSuccessful()}finally{db.endTransaction()};importJson(raw)}
-    fun importJson(raw:String){val root=JSONObject(raw);val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray();for(i in 0 until arr.length()){val o=arr.getJSONObject(i);save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))};backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}};val blobs=root.optJSONArray("attachment_blobs")?:JSONArray();val dir=java.io.File(appContext.filesDir,"attachments").apply{mkdirs()};for(i in 0 until blobs.length()){val o=blobs.optJSONObject(i)?:continue;val id=o.optString("id");val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'};if(safeName.isBlank())continue;val file=java.io.File(dir,"$safeName.bin");runCatching{file.writeBytes(android.util.Base64.decode(o.optString("data"),android.util.Base64.NO_WRAP));val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file);val v=ContentValues();when(o.optString("kind")){"board"->{v.put("backgroundUri",uri.toString());writableDatabase.update("planning_boards",v,"id=?",arrayOf(id))};"board_item"->{v.put("imageUri",uri.toString());writableDatabase.update("board_items",v,"id=?",arrayOf(id))};else->{v.put("uri",uri.toString());writableDatabase.update("attachments",v,"id=?",arrayOf(id))}}}}}
+    fun replaceWithJson(raw:String){
+        val parsed = JSONObject(raw)
+        require(parsed.optJSONArray("records") != null || parsed.optJSONArray("items") != null) {
+            "Backup does not contain a records array."
+        }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            backupTables.forEach { db.delete(it, null, null) }
+            db.delete("records", null, null)
+            importJsonInternal(raw)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun importJson(raw:String) {
+        // Validate before opening a transaction so malformed input cannot partially modify the library.
+        JSONObject(raw)
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            importJsonInternal(raw)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun importJsonInternal(raw:String){val root=JSONObject(raw);val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray();for(i in 0 until arr.length()){val o=arr.getJSONObject(i);save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))};backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}};val blobs=root.optJSONArray("attachment_blobs")?:JSONArray();val dir=java.io.File(appContext.filesDir,"attachments").apply{mkdirs()};for(i in 0 until blobs.length()){val o=blobs.optJSONObject(i)?:continue;val id=o.optString("id");val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'};if(safeName.isBlank())continue;val file=java.io.File(dir,"$safeName.bin");runCatching{file.writeBytes(android.util.Base64.decode(o.optString("data"),android.util.Base64.NO_WRAP));val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file);val v=ContentValues();when(o.optString("kind")){"board"->{v.put("backgroundUri",uri.toString());writableDatabase.update("planning_boards",v,"id=?",arrayOf(id))};"board_item"->{v.put("imageUri",uri.toString());writableDatabase.update("board_items",v,"id=?",arrayOf(id))};else->{v.put("uri",uri.toString());writableDatabase.update("attachments",v,"id=?",arrayOf(id))}}}}}
 
     fun createFolder(name:String,parentId:String="",color:String=""):String { val id=UUID.randomUUID().toString(); val v=ContentValues().apply{put("id",id);put("name",name.trim());put("parentId",parentId);put("color",color);put("position",0)};writableDatabase.insert("folders",null,v);return id }
     fun folders():List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,COALESCE(parentId,'') FROM folders ORDER BY position,name",null).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
