@@ -33,6 +33,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.parasaurpal.inkandquill.data.*
 import com.parasaurpal.inkandquill.ui.RichTextEditor
 import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import java.util.UUID
 
 private val Plum=Color(0xFFC9B6E4)
@@ -47,6 +50,7 @@ class MainActivity:ComponentActivity(){
 @Composable fun InkAndQuillApp(db:InkDatabase){
     val context=LocalContext.current
     var unlocked by remember{mutableStateOf(!AppLock.isEnabled(context))}
+    DisposableEffect(context){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP&&AppLock.isEnabled(context))unlocked=false};ProcessLifecycleOwner.get().lifecycle.addObserver(observer);onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}}
     var screen by remember{mutableStateOf("Home")}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var openTabs by remember{mutableStateOf(db.openTabs().filter{db.get(it)!=null})}
