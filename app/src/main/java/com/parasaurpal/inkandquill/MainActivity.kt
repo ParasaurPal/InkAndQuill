@@ -102,14 +102,22 @@ class MainActivity:ComponentActivity(){
     var folderMenu by remember{mutableStateOf(false)}
     var createFolder by remember{mutableStateOf(false)}
     var newFolderName by remember{mutableStateOf("")}
+    var collectionFilter by remember{mutableStateOf("")}
+    var collectionMenu by remember{mutableStateOf(false)}
+    var createCollection by remember{mutableStateOf(false)}
+    var collectionName by remember{mutableStateOf("")}
+    var favoritesOnly by remember{mutableStateOf(false)}
     val folders=db.folders()
-    val records=remember(query,filter,refresh,folderFilter){db.all(query,filter).filter{folderFilter.isBlank()||db.folderFor(it.id)==folderFilter}}
+    val collections=db.collections()
+    val records=remember(query,filter,refresh,folderFilter,collectionFilter,favoritesOnly){db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id)==folderFilter)&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}}
     Column(Modifier.fillMaxSize().padding(14.dp)){
         OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your writing")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
         Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={folderMenu=true}){Text("Folder: "+(folders.firstOrNull{it.first==folderFilter}?.second?: "All"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("All folders")},onClick={folderFilter="";folderMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={folderFilter=f.first;folderMenu=false})}}};Spacer(Modifier.weight(1f));TextButton(onClick={createFolder=true}){Text("+ New folder")}}
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("All","Document","Novel","Story","Poem","Journal","Note","World","Series","Book","Chapter","Scene","Character","Location").forEach{FilterChip(filter==it,{setFilter(it)},label={Text(it)})}}
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(records){RecordCard(it,open)}}
+        Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={collectionMenu=true}){Text("Collection: "+(collections.firstOrNull{it.first==collectionFilter}?.second?: "All"))};DropdownMenu(expanded=collectionMenu,onDismissRequest={collectionMenu=false}){DropdownMenuItem(text={Text("All collections")},onClick={collectionFilter="";collectionMenu=false});collections.forEach{col->DropdownMenuItem(text={Text(col.second)},onClick={collectionFilter=col.first;collectionMenu=false})}}};TextButton(onClick={createCollection=true}){Text("+ Collection")};Spacer(Modifier.weight(1f));Row(verticalAlignment=Alignment.CenterVertically){Checkbox(favoritesOnly,{favoritesOnly=it});Text("Favorites",fontSize=12.sp)}}</Row>
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(records){record->Column{RecordCard(record,open);if(collectionFilter.isNotBlank())TextButton(onClick={db.removeFromCollection(collectionFilter,record.id)}){Text("Remove from collection") }else if(collections.isNotEmpty())TextButton(onClick={db.addToCollection(collections.first().first,record.id)}){Text("Add to ${collections.first().second}")}}}}
     }
+    if(createCollection)AlertDialog(onDismissRequest={createCollection=false},title={Text("New collection")},text={OutlinedTextField(collectionName,{collectionName=it},label={Text("Collection name")})},confirmButton={TextButton(onClick={if(collectionName.isNotBlank()){db.createCollection(collectionName);collectionName="";createCollection=false}}){Text("Create")}},dismissButton={TextButton(onClick={createCollection=false}){Text("Cancel")}})
     if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true)},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName);newFolderName="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
 @Composable private fun RecordCard(record:InkRecord,open:(InkRecord)->Unit){
