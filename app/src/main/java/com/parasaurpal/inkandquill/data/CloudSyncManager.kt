@@ -99,24 +99,27 @@ object CloudSyncManager {
 
     fun isEnabled(context: Context) = prefs(context).getBoolean("enabled", false)
     fun hasConflict(context: Context) = prefs(context).getBoolean("conflict", false)
+    fun lastSyncStatus(context: Context) = prefs(context).getString("last_status", "Not synced yet") ?: "Not synced yet"
+    fun lastSyncAt(context: Context) = prefs(context).getLong("last_sync_at", 0L)
     internal fun target(context: Context): Uri =
         Uri.parse(prefs(context).getString("uri", null)
             ?: throw IllegalStateException("Choose a cloud backup destination first."))
 
     internal fun sync(context: Context, db: InkDatabase, uri: Uri, password: String, resolution: String?): String {
         val preferences = prefs(context)
+        fun finish(status:String):String { preferences.edit().putString("last_status",status).putLong("last_sync_at",System.currentTimeMillis()).apply();return status }
         if (resolution == "cloud") {
             val remote = EncryptedCloudBackup.read(context.contentResolver, uri, password)
             db.replaceWithJson(remote)
             preferences.edit().putString("last_hash", digest(remote)).putBoolean("conflict", false).apply()
-            return "downloaded"
+            return finish("Downloaded cloud copy")
         }
         val localJson = db.exportJson()
         val localHash = digest(localJson)
         if (resolution == "local") {
             EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
             preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
-            return "uploaded"
+            return finish("Uploaded phone copy")
         }
 
         val remoteBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -124,7 +127,7 @@ object CloudSyncManager {
         if (remoteBytes.isEmpty()) {
             EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
             preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
-            return "uploaded"
+            return finish("Uploaded phone copy")
         }
         val remoteJson = EncryptedCloudBackup.decrypt(remoteBytes, password)
         val remoteHash = digest(remoteJson)
@@ -132,24 +135,24 @@ object CloudSyncManager {
 
         if (remoteHash == localHash) {
             preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
-            return "current"
+            return finish("Already up to date")
         }
         if (previousHash == null) {
             preferences.edit().putBoolean("conflict", true).apply()
-            return "conflict"
+            return finish("Conflict needs your choice")
         }
         if (remoteHash == previousHash) {
             EncryptedCloudBackup.write(context.contentResolver, uri, localJson, password)
             preferences.edit().putString("last_hash", localHash).putBoolean("conflict", false).apply()
-            return "uploaded"
+            return finish("Uploaded phone copy")
         }
         if (localHash == previousHash) {
             db.replaceWithJson(remoteJson)
             preferences.edit().putString("last_hash", remoteHash).putBoolean("conflict", false).apply()
-            return "downloaded"
+            return finish("Downloaded cloud copy")
         }
         preferences.edit().putBoolean("conflict", true).apply()
-        return "conflict"
+        return finish("Conflict needs your choice")
     }
 }
 
