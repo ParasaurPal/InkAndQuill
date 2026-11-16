@@ -303,7 +303,7 @@ class MainActivity:ComponentActivity(){
     }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)};editingField=null;fieldName="";fieldHint="";fieldOptions="";fieldConditionField="";fieldConditionValue="";fieldFormula="";fieldRepeatable=false;required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
 }
 @Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int,onOpen:(InkRecord)->Unit){
-    val context=LocalContext.current
+    val appContext=LocalContext.current.applicationContext
     var title by remember(record.id){mutableStateOf(record.title)}
     var html by remember(record.id){mutableStateOf(record.body)}
     var tags by remember(record.id){mutableStateOf(record.tags)}
@@ -333,7 +333,7 @@ class MainActivity:ComponentActivity(){
     var editorTextColor by remember{mutableStateOf(db.setting("editorTextColor","#eee8f5"))}
     var backgroundImageData by remember{mutableStateOf(db.setting("backgroundImageData",""))}
     var backgroundImageMime by remember{mutableStateOf(db.setting("backgroundImageMime","image/jpeg"))}
-    val backgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=context.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();backgroundImageData=Base64.encodeToString(bytes,Base64.NO_WRAP);backgroundImageMime=context.contentResolver.getType(it)?: "image/jpeg";db.setSetting("backgroundImageData",backgroundImageData);db.setSetting("backgroundImageMime",backgroundImageMime)}}}
+    val backgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=appContext.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();backgroundImageData=Base64.encodeToString(bytes,Base64.NO_WRAP);backgroundImageMime=context.contentResolver.getType(it)?: "image/jpeg";db.setSetting("backgroundImageData",backgroundImageData);db.setSetting("backgroundImageMime",backgroundImageMime)}}}
     var backgroundMenu by remember{mutableStateOf(false)}
     var textColorMenu by remember{mutableStateOf(false)}
     var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
