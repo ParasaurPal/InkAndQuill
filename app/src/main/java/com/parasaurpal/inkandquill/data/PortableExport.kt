@@ -15,12 +15,22 @@ object PortableExport {
     private fun xml(s:String)=s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&apos;")
     private fun entry(zip:ZipOutputStream,name:String,content:String){zip.putNextEntry(ZipEntry(name));zip.write(content.toByteArray(Charsets.UTF_8));zip.closeEntry()}
     fun docx(resolver:ContentResolver,uri:Uri,title:String,html:String){
-        val text=DocumentExport.plain(html)
-        val paragraphs=(listOf(title)+text.split("\n")).joinToString(""){line->"<w:p><w:r><w:t xml:space=\"preserve\">${xml(line)}</w:t></w:r></w:p>"}
-        val types="""<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"""
+        fun paragraph(tag:String,content:String):String {
+            val style=when(tag){"h1"->"<w:pStyle w:val=\"Heading1\"/>";"h2"->"<w:pStyle w:val=\"Heading2\"/>";"h3"->"<w:pStyle w:val=\"Heading3\"/>";else->""}
+            val indent=if(tag=="blockquote")"<w:ind w:left=\"720\"/>"else ""
+            val bullet=if(tag=="li")"• "else ""
+            val text=xml(DocumentExport.plain(content).let{if(bullet.isNotEmpty())bullet+it else it})
+            return "<w:p><w:pPr>$style$indent</w:pPr><w:r><w:t xml:space=\"preserve\">$text</w:t></w:r></w:p>"
+        }
+        val blocks=Regex("(?is)<(h1|h2|h3|p|li|blockquote)[^>]*>(.*?)</\\\\1>").findAll(html).toList()
+        val body=if(blocks.isEmpty())DocumentExport.plain(html).split("\\n").joinToString(""){line->"<w:p><w:r><w:t xml:space=\"preserve\">"+xml(line)+"</w:t></w:r></w:p>"}else blocks.joinToString(""){paragraph(it.groupValues[1].lowercase(),it.groupValues[2])}
+        val paragraphs=paragraph("h1",title)+body
+        val types="""<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"""
         val rels="""<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"""
-        val document="""<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs}<w:sectPr/></w:body></w:document>"""
-        resolver.openOutputStream(uri)?.use{out->ZipOutputStream(out).use{z->entry(z,"[Content_Types].xml",types);entry(z,"_rels/.rels",rels);entry(z,"word/document.xml",document)}}
+        val document="""<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>$paragraphs<w:sectPr/></w:body></w:document>"""
+        val styles="""<?xml version="1.0" encoding="UTF-8"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style></w:styles>"""
+        val documentRels="""<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"""
+        resolver.openOutputStream(uri)?.use{out->ZipOutputStream(out).use{z->entry(z,"[Content_Types].xml",types);entry(z,"_rels/.rels",rels);entry(z,"word/document.xml",document);entry(z,"word/styles.xml",styles);entry(z,"word/_rels/document.xml.rels",documentRels)}}
     }
     fun epub(resolver:ContentResolver,uri:Uri,title:String,html:String){
         val xhtml="""<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>${xml(title)}</title><meta charset="utf-8"/></head><body><h1>${xml(title)}</h1>$html</body></html>"""
