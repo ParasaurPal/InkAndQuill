@@ -1,8 +1,12 @@
 package com.parasaurpal.inkandquill.ui
 
+import android.net.Uri
+import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
@@ -19,9 +24,11 @@ import org.json.JSONObject
 @Composable
 fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f,fontFamily:String="sans-serif",lineSpacing:Float=1.65f,pageMode:Boolean=false,enabledCommands:Set<String>?=null,pageWidth:Float=760f,pageMargin:Float=12f,paragraphSpacing:Float=12f,backgroundColor:String="transparent",textColor:String="#eee8f5"){
     val callback by rememberUpdatedState(onValueChange)
+    val context=LocalContext.current
     val web=remember{mutableStateOf<WebView?>(null)}
     var linkDialog by remember{mutableStateOf(false)}
     var linkUrl by remember{mutableStateOf("https://")}
+    val imagePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=context.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();val mime=context.contentResolver.getType(it)?: "image/png";val data="data:$mime;base64,"+Base64.encodeToString(bytes,Base64.NO_WRAP);web.value?.evaluateJavascript("document.execCommand('insertImage',false,"+JSONObject.quote(data)+")",null)}}}
     val commands=listOf(
         "undo" to "↶","redo" to "↷","bold" to "B","italic" to "I","underline" to "U","strikeThrough" to "S",
         "formatBlock:H1" to "H1","formatBlock:H2" to "H2","formatBlock:H3" to "H3",
@@ -42,7 +49,7 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 }){Text(label)}
             }
         }
-        TextButton(onClick={linkDialog=true}){Text("Insert link")}
+        Row(Modifier.horizontalScroll(rememberScrollState())){TextButton(onClick={linkDialog=true}){Text("Insert link")};TextButton(onClick={imagePicker.launch(arrayOf("image/*"))}){Text("Insert image")}}
         AndroidView(modifier=Modifier.fillMaxSize(),factory={ctx->
             WebView(ctx).apply{
                 settings.javaScriptEnabled=true
