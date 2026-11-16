@@ -288,7 +288,37 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
     }
 
-    private fun importJsonInternal(raw:String){val root=JSONObject(raw);val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray();for(i in 0 until arr.length()){val o=arr.getJSONObject(i);save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))};backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}};val blobs=root.optJSONArray("attachment_blobs")?:JSONArray();val dir=java.io.File(appContext.filesDir,"attachments").apply{mkdirs()};for(i in 0 until blobs.length()){val o=blobs.optJSONObject(i)?:continue;val id=o.optString("id");val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'};if(safeName.isBlank())continue;val file=java.io.File(dir,"$safeName.bin");runCatching{file.writeBytes(android.util.Base64.decode(o.optString("data"),android.util.Base64.NO_WRAP));val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file);val v=ContentValues();when(o.optString("kind")){"board"->{v.put("backgroundUri",uri.toString());writableDatabase.update("planning_boards",v,"id=?",arrayOf(id))};"board_item"->{v.put("imageUri",uri.toString());writableDatabase.update("board_items",v,"id=?",arrayOf(id))};else->{v.put("uri",uri.toString());writableDatabase.update("attachments",v,"id=?",arrayOf(id))}}}}}
+    private fun importJsonInternal(raw:String){
+        val root=JSONObject(raw)
+        val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray()
+        for(i in 0 until arr.length()){
+            val o=arr.getJSONObject(i)
+            save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite")))
+        }
+        backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}}
+        val blobs=root.optJSONArray("attachment_blobs")?:JSONArray()
+        val dir=java.io.File(appContext.filesDir,"attachments").apply{if(!exists()&&!mkdirs())throw java.io.IOException("Could not create the attachment storage directory.")}
+        for(i in 0 until blobs.length()){
+            val o=blobs.optJSONObject(i)?:throw IllegalArgumentException("Backup contains an invalid media entry at index $i.")
+            val id=o.optString("id")
+            val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
+            require(safeName.isNotBlank()&&safeName==id){"Backup contains an invalid media identifier."}
+            val kind=o.optString("kind","attachment")
+            val bytes=try{android.util.Base64.decode(o.getString("data"),android.util.Base64.DEFAULT)}catch(e:Exception){throw IllegalArgumentException("Media data for '$id' is invalid or incomplete.",e)}
+            require(bytes.isNotEmpty()){"Media data for '$id' is empty."}
+            val file=java.io.File(dir,"$safeName.bin")
+            file.writeBytes(bytes)
+            val uri=androidx.core.content.FileProvider.getUriForFile(appContext,appContext.packageName+".fileprovider",file)
+            val values=ContentValues()
+            val updated=when(kind){
+                "board"->{values.put("backgroundUri",uri.toString());writableDatabase.update("planning_boards",values,"id=?",arrayOf(id))}
+                "board_item"->{values.put("imageUri",uri.toString());writableDatabase.update("board_items",values,"id=?",arrayOf(id))}
+                "attachment"->{values.put("uri",uri.toString());writableDatabase.update("attachments",values,"id=?",arrayOf(id))}
+                else->throw IllegalArgumentException("Backup contains an unsupported media type '$kind'.")
+            }
+            require(updated==1){"Media '$id' has no matching database record; the backup may be inconsistent."}
+        }
+    }
 
     fun createFolder(name:String,parentId:String="",color:String=""):String { val id=UUID.randomUUID().toString(); val v=ContentValues().apply{put("id",id);put("name",name.trim());put("parentId",parentId);put("color",color);put("position",0)};writableDatabase.insert("folders",null,v);return id }
     fun folders():List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,COALESCE(parentId,'') FROM folders ORDER BY position,name",null).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
