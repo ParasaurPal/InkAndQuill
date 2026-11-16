@@ -326,6 +326,9 @@ class MainActivity:ComponentActivity(){
     var paragraphSpacing by remember{mutableFloatStateOf(db.setting("paragraphSpacing","12").toFloatOrNull()?:12f)}
     var editorBackground by remember{mutableStateOf(db.setting("editorBackground","transparent"))}
     var editorTextColor by remember{mutableStateOf(db.setting("editorTextColor","#eee8f5"))}
+    var backgroundImageData by remember{mutableStateOf(db.setting("backgroundImageData",""))}
+    var backgroundImageMime by remember{mutableStateOf(db.setting("backgroundImageMime","image/jpeg"))}
+    val backgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=context.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();backgroundImageData=Base64.encodeToString(bytes,Base64.NO_WRAP);backgroundImageMime=context.contentResolver.getType(it)?: "image/jpeg";db.setSetting("backgroundImageData",backgroundImageData);db.setSetting("backgroundImageMime",backgroundImageMime)}}}
     var backgroundMenu by remember{mutableStateOf(false)}
     var textColorMenu by remember{mutableStateOf(false)}
     var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
@@ -370,7 +373,7 @@ class MainActivity:ComponentActivity(){
         if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum);Spacer(Modifier.weight(1f));TextButton(onClick={linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")};if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)}
         if(showFindReplace)Column(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) { OutlinedTextField(findText,{findText=it},Modifier.fillMaxWidth(),label={Text("Find")},singleLine=true);OutlinedTextField(replaceText,{replaceText=it},Modifier.fillMaxWidth(),label={Text("Replace with")},singleLine=true);Button(onClick={val count=db.replaceInRecord(record.id,findText,replaceText);html=db.get(record.id)?.body?:html;Toast.makeText(context,"Replaced $count occurrence(s).",Toast.LENGTH_SHORT).show()},enabled=findText.isNotEmpty()){Text("Replace all in this document")} }
         HorizontalDivider()
-        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,customFontData=customFontData,lineSpacing=lineSpacing,pageMode=pageMode,enabledCommands=toolbarCommands,pageWidth=pageWidth,pageMargin=pageMargin,paragraphSpacing=paragraphSpacing,backgroundColor=editorBackground,textColor=editorTextColor)
+        RichTextEditor(value=html,onValueChange={html=it},modifier=Modifier.weight(1f).fillMaxWidth(),fontSize=fontSize,fontFamily=fontFamily,customFontData=customFontData,lineSpacing=lineSpacing,pageMode=pageMode,enabledCommands=toolbarCommands,pageWidth=pageWidth,pageMargin=pageMargin,paragraphSpacing=paragraphSpacing,backgroundColor=editorBackground,backgroundImageData=backgroundImageData,backgroundImageMime=backgroundImageMime,textColor=editorTextColor)
         if(details&&!focusMode)Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
             Text("Toolbar buttons",fontWeight=FontWeight.SemiBold)
             toolbarOptions.forEach{command->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(command in toolbarCommands,{toolbarCommands=if(it)toolbarCommands+command else toolbarCommands-command;db.setSetting("toolbarCommands",toolbarCommands.joinToString("|"))});Text(command.substringAfter(":").replaceFirstChar(Char::uppercase),fontSize=12.sp)}}
@@ -382,6 +385,8 @@ class MainActivity:ComponentActivity(){
             if(pageMode){Text("Page width: ${pageWidth.toInt()} dp");Slider(pageWidth,{pageWidth=it;db.setSetting("pageWidth",it.toInt().toString())},valueRange=420f..900f)}
             Text("Page margins: ${pageMargin.toInt()} dp");Slider(pageMargin,{pageMargin=it;db.setSetting("pageMargin",it.toInt().toString())},valueRange=4f..48f)
             Text("Paragraph spacing: ${paragraphSpacing.toInt()} px");Slider(paragraphSpacing,{paragraphSpacing=it;db.setSetting("paragraphSpacing",it.toInt().toString())},valueRange=0f..32f)
+            TextButton(onClick={backgroundPicker.launch(arrayOf("image/*"))}){Text(if(backgroundImageData.isBlank())"Import editor background / texture" else "Change editor background / texture")}
+            if(backgroundImageData.isNotBlank())TextButton(onClick={backgroundImageData="";db.setSetting("backgroundImageData","")}){Text("Remove background image")}
             Row{Box{TextButton(onClick={backgroundMenu=true}){Text("Editor background: $editorBackground")};DropdownMenu(expanded=backgroundMenu,onDismissRequest={backgroundMenu=false}){listOf("transparent","#17141E","#F5F0E8","#FFF8E8","#202020").forEach{DropdownMenuItem(text={Text(it)},onClick={editorBackground=it;db.setSetting("editorBackground",it);backgroundMenu=false})}}};Box{TextButton(onClick={textColorMenu=true}){Text("Text color")};DropdownMenu(expanded=textColorMenu,onDismissRequest={textColorMenu=false}){listOf("#eee8f5","#17141E","#FFFFFF","#2D2520","#D8D0E5").forEach{DropdownMenuItem(text={Text(it)},onClick={editorTextColor=it;db.setSetting("editorTextColor",it);textColorMenu=false})}}}}
 
         
