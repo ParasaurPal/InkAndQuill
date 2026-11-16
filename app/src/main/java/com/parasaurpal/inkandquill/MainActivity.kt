@@ -333,7 +333,7 @@ class MainActivity:ComponentActivity(){
     var editorTextColor by remember{mutableStateOf(db.setting("editorTextColor","#eee8f5"))}
     var backgroundImageData by remember{mutableStateOf(db.setting("backgroundImageData",""))}
     var backgroundImageMime by remember{mutableStateOf(db.setting("backgroundImageMime","image/jpeg"))}
-    val backgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=appContext.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();backgroundImageData=Base64.encodeToString(bytes,Base64.NO_WRAP);backgroundImageMime=context.contentResolver.getType(it)?: "image/jpeg";db.setSetting("backgroundImageData",backgroundImageData);db.setSetting("backgroundImageMime",backgroundImageMime)}}}
+    val backgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{val bytes=appContext.contentResolver.openInputStream(it)?.use{stream->stream.readBytes()}?:byteArrayOf();backgroundImageData=Base64.encodeToString(bytes,Base64.NO_WRAP);backgroundImageMime=appContext.contentResolver.getType(it)?: "image/jpeg";db.setSetting("backgroundImageData",backgroundImageData);db.setSetting("backgroundImageMime",backgroundImageMime)}}}
     var backgroundMenu by remember{mutableStateOf(false)}
     var textColorMenu by remember{mutableStateOf(false)}
     var fontFamily by remember{mutableStateOf(db.setting("fontFamily","sans-serif"))}
@@ -352,7 +352,6 @@ class MainActivity:ComponentActivity(){
     var findText by remember{mutableStateOf("")}
     var replaceText by remember{mutableStateOf("")}
     var attachmentRefresh by remember{mutableIntStateOf(0)}
-    val context=LocalContext.current
     val attachmentList=remember(record.id,attachmentRefresh){db.attachments(record.id)}
     val attachmentPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};db.addAttachment(record.id,it.toString(),context.contentResolver.getType(it).orEmpty(),it.lastPathSegment.orEmpty());attachmentRefresh++}}
     val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.plain(html).toByteArray())}}}
