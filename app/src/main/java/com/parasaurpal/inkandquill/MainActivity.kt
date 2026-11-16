@@ -114,6 +114,7 @@ class MainActivity:ComponentActivity(){
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val templates=remember(refresh){db.templates()}
     Column(Modifier.fillMaxSize().padding(16.dp)){
+        Button(onClick={edit(InkRecord(title="My custom template",kind="Template",body="Section 1:\\n"))}){Text("Create custom template")}
         Text("Template gallery",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
         Text("Start with a structure, use it for a new record, or edit the template itself.")
         LazyColumn{items(templates){t->Card(Modifier.fillMaxWidth().padding(vertical=4.dp)){Column(Modifier.padding(12.dp)){Text(t.title,fontWeight=FontWeight.SemiBold);Text(t.body.take(120).replace('\n',' '),fontSize=12.sp);Row{TextButton(onClick={use(t)}){Text("Use")};TextButton(onClick={edit(t)}){Text("Edit template")}}}}}}
@@ -130,7 +131,7 @@ class MainActivity:ComponentActivity(){
     var details by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
     var linkCount by remember{mutableIntStateOf(0)}
-    LaunchedEffect(record.id,title,html,tags,aliases,parent,scope){delay(700);onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))}
+    LaunchedEffect(record.id,title,html,tags,aliases,parent,scope){delay(700);val updated=record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope);onSaved(updated);if(db.setting("autoLink","suggest")=="auto")LocalLinkEngine(db).scan(updated)}
     Column(Modifier.fillMaxSize().padding(horizontal=14.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             Text(record.kind,color=Plum,modifier=Modifier.weight(1f))
@@ -151,7 +152,7 @@ class MainActivity:ComponentActivity(){
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
         }
-        if(history)Column{Text("Recent versions",fontWeight=FontWeight.SemiBold);db.revisions(record.id).take(5).forEach{Text("• ${it.first} · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(it.third))}",fontSize=12.sp)}}
+        if(history)Column{Text("Recent versions",fontWeight=FontWeight.SemiBold);db.revisions(record.id).take(5).forEach{rev->Row(verticalAlignment=Alignment.CenterVertically){Text("• ${rev.first} · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(rev.third))}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={title=rev.first;html=rev.second}){Text("Restore")}}}}
         Text("Offline · stored on this device",Modifier.padding(vertical=5.dp),fontSize=11.sp,color=Plum)
     }
 }
