@@ -67,11 +67,23 @@ object CloudSyncManager {
     private fun digest(value: String): String =
         Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
 
+    private fun releasePersistedAccess(context:Context,uri:Uri?) {
+        if(uri==null)return
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+    }
+
     fun configure(context: Context, uri: Uri, password: String) {
         require(password.length >= 10) { "Use a password with at least 10 characters." }
+        val previousUri=prefs(context).getString("uri",null)?.let(Uri::parse)
         prefs(context).edit().putString("uri", uri.toString())
             .putString("password", protect(password)).putBoolean("enabled", true)
             .putBoolean("conflict", false).remove("last_hash").apply()
+        if(previousUri!=null&&previousUri!=uri)releasePersistedAccess(context,previousUri)
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val manager = WorkManager.getInstance(context)
         val request = PeriodicWorkRequestBuilder<CloudBackupWorker>(12, TimeUnit.HOURS)
@@ -91,7 +103,9 @@ object CloudSyncManager {
     }
 
     fun disable(context: Context) {
+        val previousUri=prefs(context).getString("uri",null)?.let(Uri::parse)
         prefs(context).edit().clear().apply()
+        releasePersistedAccess(context,previousUri)
         val manager = WorkManager.getInstance(context)
         manager.cancelUniqueWork(WORK)
         manager.cancelUniqueWork(WORK + "_initial")
