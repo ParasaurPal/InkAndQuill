@@ -13,7 +13,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 
 @Composable
-fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier){
+fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=Modifier,fontSize:Float=18f){
     val context=LocalContext.current
     val callback by rememberUpdatedState(onValueChange)
     val web=remember{mutableStateOf<WebView?>(null)}
@@ -45,6 +45,6 @@ fun RichTextEditor(value:String,onValueChange:(String)->Unit,modifier:Modifier=M
                 </script></body></html>"""
                 loadDataWithBaseURL(null,page,"text/html","UTF-8",null)
             }.also{web.value=it}
-        },update={view->if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}})
+        },update={view->view.evaluateJavascript("document.body.style.fontSize='${fontSize}px'",null);if(!view.hasFocus()){val q=JSONObject.quote(value);view.evaluateJavascript("setEditorHtml($q)",null)}})
     }
 }
