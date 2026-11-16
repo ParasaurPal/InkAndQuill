@@ -301,6 +301,7 @@ class MainActivity:ComponentActivity(){
     }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)};editingField=null;fieldName="";fieldHint="";fieldOptions="";fieldConditionField="";fieldConditionValue="";fieldFormula="";fieldRepeatable=false;required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
 }
 @Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int,onOpen:(InkRecord)->Unit){
+    val context=LocalContext.current
     var title by remember(record.id){mutableStateOf(record.title)}
     var html by remember(record.id){mutableStateOf(record.body)}
     var tags by remember(record.id){mutableStateOf(record.tags)}
