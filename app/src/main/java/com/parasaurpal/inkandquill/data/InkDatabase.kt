@@ -290,7 +290,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             } finally { db.endTransaction() }
             mediaBackups.values.filterNotNull().forEach{it.delete()}
         } catch(error:Exception) {
-            rollbackImportedMedia(mediaBackups)
+            rollbackImportedMedia(mediaBackups,error)
             throw error
         }
     }
