@@ -3,10 +3,10 @@
 ## Implemented in the current codebase
 - [x] Native Kotlin / Jetpack Compose Android project
 - [x] Offline SQLite storage and record CRUD
-- [x] Autosaving rich-text HTML editor with bold, italic, underline, strike, headings, lists, and alignment
+- [x] Autosaving rich-text HTML editor with bold, italic, underline, strike, headings, lists, alignment, undo/redo, and text/highlight colors
 - [x] Local revision snapshots on content changes
 - [x] World/parent/scope metadata and story record types
-- [x] Starter editable template records for major writing and worldbuilding categories
+- [x] Expanded starter template gallery for writing, character, culture, magic, plot, timeline, map, and research records\n- [x] Create and edit custom template records
 - [x] Deterministic local exact-title and alias mention scanning
 - [x] Persisted backlinks
 - [x] Search and type filters
@@ -16,7 +16,7 @@
 - [x] GitHub Actions debug APK build workflow
 
 ## Remaining to complete the full requested product
-- [ ] Structured rich-text document model, links, colors, highlights, tables, page layout, pagination, focus mode, tabs, undo/redo
+- [ ] Structured rich-text document model, link insertion, tables, page layout, pagination, focus mode, and multi-document tabs
 - [ ] Full World → Series → Book → Chapter → Scene navigator with selective sharing and historical snapshots
 - [ ] Universal template designer with custom field types, conditional fields, repeatable groups, template import/export/versioning
 - [ ] Link review queue, ambiguity resolution, exclusions, case settings, retroactive scanning, undo, exact source navigation
