@@ -13,6 +13,8 @@ class ProjectHierarchyRulesTest {
         assertTrue(ProjectHierarchyRules.canBeParent("Book", "Series"))
         assertFalse(ProjectHierarchyRules.canBeParent("Book", "World"))
         assertTrue(ProjectHierarchyRules.canBeParent("Chapter", "Book"))
+        assertTrue(ProjectHierarchyRules.canBeParent("Chapter", "Story"))
+        assertFalse(ProjectHierarchyRules.canBeParent("Chapter", "World"))
         assertTrue(ProjectHierarchyRules.canBeParent("Scene", "Chapter"))
         assertFalse(ProjectHierarchyRules.canBeParent("World", "World"))
     }
