@@ -23,7 +23,9 @@
 - [ ] Full-text indexing, find/replace, folders, collections, favorites management
 - [ ] Image and file attachments, reference galleries
 - [ ] Maps, calendars, visual timelines, family trees, relationship graph, flowcharts, corkboards, moodboards
-- [ ] PDF, DOCX, TXT, HTML, Markdown, EPUB import/export
+- [x] TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export
+- [x] TXT, Markdown, HTML, DOCX, and EPUB import
+- [ ] PDF import and round-trip fidelity tests
 - [ ] Custom font import, palettes, margins, page widths, line spacing, toolbar and home layout customization
 - [ ] Encrypted client-side, provider-flexible optional cloud backup/sync
 - [ ] Restore validation, database migrations, unit/instrumentation/UI/accessibility/performance tests
