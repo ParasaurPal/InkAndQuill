@@ -8,6 +8,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
+data class RecordLink(val recordId:String,val title:String,val label:String,val position:Int)
+
 data class TemplateField(val id:String,val templateId:String,val name:String,val fieldType:String,val required:Boolean,val position:Int,val section:String="",val options:String="",val hint:String="",val conditionField:String="",val conditionValue:String="",val formula:String="",val repeatable:Boolean=false)
 
 data class InkRecord(
@@ -166,6 +168,8 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun setting(key:String,fallback:String="")=readableDatabase.rawQuery("SELECT value FROM settings WHERE key=?",arrayOf(key)).use{if(it.moveToFirst())it.getString(0)else fallback}
     fun setSetting(key:String,value:String){val v=ContentValues().apply{put("key",key);put("value",value)};writableDatabase.insertWithOnConflict("settings",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     fun addLink(source:String,target:String,label:String="mention",position:Int=0){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("position",position)};writableDatabase.insertWithOnConflict("links",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun incomingLinks(id:String):List<RecordLink> = readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.sourceId WHERE l.targetId=? ORDER BY r.title",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(RecordLink(c.getString(0),c.getString(1),c.getString(2),c.getInt(3)))}}
+    fun outgoingLinks(id:String):List<RecordLink> = readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.targetId WHERE l.sourceId=? ORDER BY r.title",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(RecordLink(c.getString(0),c.getString(1),c.getString(2),c.getInt(3)))}}
     fun linksFrom(id:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT r.title,l.label,l.targetId FROM links l JOIN records r ON r.id=l.targetId WHERE l.sourceId=?",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
     fun removeLink(source:String,target:String,label:String="mention"){writableDatabase.delete("links","sourceId=? AND targetId=? AND label=?",arrayOf(source,target,label))}
     fun backlinks(id:String)=readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.sourceId WHERE l.targetId=?",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(1),c.getString(2),c.getInt(3)))}}
