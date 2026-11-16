@@ -19,7 +19,7 @@ The backup is encrypted on-device using AES-256-GCM with a password-derived key.
 - If only the phone changed, the encrypted phone snapshot is uploaded.
 - If only the cloud copy changed, the cloud snapshot is restored to the phone.
 - If both changed, Ink & Quill pauses automatic replacement and asks the user to **Keep this phone version** or **Use the cloud version**. Choosing the cloud version replaces the local database contents with that cloud snapshot.
-- If the device is offline or the provider is temporarily unavailable, WorkManager retries the queued operation.
+- If the device is offline or the provider is temporarily unavailable, WorkManager retries the queued operation.\n- Settings keeps the 30 most recent sync outcomes, timestamps, and worker failures so users can inspect recent sync activity.
 
 This is whole-snapshot synchronization, not field-by-field merging. Keep independent devices synced regularly and resolve conflicts deliberately. It does not attempt to merge simultaneous edits to the same document.
 
