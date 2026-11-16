@@ -34,7 +34,8 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Template designer still needs template schema migration UI and richer layout customization
 - [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
-- [ ] Attachments still need a full in-app gallery, recovery of preserved previous-media files after process termination (requires commit-aware recovery before safe deletion), cleanup of obsolete blobs after successful full replacement, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
+- [x] Attachment restore now uses a commit-aware recovery journal: after process death, uncommitted replacements restore previous media and committed replacements finish cleanup; orphaned imported blobs are reconciled at startup
+- [ ] Attachments still need a full in-app gallery, robust behavior for revoked provider permissions, and streaming media backup to reduce memory use
 - [ ] Editor still needs a structured document model, true automatic multi-page pagination, page headers/footers, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
 - [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
 - [x] Custom calendar month/day validation, weekday-aligned month grids, supported recurring leap-day rules, and recurring-event suppression on years where the date does not exist
