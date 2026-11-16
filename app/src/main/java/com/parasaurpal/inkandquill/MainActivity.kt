@@ -103,11 +103,12 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun HomeScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit){
     val recent=remember(refresh){db.all().take(8)}
+    val sections=db.setting("homeSections","Novels & Stories,Poetry,Journal,Documents,Notes,Creative Projects,Worldbuilding").split(",").filter{it.isNotBlank()}
     LazyColumn(Modifier.fillMaxSize().padding(18.dp),verticalArrangement=Arrangement.spacedBy(13.dp)){
         item{Text("A quiet place for big ideas.",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Your words, worlds, and everything between.",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.7f))}
         item{Button(onClick=create,Modifier.fillMaxWidth()){Icon(Icons.Default.Add,null);Text("  Create new")}}
         item{Text("Your studio",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
-        items(listOf("Novels & Stories","Poetry","Journal","Documents","Notes","Creative Projects","Worldbuilding")){label->Card(Modifier.fillMaxWidth().clickable{create()}){Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically){Text(label,Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null)}}}
+        items(sections){label->Card(Modifier.fillMaxWidth().clickable{create()}){Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically){Text(label,Modifier.weight(1f));Icon(Icons.Default.ChevronRight,null)}}}
         item{Text("Recently edited",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
         if(recent.isEmpty())item{Text("Your writing appears here. Create a document, poem, or world to begin.")}
         items(recent){RecordCard(db,it,open)}
@@ -386,6 +387,7 @@ class MainActivity:ComponentActivity(){
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
         var lockActive by remember{mutableStateOf(lockEnabled)};Text("Local app lock");var pinEntry by remember{mutableStateOf("")};if(lockActive)TextButton(onClick={disableLock;lockActive=false}){Text("Disable PIN lock")}else{OutlinedTextField(pinEntry,{pinEntry=it},label={Text("Set PIN or passphrase (6+ characters)")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation());TextButton(onClick={if(pinEntry.length>=6){setPin(pinEntry);lockActive=true;pinEntry=""}else Toast.makeText(context,"Use at least 6 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable app lock")}}
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
+        var homeSections by remember{mutableStateOf(db.setting("homeSections","Novels & Stories,Poetry,Journal,Documents,Notes,Creative Projects,Worldbuilding").split(",").toSet())};Text("Home sections");listOf("Novels & Stories","Poetry","Journal","Documents","Notes","Creative Projects","Worldbuilding").forEach{section->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(section in homeSections,{homeSections=if(it)homeSections+section else homeSections-section;db.setSetting("homeSections",homeSections.joinToString(","))});Text(section,fontSize=12.sp)}}
         Text("Color palette");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Plum","Ocean","Forest","Rose","Amber").forEach{FilterChip(palette==it,{setPalette(it)},label={Text(it)})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
         TextButton(onClick=retroScan){Text("Scan all existing documents for mentions")}
