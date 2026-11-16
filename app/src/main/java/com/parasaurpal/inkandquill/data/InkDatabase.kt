@@ -24,7 +24,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,5){
+class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,6){
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
@@ -46,6 +46,12 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
         db.execSQL("CREATE TABLE template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE record_relationships(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,createdAt INTEGER,UNIQUE(sourceId,targetId,label))")
+        db.execSQL("CREATE TABLE entity_snapshots(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,label TEXT NOT NULL,payload TEXT NOT NULL,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE timeline_events(id TEXT PRIMARY KEY,worldId TEXT NOT NULL,title TEXT NOT NULL,startDate TEXT NOT NULL,endDate TEXT,description TEXT,recordId TEXT)")
+        db.execSQL("CREATE TABLE planning_boards(id TEXT PRIMARY KEY,worldId TEXT,name TEXT NOT NULL,boardType TEXT NOT NULL,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
+        db.execSQL("CREATE TABLE board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
     }
@@ -71,6 +77,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
             runCatching{db.execSQL("ALTER TABLE template_fields ADD COLUMN removed INTEGER DEFAULT 0")}
             db.execSQL("CREATE TABLE IF NOT EXISTS template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
             db.execSQL("CREATE TABLE IF NOT EXISTS template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
+        }
+        if(oldVersion<6){
+            db.execSQL("CREATE TABLE IF NOT EXISTS record_relationships(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,createdAt INTEGER,UNIQUE(sourceId,targetId,label))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS entity_snapshots(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,label TEXT NOT NULL,payload TEXT NOT NULL,createdAt INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS timeline_events(id TEXT PRIMARY KEY,worldId TEXT NOT NULL,title TEXT NOT NULL,startDate TEXT NOT NULL,endDate TEXT,description TEXT,recordId TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS planning_boards(id TEXT PRIMARY KEY,worldId TEXT,name TEXT NOT NULL,boardType TEXT NOT NULL,createdAt INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         }
     }
     private fun seed(db:SQLiteDatabase){
@@ -178,5 +192,17 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     fun addTemplateSection(templateId:String,name:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name);put("position",templateSections(templateId).size)};writableDatabase.insert("template_sections",null,v)}
     fun templateVersion(templateId:String){val snapshot=JSONArray();templateFields(templateId,true).forEach{f->snapshot.put(JSONObject().put("id",f.id).put("name",f.name).put("type",f.fieldType).put("required",f.required).put("section",f.section).put("options",f.options).put("hint",f.hint).put("position",f.position))};val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("snapshot",snapshot.toString());put("createdAt",System.currentTimeMillis())};writableDatabase.insert("template_versions",null,v)}
     fun templateVersionCount(templateId:String)=readableDatabase.rawQuery("SELECT COUNT(*) FROM template_versions WHERE templateId=?",arrayOf(templateId)).use{it.moveToFirst();it.getInt(0)}
+    fun addRelationship(source:String,target:String,label:String,notes:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("notes",notes);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_relationships",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
+    fun relationships(id:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT r.title,rr.label,rr.targetId FROM record_relationships rr JOIN records r ON r.id=rr.targetId WHERE rr.sourceId=? UNION ALL SELECT r.title,rr.label,rr.sourceId FROM record_relationships rr JOIN records r ON r.id=rr.sourceId WHERE rr.targetId=?",arrayOf(id,id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun saveEntitySnapshot(record:InkRecord,label:String){val payload=JSONObject().put("title",record.title).put("body",record.body).put("kind",record.kind).put("tags",record.tags).put("aliases",record.aliases).toString();val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",record.id);put("label",label);put("payload",payload);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("entity_snapshots",null,v)}
+    fun entitySnapshots(id:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT label,payload FROM entity_snapshots WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
+    fun restoreEntitySnapshot(id:String,payload:String){val o=JSONObject(payload);get(id)?.let{save(it.copy(title=o.optString("title",it.title),body=o.optString("body",it.body),tags=o.optString("tags",it.tags),aliases=o.optString("aliases",it.aliases)))}}
+    fun addTimelineEvent(worldId:String,title:String,start:String,end:String="",description:String="",recordId:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("worldId",worldId);put("title",title);put("startDate",start);put("endDate",end);put("description",description);put("recordId",recordId)};writableDatabase.insert("timeline_events",null,v)}
+    fun timeline(worldId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT title,startDate,COALESCE(description,'') FROM timeline_events WHERE worldId=? ORDER BY startDate",arrayOf(worldId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun createBoard(worldId:String,name:String,type:String):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("worldId",worldId);put("name",name);put("boardType",type);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("planning_boards",null,v);return id}
+    fun boards(worldId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,boardType FROM planning_boards WHERE worldId=? ORDER BY createdAt DESC",arrayOf(worldId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun addBoardItem(boardId:String,title:String,content:String="",recordId:String="",x:Float=0f,y:Float=0f,color:String="#D9C7EE"){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("boardId",boardId);put("title",title);put("content",content);put("recordId",recordId);put("x",x);put("y",y);put("color",color)};writableDatabase.insert("board_items",null,v)}
+    fun boardItems(boardId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,title,content FROM board_items WHERE boardId=? ORDER BY rowid",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
+    fun linkBoardItems(boardId:String,from:String,to:String,label:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("boardId",boardId);put("fromItem",from);put("toItem",to);put("label",label)};writableDatabase.insertWithOnConflict("board_links",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun recordsForRevision(id:String)=revisions(id)
 }
