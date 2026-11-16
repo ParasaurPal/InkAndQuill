@@ -233,6 +233,8 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val context=LocalContext.current
+    val exportTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{selectedTemplate?.let{template->context.contentResolver.openOutputStream(it)?.use{out->out.write(db.exportTemplateJson(template.id).toByteArray())}}}}
+    val importTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{val raw=context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->reader.readText()}?:return@let;selectedTemplate=db.importTemplateJson(raw);fieldRefresh++}}}
     var templateQuery by remember{mutableStateOf("")}
     val templates=remember(refresh,templateQuery){db.templates().filter{it.title.contains(templateQuery,true)}}
     var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
@@ -256,11 +258,11 @@ class MainActivity:ComponentActivity(){
     var typeMenu by remember{mutableStateOf(false)}
     val types=listOf("Short text","Long text","Rich text","Number","Date","Dropdown","Multi-select","Checkbox","Image","Gallery","Attachment","Color","Rating","Table","Relationship","Repeatable group","Calculated")
     Column(Modifier.fillMaxSize().padding(16.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);TextButton(onClick={restoreTemplatesDialog=true}){Text("Restore starters")};Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Template gallery",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);TextButton(onClick={importTemplateLauncher.launch(arrayOf("application/json","text/*"))}){Text("Import")};TextButton(onClick={restoreTemplatesDialog=true}){Text("Restore starters")};Button(onClick={val t=InkRecord(title="My custom template",kind="Template",body="");db.save(t);selectedTemplate=t;fieldRefresh++}){Text("Create template")}}
         Text("Build reusable forms and writing structures. Fields can be removed from the active template without destroying their stored definitions.")
         if(selectedTemplate!=null){
             val t=selectedTemplate!!
-            Row(verticalAlignment=Alignment.CenterVertically){Text(t.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge);TextButton(onClick={selectedTemplate=null}){Text("Done")}}
+            Row(verticalAlignment=Alignment.CenterVertically){Text(t.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge);TextButton(onClick={exportTemplateLauncher.launch(t.title+".inktemplate.json")}){Text("Export")};TextButton(onClick={selectedTemplate=null}){Text("Done")}}
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={db.templateVersion(t.id);addField=true}){Text("Add field")};TextButton(onClick={db.addTemplateSection(t.id,"Section ${db.templateSections(t.id).size+1}");fieldRefresh++}){Text("Add section")}}
             Text("Saved template versions: ${db.templateVersionCount(t.id)}",fontSize=12.sp)
             val allFields=remember(t.id,fieldRefresh){db.templateFields(t.id,true)}
