@@ -277,7 +277,8 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         Text("Build reusable forms and writing structures. Fields can be removed from the active template without destroying their stored definitions.")
         if(selectedTemplate!=null){
             val t=selectedTemplate!!
-            Row(verticalAlignment=Alignment.CenterVertically){Text(t.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge);TextButton(onClick={exportTemplateLauncher.launch(t.title+".inktemplate.json")}){Text("Export")};TextButton(onClick={selectedTemplate=null}){Text("Done")}}
+            var templateTitle by remember(t.id){mutableStateOf(t.title)};var categoryMenu by remember{mutableStateOf(false)}
+            Row(verticalAlignment=Alignment.CenterVertically){OutlinedTextField(templateTitle,{templateTitle=it;val changed=t.copy(title=it);db.save(changed);selectedTemplate=changed},Modifier.weight(1f),label={Text("Template name")},singleLine=true);Box{TextButton(onClick={categoryMenu=true}){Text(t.tags.ifBlank{"Other"})};DropdownMenu(expanded=categoryMenu,onDismissRequest={categoryMenu=false}){templateCategories.filter{it!="All"}.forEach{category->DropdownMenuItem(text={Text(category)},onClick={val changed=t.copy(tags=category);db.save(changed);selectedTemplate=changed;categoryMenu=false})}}};TextButton(onClick={exportTemplateLauncher.launch(t.title+".inktemplate.json")}){Text("Export")};TextButton(onClick={selectedTemplate=null}){Text("Done")}}
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={db.templateVersion(t.id);addField=true}){Text("Add field")};TextButton(onClick={db.addTemplateSection(t.id,"Section ${db.templateSections(t.id).size+1}");fieldRefresh++}){Text("Add section")}}
             Text("Saved template versions: ${db.templateVersionCount(t.id)}",fontSize=12.sp)
             val allFields=remember(t.id,fieldRefresh){db.templateFields(t.id,true)}
