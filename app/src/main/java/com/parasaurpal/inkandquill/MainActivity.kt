@@ -226,6 +226,7 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
+    val context=LocalContext.current
     var templateQuery by remember{mutableStateOf("")}
     val templates=remember(refresh,templateQuery){db.templates().filter{it.title.contains(templateQuery,true)}}
     var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
@@ -280,7 +281,7 @@ class MainActivity:ComponentActivity(){
                     else->OutlinedTextField(templateValues[field.id].orEmpty(),{templateValues=templateValues+(field.id to it)},Modifier.fillMaxWidth(),label={Text(field.fieldType)},singleLine=field.fieldType in listOf("Short text","Number","Date","Color","Rating"))
                 }
             }
-        }},confirmButton={TextButton(onClick={val missing=visibleFields.firstOrNull{it.required&&templateValues[it.id].isNullOrBlank()};if(missing==null){val body=visibleFields.joinToString("\n\n"){f->(if(f.section.isNotBlank())f.section+"\n" else "")+f.name+":\n"+templateValues[f.id].orEmpty()};use(InkRecord(title=template.title,body=DocumentExport.plainToHtml(body),kind="Document"));applyingTemplate=null}else Toast.makeText(LocalContext.current,"Required: ${missing.name}",Toast.LENGTH_SHORT).show()}){Text("Create document")}},dismissButton={TextButton(onClick={applyingTemplate=null}){Text("Cancel")}})
+        }},confirmButton={TextButton(onClick={val missing=visibleFields.firstOrNull{it.required&&templateValues[it.id].isNullOrBlank()};if(missing==null){val body=visibleFields.joinToString("\n\n"){f->(if(f.section.isNotBlank())f.section+"\n" else "")+f.name+":\n"+templateValues[f.id].orEmpty()};use(InkRecord(title=template.title,body=DocumentExport.plainToHtml(body),kind="Document"));applyingTemplate=null}else Toast.makeText(context,"Required: ${missing.name}",Toast.LENGTH_SHORT).show()}){Text("Create document")}},dismissButton={TextButton(onClick={applyingTemplate=null}){Text("Cancel")}})
     }
     if(addField)AlertDialog(onDismissRequest={addField=false;editingField=null},title={Text(if(editingField==null)"Add template field" else "Edit template field")},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(7.dp)){
         OutlinedTextField(fieldName,{fieldName=it},label={Text("Field name")},singleLine=true)
