@@ -7,7 +7,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Offline SQLite storage, autosave, search (including shared tags), type filters, favorites, nested folders, collections, and persisted multi-document tabs
 - [x] Rich HTML editor: bold, italic, underline, strike, headings, lists, alignment, indentation, quotes, horizontal rules, hyperlinks, inline images, editable HTML tables, undo/redo, text/highlight colors
 - [x] Find/replace all within a document; word count; revision history and restore
-- [x] Editor appearance: system/light/dark, five palettes plus custom hex accent, custom font import, font size, line spacing, paragraph spacing, page width/margins, narrow page mode, focus mode, background color/image texture, text color, configurable toolbar
+- [x] Editor appearance: system/light/dark, five palettes plus custom hex accent, custom font import, font size, line spacing, paragraph spacing, page width/margins, page-like layout mode with explicit page breaks, focus mode, background color/image texture, text color, configurable toolbar
 - [x] Customizable home section visibility and bottom navigation tab visibility
 - [x] Optional salted-PBKDF2 PIN lock with automatic relock when app leaves foreground
 - [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, recursive world tree, and world-scoped record creation
@@ -30,7 +30,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
 - [ ] Attachments still need a full in-app gallery, file lifecycle cleanup, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
-- [ ] Editor still needs a structured document model, true paginated page editor, page breaks, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
+- [ ] Editor still needs a structured document model, true automatic multi-page pagination, page headers/footers, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
 - [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
 - [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
 - [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, detailed sync history, and multi-device end-to-end testing remain
