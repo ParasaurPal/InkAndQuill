@@ -28,6 +28,7 @@ data class InkRecord(
 
 class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,11){
     private val appContext=context.applicationContext
+    init { seed(writableDatabase) }
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
@@ -145,7 +146,38 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             "Floor Plan|floorplan|Levels,Rooms,Entrances,Exits,Hidden Areas",
             "Moodboard|moodboard|Visual Themes,Palette,Textures,References,Atmosphere",
             "Research Source|source|Citation,Author,Publication,URL,Summary,Trust Notes",
-            "Reference Entry|reference|Subject,Description,Source,Connections,Notes"
+            "Reference Entry|reference|Subject,Description,Source,Connections,Notes",
+            "Novel Project|novel|Premise,Genre,Audience,Themes,Synopsis,Main Cast,World,Outline,Revision Plan",
+            "Standalone Story|standalone|Premise,POV,Setting,Characters,Conflict,Structure,Ending,Themes",
+            "Series Bible|series|Series Premise,Core Themes,Volume List,Long Arc,Cast,Continuity Rules,Open Threads",
+            "Book Plan|bookplan|Logline,Summary,POV,Cast,Chapter Outline,Subplots,Continuity,Revision Notes",
+            "Short Story|shortstory|Hook,Character,Setting,Conflict,Turning Point,Climax,Resolution",
+            "Flash Fiction|flash|Opening Image,Central Idea,Turn,Ending,Word Limit",
+            "Screenplay|screenplay|Logline,Format,Characters,Sequence Outline,Scenes,Dialogue,Production Notes",
+            "Stage Play|play|Premise,Cast,Acts,Scenes,Stage Directions,Dialogue,Themes",
+            "Essay|essay|Question,Thesis,Arguments,Evidence,Counterargument,Conclusion,Sources",
+            "Article or Blog Post|article|Headline,Audience,Angle,Outline,Key Points,Sources,Call to Action",
+            "Research Paper|paper|Research Question,Thesis,Method,Findings,Discussion,Citations",
+            "Journal Entry|journal|Date,Mood,Events,Reflections,Gratitude,Next Steps",
+            "Daily Log|dailylog|Date,Highlights,Tasks,Notes,Reflection",
+            "Dream Journal|dream|Date,Setting,People,Events,Emotions,Symbols,Interpretation",
+            "Travel Journal|travel|Date,Place,Itinerary,Experiences,People,Memories,Expenses",
+            "Meeting Notes|meeting|Date,Attendees,Agenda,Discussion,Decisions,Action Items",
+            "Project Brief|project|Goal,Audience,Scope,Deliverables,Milestones,Risks,Resources",
+            "World Flora and Fauna|ecology|Biomes,Plants,Animals,Food Webs,Adaptations,Threats",
+            "Climate and Biomes|biome|Regions,Seasons,Weather,Climate Patterns,Resources,Effects",
+            "Custom Calendar System|calendar-system|Year Length,Months,Weekdays,Seasons,Moons,Eras,Leap Rules",
+            "Moon and Lunar Cycle|moon-cycle|Name,Orbit,Phases,Calendar Effects,Cultural Meaning",
+            "Economy and Trade|economy|Currency,Resources,Industries,Trade Routes,Taxes,Class Effects",
+            "Law and Government|government|Government Type,Leaders,Laws,Courts,Enforcement,Political Tensions",
+            "Customs and Traditions|tradition|Name,Origin,Participants,Timing,Rituals,Meaning,Variations",
+            "Save the Cat Outline|savecat|Opening Image,Theme Stated,Set-Up,Catalyst,Debate,Midpoint,All Is Lost,Finale",
+            "Snowflake Method|snowflake|One Sentence,One Paragraph,Character Summaries,Expanded Synopsis,Scene List",
+            "Story Circle|storycircle|You,Need,Go,Search,Find,Take,Return,Change",
+            "Character Relationship Map|relationship-map|Nodes,Connections,Conflicts,Alliances,Changes",
+            "Scene Breakdown|scene-breakdown|Scene Goal,Conflict,Disaster,Reaction,Dilemma,Decision",
+            "Continuity Tracker|continuity|Fact,First Mention,Related Records,Dependencies,Potential Conflicts",
+            "Source Citation|citation|Author,Title,Publisher,Publication Date,URL,Access Date,Notes"
         )
         data.forEach{line->val p=line.split("|");val templateId="template_"+p[1];val v=ContentValues().apply{put("id",templateId);put("title",p[0]);put("body",p[2].split(",").joinToString("\n\n"){"@@{it}:\n"});put("kind","Template")};db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_IGNORE);p[2].split(",").forEachIndexed{index,field->val fv=ContentValues().apply{put("id","field_"+p[1]+"_"+index);put("templateId",templateId);put("name",field.trim());put("fieldType","Long text");put("required",0);put("position",index)};db.insertWithOnConflict("template_fields",null,fv,SQLiteDatabase.CONFLICT_IGNORE)}}
     }
