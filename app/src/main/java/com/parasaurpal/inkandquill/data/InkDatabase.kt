@@ -307,7 +307,16 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun collections():List<Pair<String,String>> = readableDatabase.rawQuery("SELECT id,name FROM collections ORDER BY name",null).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("uri",uri);put("mimeType",mimeType);put("displayName",displayName);put("size",size);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("attachments",null,v)}
     fun attachments(recordId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments WHERE recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"uri" to c.getString(1),"mimeType" to (c.getString(2)?: ""),"displayName" to (c.getString(3)?: "")))}}
-    fun removeAttachment(id:String){writableDatabase.delete("attachments","id=?",arrayOf(id))}
+    fun removeAttachment(id:String){
+        writableDatabase.delete("attachments","id=?",arrayOf(id))
+        deleteImportedMediaBlob(id)
+    }
+    private fun deleteImportedMediaBlob(id:String) {
+        val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
+        if(safeName.isBlank())return
+        val file=java.io.File(java.io.File(appContext.filesDir,"attachments"),"$safeName.bin")
+        if(file.isFile)file.delete()
+    }
     fun excludeLinkTerm(recordId:String,term:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("term",term.trim())};writableDatabase.insertWithOnConflict("link_exclusions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun isLinkExcluded(recordId:String,term:String)=readableDatabase.rawQuery("SELECT 1 FROM link_exclusions WHERE recordId=? AND lower(term)=lower(?)",arrayOf(recordId,term)).use{it.moveToFirst()}
     fun saveOpenTabs(ids:List<String>){writableDatabase.beginTransaction();try{writableDatabase.delete("open_tabs",null,null);ids.distinct().forEachIndexed{index,id->val v=ContentValues().apply{put("position",index);put("recordId",id)};writableDatabase.insert("open_tabs",null,v)};writableDatabase.setTransactionSuccessful()}finally{writableDatabase.endTransaction()}}
