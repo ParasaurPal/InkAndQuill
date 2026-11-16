@@ -82,18 +82,22 @@ object CloudSyncManager {
 
 class CloudBackupWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result = try {
-        if (!CloudSyncManager.isEnabled(applicationContext)) return Result.success()
-        val password = CloudSyncManager.unprotect(applicationContext)
-        val uri = CloudSyncManager.target(applicationContext)
-        val json = InkDatabase(applicationContext).exportJson()
-        EncryptedCloudBackup.write(applicationContext.contentResolver, uri, json, password)
-        Result.success()
-    } catch (_: SecurityException) {
-        Result.failure()
-    } catch (_: IllegalArgumentException) {
-        Result.failure()
-    } catch (_: Exception) {
-        Result.retry()
+    override suspend fun doWork(): Result {
+        return try {
+            if (!CloudSyncManager.isEnabled(applicationContext)) Result.success()
+            else {
+                val password = CloudSyncManager.unprotect(applicationContext)
+                val uri = CloudSyncManager.target(applicationContext)
+                val json = InkDatabase(applicationContext).exportJson()
+                EncryptedCloudBackup.write(applicationContext.contentResolver, uri, json, password)
+                Result.success()
+            }
+        } catch (_: SecurityException) {
+            Result.failure()
+        } catch (_: IllegalArgumentException) {
+            Result.failure()
+        } catch (_: Exception) {
+            Result.retry()
+        }
     }
 }
