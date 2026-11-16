@@ -27,7 +27,8 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 
 ## Partially implemented; still needs completion
 - [ ] Full project-aware World → multiple Series → Books → Chapters → Scenes navigator, richer standalone-story organization, project-specific resource views, and full multi-project shared-record navigation
-- [ ] Template designer still needs more advanced calculated expressions, repeatable structured groups, multi-image galleries, conditional logic beyond simple equality, and template schema migration UI
+- [x] Calculated template fields support arithmetic, parentheses, field references, aggregates, text functions, conditional expressions, coalesce, rounding, and safe error reporting
+- [ ] Template designer still needs structured repeatable groups, multi-image galleries, conditional logic beyond simple equality, and template schema migration UI
 - [ ] Mention system still needs exact text-position navigation/highlighting, robust ambiguity picker, link undo history, and a dedicated graph explorer
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
 - [ ] Attachments still need a full in-app gallery, recovery of preserved previous-media files after process termination (requires commit-aware recovery before safe deletion), cleanup of obsolete blobs after successful full replacement, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
