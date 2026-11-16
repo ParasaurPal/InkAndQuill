@@ -124,15 +124,39 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit){
     val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
-    Column(Modifier.fillMaxSize().padding(16.dp)){
-        Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
-        Text("Each world connects its series, standalone stories, characters, places, cultures, lore, and timelines.")
-        Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(worlds){world->RecordCard(world,open);WorldTreeChildren(db,world.id,1,open)}}
-        if(worlds.isEmpty())Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp))
+    var world by remember{mutableStateOf<InkRecord?>(null)}
+    var mode by remember{mutableStateOf("Hierarchy")}
+    var eventDialog by remember{mutableStateOf(false)}
+    var eventTitle by remember{mutableStateOf("")}
+    var eventDate by remember{mutableStateOf("")}
+    var eventDescription by remember{mutableStateOf("")}
+    var boardDialog by remember{mutableStateOf(false)}
+    var boardName by remember{mutableStateOf("")}
+    var boardType by remember{mutableStateOf("Corkboard")}
+    var selectedBoard by remember{mutableStateOf("")}
+    var boardItemDialog by remember{mutableStateOf(false)}
+    var boardItemTitle by remember{mutableStateOf("")}
+    var boardItemBody by remember{mutableStateOf("")}
+    var localRefresh by remember{mutableIntStateOf(0)}
+    val boardTypes=listOf("Corkboard","Moodboard","Map","Flowchart","Relationship graph","Family tree","Floor plan","Reference board")
+    if(world==null){
+        Column(Modifier.fillMaxSize().padding(16.dp)){Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Text("Each world connects its series, standalone stories, characters, places, cultures, lore, timelines, and research.");Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")};LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(worlds){w->Card(Modifier.fillMaxWidth().clickable{world=w;mode="Hierarchy"}){Column(Modifier.padding(12.dp)){Text(w.title,fontWeight=FontWeight.SemiBold);Text("${db.all().count{it.parentId==w.id}} linked records",fontSize=12.sp,color=Plum)}}}};if(worlds.isEmpty())Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp))}
+    }else{
+        val w=world!!
+        Column(Modifier.fillMaxSize().padding(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={world=null;selectedBoard=""}){Icon(Icons.Default.ArrowBack,"Worlds")};Text(w.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Hierarchy","Timeline","Boards","Connections").forEach{FilterChip(mode==it,{mode=it},label={Text(it)})}}
+            when(mode){
+                "Hierarchy"->{Button(onClick={create()}){Text("Create record")};LazyColumn{items(db.all().filter{it.parentId==w.id}){RecordCard(it,open)}}}
+                "Timeline"->{Row(verticalAlignment=Alignment.CenterVertically){Text("World chronology",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={eventDialog=true}){Text("Add event")}};LazyColumn{items(db.timeline(w.id)){e->Card(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(Modifier.padding(12.dp)){Text(e.second,color=Plum,fontSize=12.sp);Text(e.first,fontWeight=FontWeight.SemiBold);Text(e.third,fontSize=12.sp)}}}}}
+                "Boards"->{val boards=remember(w.id,localRefresh){db.boards(w.id)};Row(verticalAlignment=Alignment.CenterVertically){Text("Visual planning boards",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={boardDialog=true}){Text("New board")}};boards.forEach{b->Card(Modifier.fillMaxWidth().clickable{selectedBoard=b.first}.padding(vertical=3.dp)){Row(Modifier.padding(12.dp)){Text(b.second,Modifier.weight(1f));Text(b.third,color=Plum,fontSize=11.sp)}}};if(selectedBoard.isNotBlank()){val boardItems=remember(selectedBoard,localRefresh){db.boardItems(selectedBoard)};Row(verticalAlignment=Alignment.CenterVertically){Text("Board items",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={boardItemDialog=true}){Text("Add card")}};LazyColumn{items(boardItems){item->Card(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(Modifier.padding(12.dp)){Text(item.second,fontWeight=FontWeight.SemiBold);Text(item.third,fontSize=12.sp)}}}}}}
+                "Connections"->{val related=db.all().filter{it.id!=w.id&&it.parentId==w.id};Text("Explicit relationships are stored separately from automatic mentions. Add relationship links from an individual record’s details.");related.forEach{r->val links=db.relationships(r.id);if(links.isNotEmpty()){Text(r.title,fontWeight=FontWeight.SemiBold);links.forEach{Text("• ${it.second}: ${it.first}",fontSize=12.sp)}}}}
+            }
+        }
     }
+    if(eventDialog)AlertDialog(onDismissRequest={eventDialog=false},title={Text("Timeline event")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(eventTitle,{eventTitle=it},label={Text("Event title")});OutlinedTextField(eventDate,{eventDate=it},label={Text("Date or era (sortable text)")});OutlinedTextField(eventDescription,{eventDescription=it},label={Text("Description")})}},confirmButton={TextButton(onClick={if(eventTitle.isNotBlank()&&eventDate.isNotBlank()){world?.let{db.addTimelineEvent(it.id,eventTitle,eventDate,description=eventDescription)};eventTitle="";eventDate="";eventDescription="";eventDialog=false;localRefresh++}}){Text("Save event")}},dismissButton={TextButton(onClick={eventDialog=false}){Text("Cancel")}})
+    if(boardDialog)AlertDialog(onDismissRequest={boardDialog=false},title={Text("Create planning board")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardName,{boardName=it},label={Text("Board name")});Text("Board type");Row(Modifier.horizontalScroll(rememberScrollState())){boardTypes.forEach{FilterChip(boardType==it,{boardType=it},label={Text(it)})}}}},confirmButton={TextButton(onClick={if(boardName.isNotBlank()){world?.let{selectedBoard=db.createBoard(it.id,boardName,boardType)};boardName="";boardDialog=false;localRefresh++}}){Text("Create")}},dismissButton={TextButton(onClick={boardDialog=false}){Text("Cancel")}})
+    if(boardItemDialog)AlertDialog(onDismissRequest={boardItemDialog=false},title={Text("Add board card")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardItemTitle,{boardItemTitle=it},label={Text("Title")});OutlinedTextField(boardItemBody,{boardItemBody=it},label={Text("Notes")})}},confirmButton={TextButton(onClick={if(boardItemTitle.isNotBlank()){db.addBoardItem(selectedBoard,boardItemTitle,boardItemBody);boardItemTitle="";boardItemBody="";boardItemDialog=false;localRefresh++}}){Text("Add")}},dismissButton={TextButton(onClick={boardItemDialog=false}){Text("Cancel")}})
 }
-
 @Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit){
     if(depth>8)return
     val children=db.all().filter{it.parentId==parentId}
