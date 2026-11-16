@@ -22,7 +22,7 @@ data class InkRecord(
     val favorite:Boolean=false
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,2){
+class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",null,3){
     override fun onCreate(db:SQLiteDatabase){
         db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,UNIQUE(sourceId,targetId,label))")
@@ -37,6 +37,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
     }
     override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int){
         if(oldVersion<2){db.execSQL("CREATE TABLE IF NOT EXISTS revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)");db.execSQL("CREATE TABLE IF NOT EXISTS template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER)")}
+        if(oldVersion<3) seed(db)
     }
     private fun seed(db:SQLiteDatabase){
         val data=listOf(
@@ -51,7 +52,38 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context,"inkandquill.db",nul
             "Plot Outline|outline|Premise,Beginning,Inciting Incident,Turning Points,Climax,Resolution,Themes",
             "Scene|scene|Purpose,POV,Setting,Goal,Conflict,Outcome,Continuity Notes",
             "Research Note|research|Question,Summary,Source,Quotes,Relevance,Follow-up",
-            "Poem|poem|Form,Theme,Imagery,Structure,Draft,Revision Notes"
+            "Poem|poem|Form,Theme,Imagery,Structure,Draft,Revision Notes",
+            "NPC Profile|npc|Role,Appearance,Personality,Motivation,Knowledge,Relationships,Notes",
+            "Character Arc|arc|Starting State,Want,Need,Flaw,Turning Points,Change,Ending",
+            "Relationship|relationship|People Involved,Type,History,Dynamics,Conflict,Current State",
+            "Family Tree|family|Members,Lineage,Branches,Inheritance,Secrets,Notes",
+            "Inventory|inventory|Owner,Items,Origin,Properties,Condition,Notes",
+            "World Overview|world|Premise,Themes,History,Rules,Regions,Peoples,Conflicts",
+            "Continent or Region|region|Geography,Climate,Settlements,Resources,History,Politics",
+            "Country or Kingdom|country|Government,Capital,Population,Economy,Military,Allies,Enemies",
+            "City or Settlement|city|Districts,Landmarks,Government,Population,Trade,History",
+            "Building or Interior|building|Purpose,Layout,Rooms,Materials,Occupants,Secrets",
+            "Species Profile|species|Biology,Habitat,Culture,Language,Abilities,Life Cycle",
+            "Society|society|Values,Class Structure,Law,Customs,Education,Economy",
+            "Organization|organization|Mission,Structure,Leadership,Membership,Resources,Influence",
+            "Spell or Ability|spell|Effect,Source,Requirements,Cost,Limitations,Countermeasures",
+            "Artifact|artifact|Appearance,Origin,Abilities,Limitations,Ownership,History",
+            "Technology or Invention|technology|Purpose,Components,Operation,Limitations,History",
+            "Religion or Philosophy|belief|Beliefs,Practices,Texts,Symbols,Leadership,Schisms",
+            "Language|language|Sounds,Grammar,Writing System,Vocabulary,History,Examples",
+            "Three Act Outline|threeact|Act One,Act Two,Act Three,Turning Points,Climax",
+            "Hero Journey|hero|Ordinary World,Call,Threshold,Trials,Ordeal,Reward,Return",
+            "Subplot|subplot|Characters,Setup,Development,Intersection,Resolution",
+            "Chapter Plan|chapter|Purpose,POV,Opening,Beats,Ending,Continuity",
+            "Plot Twist|twist|Setup,Clues,Reveal,Impact,Aftermath",
+            "Mystery and Clues|mystery|Question,Known Facts,Clues,Red Herrings,Revelation",
+            "Calendar|calendar|Era,Months,Week Length,Seasons,Moons,Special Dates",
+            "Historical Era|era|Dates,Major Events,Technology,Politics,Culture",
+            "Map Reference|map|Area,Scale,Landmarks,Routes,Boundaries,Notes",
+            "Floor Plan|floorplan|Levels,Rooms,Entrances,Exits,Hidden Areas",
+            "Moodboard|moodboard|Visual Themes,Palette,Textures,References,Atmosphere",
+            "Research Source|source|Citation,Author,Publication,URL,Summary,Trust Notes",
+            "Reference Entry|reference|Subject,Description,Source,Connections,Notes"
         )
         data.forEach{line->val p=line.split("|");val v=ContentValues().apply{put("id","template_"+p[1]);put("title",p[0]);put("body",p[2].split(",").joinToString("\n\n"){"@@{it}:\n"});put("kind","Template")};db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     }
