@@ -48,6 +48,8 @@ class MainActivity:ComponentActivity(){
     var cloudPassword by remember{mutableStateOf("")}
     var fontSize by remember{mutableFloatStateOf(db.setting("fontSize","18").toFloatOrNull()?:18f)}
     var appearance by remember{mutableStateOf(db.setting("appearance","dark"))}
+    var palette by remember{mutableStateOf(db.setting("palette","Plum"))}
+    val accent=when(palette){"Ocean"->Color(0xFF8DB9D8);"Forest"->Color(0xFF9DBD9A);"Rose"->Color(0xFFE0A8B8);"Amber"->Color(0xFFD9B66F);else->Plum}
     val dark=when(appearance){"light"->false;"dark"->true;else->isSystemInDarkTheme()}
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(db.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
@@ -61,7 +63,7 @@ class MainActivity:ComponentActivity(){
         cloudPassword=""
         Toast.makeText(context,result.fold({"Encrypted backup restored."},{it.message?: "Restore failed."}),Toast.LENGTH_LONG).show()
     }}
-    MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=Plum,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=Color(0xFF72558F),background=Color(0xFFF5F0E8),surface=Color.White)){
+    MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=accent,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=accent,background=Color(0xFFF5F0E8),surface=Color.White)){
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
             topBar={TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={if(selected==null)IconButton(onClick={settings=true}){Icon(Icons.Default.Settings,"Settings")}})},
@@ -78,7 +80,7 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))}){settings=false}
     }
 }
 
@@ -212,6 +214,7 @@ class MainActivity:ComponentActivity(){
     var backupPassword by remember{mutableStateOf("")}
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
+        Text("Color palette");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Plum","Ocean","Forest","Rose","Amber").forEach{FilterChip(palette==it,{setPalette(it)},label={Text(it)})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
         Text("Automatic mention links");var mode by remember{mutableStateOf(db.setting("autoLink","suggest"))};Row{listOf("off","suggest","auto").forEach{FilterChip(mode==it,{mode=it;db.setSetting("autoLink",it)},label={Text(it)})}}
         Text("Your writing stays on this phone first. Cloud backup is optional and encrypted on this device before it is sent to the storage provider you choose.")
