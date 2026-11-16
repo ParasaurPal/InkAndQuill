@@ -233,12 +233,13 @@ class MainActivity:ComponentActivity(){
 
 @Composable private fun TemplateScreen(db:InkDatabase,refresh:Int,edit:(InkRecord)->Unit,use:(InkRecord)->Unit){
     val context=LocalContext.current
-    val exportTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{selectedTemplate?.let{template->context.contentResolver.openOutputStream(it)?.use{out->out.write(db.exportTemplateJson(template.id).toByteArray())}}}}
-    val importTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{val raw=context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->reader.readText()}?:return@let;selectedTemplate=db.importTemplateJson(raw);fieldRefresh++}}}
     var templateQuery by remember{mutableStateOf("")}
     val templates=remember(refresh,templateQuery){db.templates().filter{it.title.contains(templateQuery,true)}}
     var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
     var fieldRefresh by remember{mutableIntStateOf(0)}
+    val exportTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->val template=selectedTemplate;if(uri!=null&&template!=null)runCatching{context.contentResolver.openOutputStream(uri)?.use{out->out.write(db.exportTemplateJson(template.id).toByteArray())}}}
+    val importTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)runCatching{val raw=context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->reader.readText()}?:return@runCatching;selectedTemplate=db.importTemplateJson(raw);fieldRefresh++}}
+
     var addField by remember{mutableStateOf(false)}
     var editingField by remember{mutableStateOf<TemplateField?>(null)}
     var applyingTemplate by remember{mutableStateOf<InkRecord?>(null)}
