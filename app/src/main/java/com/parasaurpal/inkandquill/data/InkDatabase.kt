@@ -221,7 +221,32 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun revisions(id:String)=readableDatabase.rawQuery("SELECT title,body,createdAt FROM revisions WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getLong(2)))}}
     private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","record_shares","tags","record_tags","tag_aliases","world_calendars","calendar_entries","link_history")
     private fun exportTable(table:String):JSONArray{val arr=JSONArray();readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){val o=JSONObject();for(i in 0 until c.columnCount){val name=c.getColumnName(i);when(c.getType(i)){android.database.Cursor.FIELD_TYPE_NULL->o.put(name,JSONObject.NULL);android.database.Cursor.FIELD_TYPE_INTEGER->o.put(name,c.getLong(i));android.database.Cursor.FIELD_TYPE_FLOAT->o.put(name,c.getDouble(i));android.database.Cursor.FIELD_TYPE_BLOB->o.put(name,android.util.Base64.encodeToString(c.getBlob(i),android.util.Base64.NO_WRAP));else->o.put(name,c.getString(i))}};arr.put(o)}};return arr}
-    fun exportJson():String{val records=exportTable("records");val root=JSONObject().put("format","inkandquill").put("version",4).put("records",records);backupTables.forEach{root.put(it,exportTable(it))};val blobs=JSONArray();readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments",null).use{cur->while(cur.moveToNext()){runCatching{val bytes=appContext.contentResolver.openInputStream(android.net.Uri.parse(cur.getString(1)))?.use{it.readBytes()}?:byteArrayOf();if(bytes.isNotEmpty())blobs.put(JSONObject().put("id",cur.getString(0)).put("kind","attachment").put("mimeType",cur.getString(2)).put("displayName",cur.getString(3)).put("data",android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))}}};readableDatabase.rawQuery("SELECT id,backgroundUri FROM planning_boards WHERE backgroundUri IS NOT NULL AND backgroundUri<>''",null).use{cur->while(cur.moveToNext()){runCatching{val bytes=appContext.contentResolver.openInputStream(android.net.Uri.parse(cur.getString(1)))?.use{it.readBytes()}?:byteArrayOf();if(bytes.isNotEmpty())blobs.put(JSONObject().put("id",cur.getString(0)).put("kind","board").put("mimeType","image/*").put("displayName","Board background").put("data",android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))}}};readableDatabase.rawQuery("SELECT id,imageUri FROM board_items WHERE imageUri IS NOT NULL AND imageUri<>''",null).use{cur->while(cur.moveToNext()){runCatching{val bytes=appContext.contentResolver.openInputStream(android.net.Uri.parse(cur.getString(1)))?.use{it.readBytes()}?:byteArrayOf();if(bytes.isNotEmpty())blobs.put(JSONObject().put("id",cur.getString(0)).put("kind","board_item").put("mimeType","image/*").put("displayName","Board card image").put("data",android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))}}};root.put("attachment_blobs",blobs);return root.toString(2)}
+    fun exportJson():String {
+        val root = JSONObject().put("format","inkandquill").put("version",4)
+            .put("records",exportTable("records"))
+        backupTables.forEach { root.put(it,exportTable(it)) }
+        val blobs = JSONArray()
+        fun addBlob(id:String,kind:String,mimeType:String,displayName:String,uri:String) {
+            val bytes = appContext.contentResolver.openInputStream(android.net.Uri.parse(uri))
+                ?.use { it.readBytes() }
+                ?: throw IllegalStateException("Cannot read $displayName. Reconnect its original storage provider and try the backup again.")
+            if (bytes.isEmpty()) throw IllegalStateException("$displayName is empty or unavailable; backup was stopped to prevent missing media.")
+            blobs.put(JSONObject().put("id",id).put("kind",kind).put("mimeType",mimeType)
+                .put("displayName",displayName)
+                .put("data",android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)))
+        }
+        readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments",null).use { cursor ->
+            while(cursor.moveToNext()) addBlob(cursor.getString(0),"attachment",cursor.getString(2) ?: "application/octet-stream",cursor.getString(3) ?: "Attachment",cursor.getString(1))
+        }
+        readableDatabase.rawQuery("SELECT id,backgroundUri FROM planning_boards WHERE backgroundUri IS NOT NULL AND backgroundUri<>''",null).use { cursor ->
+            while(cursor.moveToNext()) addBlob(cursor.getString(0),"board","image/*","Board background",cursor.getString(1))
+        }
+        readableDatabase.rawQuery("SELECT id,imageUri FROM board_items WHERE imageUri IS NOT NULL AND imageUri<>''",null).use { cursor ->
+            while(cursor.moveToNext()) addBlob(cursor.getString(0),"board_item","image/*","Board card image",cursor.getString(1))
+        }
+        root.put("attachment_blobs",blobs)
+        return root.toString(2)
+    }
     private fun importTable(table:String,arr:JSONArray){
         val allowed=when(table){
             "links"->setOf("id","sourceId","targetId","label","position","term","endPosition");"settings"->setOf("key","value");"revisions"->setOf("id","recordId","title","body","createdAt");
