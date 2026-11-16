@@ -310,6 +310,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
             mediaBackups.values.filterNotNull().forEach{it.delete()}
+            cleanupOrphanedImportedMedia()
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
@@ -330,6 +331,18 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
+        }
+    }
+
+    private fun cleanupOrphanedImportedMedia() {
+        val referenced=mutableSetOf<String>()
+        listOf("attachments","planning_boards","board_items").forEach{table->
+            readableDatabase.rawQuery("SELECT id FROM $table",null).use{cursor->while(cursor.moveToNext())referenced.add(cursor.getString(0))}
+        }
+        val dir=java.io.File(appContext.filesDir,"attachments")
+        if(!dir.isDirectory)return
+        dir.listFiles()?.filter{file->file.isFile&&file.name.endsWith(".bin")&&file.name.removeSuffix(".bin") !in referenced}?.forEach{file->
+            runCatching{if(file.exists()&&!file.delete())android.util.Log.w("InkDatabase","Could not remove obsolete imported media: ${file.name}")}
         }
     }
 
