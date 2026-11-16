@@ -36,5 +36,6 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("androidx.webkit:webkit:1.13.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
