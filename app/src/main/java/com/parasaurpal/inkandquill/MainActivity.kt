@@ -132,6 +132,10 @@ class MainActivity:ComponentActivity(){
     var details by remember{mutableStateOf(false)}
     var history by remember{mutableStateOf(false)}
     var linkCount by remember{mutableIntStateOf(0)}
+    val context=LocalContext.current
+    val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.plain(html).toByteArray())}}}
+    val mdExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.markdown(html).toByteArray())}}}
+    val htmlExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/html")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(DocumentExport.htmlDocument(title,html).toByteArray())}}}
     LaunchedEffect(record.id,title,html,tags,aliases,parent,scope){delay(700);val updated=record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope);onSaved(updated);if(db.setting("autoLink","suggest")=="auto")LocalLinkEngine(db).scan(updated)}
     Column(Modifier.fillMaxSize().padding(horizontal=14.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
@@ -151,6 +155,7 @@ class MainActivity:ComponentActivity(){
             OutlinedTextField(aliases,{aliases=it},Modifier.fillMaxWidth(),label={Text("Aliases (comma separated)")})
             OutlinedTextField(parent,{parent=it},Modifier.fillMaxWidth(),label={Text("Parent record ID (World/Series/Story/Chapter)")})
             OutlinedTextField(scope,{scope=it},Modifier.fillMaxWidth(),label={Text("Sharing scope: World / Series / Story")})
+            Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")}}
             Text("Backlinks",fontWeight=FontWeight.SemiBold)
             db.backlinks(record.id).forEach{Text("• ${it.first} — ${it.second}",fontSize=12.sp)}
         }
