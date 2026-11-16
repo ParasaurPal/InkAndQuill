@@ -80,7 +80,7 @@ class MainActivity:ComponentActivity(){
         cloudPassword=""
         Toast.makeText(context,result.fold({"Encrypted cloud backup saved."},{it.message?: "Backup failed."}),Toast.LENGTH_LONG).show()
     }}
-    val cloudSyncLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri:Uri?->uri?.let{val result=runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);CloudSyncManager.configure(context,it,cloudPassword)};cloudPassword="";Toast.makeText(context,result.fold({"Scheduled encrypted backup enabled."},{it.message?: "Could not enable scheduled backup."}),Toast.LENGTH_LONG).show()}}
+    val cloudSyncLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri:Uri?->uri?.let{val result=runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);CloudSyncManager.configure(context,it,cloudPassword)};cloudPassword="";Toast.makeText(context,result.fold({"Encrypted cloud sync configured."},{it.message?: "Could not enable scheduled backup."}),Toast.LENGTH_LONG).show()}}
     val cloudImportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{
         val result=runCatching{db.importJson(EncryptedCloudBackup.read(context.contentResolver,it,cloudPassword));refresh++}
         cloudPassword=""
@@ -512,7 +512,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         if(cloudSyncEnabled)TextButton(onClick={CloudSyncManager.syncNow(context)}){Text("Sync now")}
         if(cloudSyncEnabled)TextButton(onClick=disableCloudSync){Text("Disable scheduled cloud backup")}else TextButton(onClick={if(backupPassword.length>=10)cloudSync(backupPassword)else Toast.makeText(context,"Use at least 10 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable scheduled encrypted backup (12-hour interval)")}
         if(cloudConflict){Text("A cloud conflict was detected: both the phone and cloud copy changed since the last shared version. Choose which copy should replace the other.",color=Color(0xFFE0A45C));TextButton(onClick={resolveCloudConflict(true)}){Text("Keep this phone version")};TextButton(onClick={resolveCloudConflict(false)}){Text("Use the cloud version")}}
-        Text("Scheduled backups run when Android reports a network connection. The selected provider must keep the destination available. Offline runs are retried by Android.")
+        Text("Encrypted sync runs when Android reports a network connection. Changes are exchanged through your selected provider; simultaneous edits trigger a keep-phone or use-cloud choice. Offline work is queued and retried.")
         Text("Choose any connected Android storage provider in the system picker (for example, a cloud drive app). The provider handles its own sign-in.")
     }},confirmButton={TextButton(onClick=close){Text("Done")}})
 }
