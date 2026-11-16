@@ -38,6 +38,7 @@ class MainActivity:ComponentActivity(){
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun InkAndQuillApp(db:InkDatabase){
     val context=LocalContext.current
+    var unlocked by remember{mutableStateOf(!AppLock.isEnabled(context))}
     var screen by remember{mutableStateOf("Home")}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var refresh by remember{mutableIntStateOf(0)}
@@ -65,6 +66,7 @@ class MainActivity:ComponentActivity(){
         Toast.makeText(context,result.fold({"Encrypted backup restored."},{it.message?: "Restore failed."}),Toast.LENGTH_LONG).show()
     }}
     MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=accent,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=accent,background=Color(0xFFF5F0E8),surface=Color.White)){
+        if(!unlocked){LockScreen(onUnlock={pin->if(AppLock.verify(context,pin))unlocked=true})}else{
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
             topBar={TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={if(selected==null)IconButton(onClick={settings=true}){Icon(Icons.Default.Settings,"Settings")}})},
@@ -81,7 +83,8 @@ class MainActivity:ComponentActivity(){
             }
         }
         if(create)CreateDialog(onDismiss={create=false},onChoose={kind->val record=InkRecord(title="Untitled $kind",kind=kind);db.save(record);selected=record;create=false;refresh++})
-        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)}){settings=false}
+        if(settings)SettingsDialog(db,appearance,{appearance=it;db.setSetting("appearance",it)},palette,{palette=it;db.setSetting("palette",it)},fontSize,{fontSize=it;db.setSetting("fontSize",it.toInt().toString())},{export.launch("ink-and-quill-backup.json")},{importLauncher.launch(arrayOf("application/json","text/*"))},{password->cloudPassword=password;cloudExportLauncher.launch("InkAndQuill-encrypted-backup.inkq")},{password->cloudPassword=password;cloudImportLauncher.launch(arrayOf("application/octet-stream","application/*","*/*"))},{password->cloudPassword=password;cloudSyncLauncher.launch("InkAndQuill-scheduled-backup.inkq")},CloudSyncManager.isEnabled(context),{CloudSyncManager.disable(context)},AppLock.isEnabled(context),{pin->AppLock.setPin(context,pin)},{AppLock.disable(context)}){settings=false}
+        }
     }
 }
 
@@ -311,15 +314,18 @@ class MainActivity:ComponentActivity(){
     }
 }
 
+@Composable private fun LockScreen(onUnlock:(String)->Unit){var pin by remember{mutableStateOf("")};Column(Modifier.fillMaxSize().padding(28.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.Lock,null,tint=Plum,modifier=Modifier.size(48.dp));Text("Ink & Quill is locked",style=MaterialTheme.typography.headlineSmall);OutlinedTextField(pin,{pin=it},label={Text("PIN or passphrase")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true);Button(onClick={onUnlock(pin)},enabled=pin.isNotBlank(),modifier=Modifier.fillMaxWidth()){Text("Unlock")}}}
+
 @Composable private fun CreateDialog(onDismiss:()->Unit,onChoose:(String)->Unit){
     val kinds=listOf("Document","Novel","Series","Story","Book","Chapter","Scene","Poem","Journal","Note","World","Character","Location","Culture","Faction","Organization","Species","Creature","Magic System","Artifact","Technology","Religion","Deity","Language","Timeline Event","Research Note")
     AlertDialog(onDismissRequest=onDismiss,title={Text("Create something")},text={Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState())){kinds.forEach{TextButton(onClick={onChoose(it)}){Text(it)}}}},confirmButton={TextButton(onClick=onDismiss){Text("Close")}})
 }
 
-@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,close:()->Unit){
+@Composable private fun SettingsDialog(db:InkDatabase,appearance:String,setAppearance:(String)->Unit,palette:String,setPalette:(String)->Unit,size:Float,setSize:(Float)->Unit,export:()->Unit,importBackup:()->Unit,cloudExport:(String)->Unit,cloudImport:(String)->Unit,cloudSync:(String)->Unit,cloudSyncEnabled:Boolean,disableCloudSync:()->Unit,lockEnabled:Boolean,setPin:(String)->Unit,disableLock:()->Unit,close:()->Unit){
     val context=LocalContext.current
     var backupPassword by remember{mutableStateOf("")}
     AlertDialog(onDismissRequest=close,title={Text("Studio settings")},text={Column(verticalArrangement=Arrangement.spacedBy(9.dp)){
+        Text("Local app lock");var pinEntry by remember{mutableStateOf("")};if(lockEnabled)TextButton(onClick=disableLock){Text("Disable PIN lock")}else{OutlinedTextField(pinEntry,{pinEntry=it},label={Text("Set PIN or passphrase (6+ characters)")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation());TextButton(onClick={if(pinEntry.length>=6){setPin(pinEntry);pinEntry=""}else Toast.makeText(context,"Use at least 6 characters.",Toast.LENGTH_SHORT).show()}){Text("Enable app lock")}}
         Text("Appearance");Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("system","light","dark").forEach{FilterChip(appearance==it,{setAppearance(it)},label={Text(it.replaceFirstChar(Char::uppercase))})}}
         Text("Color palette");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Plum","Ocean","Forest","Rose","Amber").forEach{FilterChip(palette==it,{setPalette(it)},label={Text(it)})}}
         Text("Editor size: ${size.toInt()}sp");Slider(size,setSize,valueRange=14f..30f)
