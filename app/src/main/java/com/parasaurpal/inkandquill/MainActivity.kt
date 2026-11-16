@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,7 +46,7 @@ class MainActivity:ComponentActivity(){
     var settings by remember{mutableStateOf(false)}
     var fontSize by remember{mutableFloatStateOf(db.setting("fontSize","18").toFloatOrNull()?:18f)}
     var appearance by remember{mutableStateOf(db.setting("appearance","dark"))}
-    val dark=appearance!="light"
+    val dark=when(appearance){"light"->false;"dark"->true;else->isSystemInDarkTheme()}
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(db.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
     MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=Plum,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=Color(0xFF72558F),background=Color(0xFFF5F0E8),surface=Color.White)){
@@ -136,6 +137,7 @@ class MainActivity:ComponentActivity(){
         Row(verticalAlignment=Alignment.CenterVertically){
             Text(record.kind,color=Plum,modifier=Modifier.weight(1f))
             TextButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope))}){Text("Save")}
+            IconButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,favorite=!record.favorite))}){Icon(if(record.favorite)Icons.Default.Star else Icons.Default.StarBorder,"Favorite")}
             IconButton(onClick={details=!details}){Icon(Icons.Default.Tune,"Details")}
             IconButton(onClick={history=!history}){Icon(Icons.Default.History,"History")}
             IconButton(onClick={onDelete(record.id)}){Icon(Icons.Default.Delete,"Delete")}
