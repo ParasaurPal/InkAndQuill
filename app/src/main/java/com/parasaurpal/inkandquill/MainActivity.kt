@@ -286,7 +286,15 @@ class MainActivity:ComponentActivity(){
     val boardBackgroundPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION);db.setBoardBackground(selectedBoard,it.toString());localRefresh++}}}
     val boardTypes=listOf("Corkboard","Moodboard","Map","Flowchart","Relationship graph","Family tree","Floor plan","Reference board")
     if(world==null){
-        Column(Modifier.fillMaxSize().padding(16.dp)){Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold);Text("Worlds are the top-level home for each fictional universe. Expand a Series to see its books, chapters, and scenes.");Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")};LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){items(worlds){w->Column(verticalArrangement=Arrangement.spacedBy(5.dp)){Card(Modifier.fillMaxWidth().clickable{world=w;mode="Hierarchy"}){Column(Modifier.padding(12.dp)){Text(w.title,fontWeight=FontWeight.SemiBold);Text("${db.all().count{it.parentId==w.id}} linked records",fontSize=12.sp,color=Plum)}};val series=db.all().filter{it.parentId==w.id&&it.kind=="Series"};series.forEach{seriesRecord->var expanded by remember(w.id,seriesRecord.id){mutableStateOf(false)};Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(seriesRecord.title,Modifier.weight(1f),fontWeight=FontWeight.Medium);IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse series" else "Expand series")};TextButton(onClick={open(seriesRecord)}){Text("Open")}};if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open)}}}}};if(worlds.isEmpty())Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp))}
+        Column(Modifier.fillMaxSize().padding(16.dp)){ 
+            Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
+            Text("Worlds are the top-level home for each fictional universe. Expand a Series to see its books, chapters, and scenes.")
+            Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
+            LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){
+                items(worlds){ w -> WorldListCard(db,w,open) }
+                if(worlds.isEmpty()) item { Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp)) }
+            }
+        }
     }else{
         val w=world!!
         Column(Modifier.fillMaxSize().padding(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={world=null;selectedBoard=""}){Icon(Icons.Default.ArrowBack,"Worlds")};Text(w.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
@@ -307,6 +315,34 @@ class MainActivity:ComponentActivity(){
     if(boardDialog)AlertDialog(onDismissRequest={boardDialog=false},title={Text("Create planning board")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardName,{boardName=it},label={Text("Board name")});Text("Board type");Row(Modifier.horizontalScroll(rememberScrollState())){boardTypes.forEach{FilterChip(boardType==it,{boardType=it},label={Text(it)})}}}},confirmButton={TextButton(onClick={if(boardName.isNotBlank()){world?.let{selectedBoard=db.createBoard(it.id,boardName,boardType)};boardName="";boardDialog=false;localRefresh++}}){Text("Create")}},dismissButton={TextButton(onClick={boardDialog=false}){Text("Cancel")}})
     if(boardItemDialog)AlertDialog(onDismissRequest={boardItemDialog=false},title={Text("Add board card")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardItemTitle,{boardItemTitle=it},label={Text("Title")});OutlinedTextField(boardItemBody,{boardItemBody=it},label={Text("Notes")});OutlinedTextField(boardItemColor,{boardItemColor=it},label={Text("Card color · hex")},singleLine=true);Box{OutlinedButton(onClick={boardRecordMenu=true}){Text("Linked record: "+(db.get(boardItemRecordId)?.title?: "None"))};DropdownMenu(expanded=boardRecordMenu,onDismissRequest={boardRecordMenu=false}){DropdownMenuItem(text={Text("No linked record")},onClick={boardItemRecordId="";boardRecordMenu=false});db.all().filter{it.kind!="Template"}.forEach{r->DropdownMenuItem(text={Text(r.title)},onClick={boardItemRecordId=r.id;boardRecordMenu=false})}}};TextButton(onClick={boardItemImagePicker.launch(arrayOf("image/*"))}){Text(if(boardItemImageUri.isBlank())"Add image" else "Image selected")}}},confirmButton={TextButton(onClick={if(boardItemTitle.isNotBlank()){db.addBoardItem(selectedBoard,boardItemTitle,boardItemBody,recordId=boardItemRecordId,color=boardItemColor,imageUri=boardItemImageUri);boardItemTitle="";boardItemBody="";boardItemRecordId="";boardItemColor="#D9C7EE";boardItemImageUri="";boardItemDialog=false;localRefresh++}}){Text("Add")}},dismissButton={TextButton(onClick={boardItemDialog=false}){Text("Cancel")}})
 }
+@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit){
+    var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
+    val series=remember(world.id){db.all().filter{it.parentId==world.id&&it.kind=="Series"}}
+    Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
+        Card(Modifier.fillMaxWidth().clickable{open(world)}){
+            Column(Modifier.padding(12.dp)){
+                Text(world.title,fontWeight=FontWeight.SemiBold)
+                Text("${db.all().count{it.parentId==world.id}} linked records",fontSize=12.sp,color=Plum)
+            }
+        }
+        series.forEach{seriesRecord->
+            val expanded=seriesRecord.id in expandedSeries
+            Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
+                Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Text(seriesRecord.title,Modifier.weight(1f),fontWeight=FontWeight.Medium)
+                        IconButton(onClick={expandedSeries=if(expanded)expandedSeries-seriesRecord.id else expandedSeries+seriesRecord.id}){
+                            Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse series" else "Expand series")
+                        }
+                        TextButton(onClick={open(seriesRecord)}){Text("Open")}
+                    }
+                    if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open)
+                }
+            }
+        }
+    }
+}
+
 @Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit){
     if(depth>8)return
     val parent=db.get(parentId)
