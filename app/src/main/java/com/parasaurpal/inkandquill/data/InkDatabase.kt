@@ -272,6 +272,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val existing=get(id)
         val db=writableDatabase
         val mediaIds=mutableSetOf<String>()
+        if(existing?.coverUri?.contains(".fileprovider") == true)mediaIds.add(id)
         db.rawQuery("SELECT id FROM attachments WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
         val removedBoardItemIds=mutableListOf<String>()
         db.rawQuery("SELECT id FROM board_items WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext()){val itemId=it.getString(0);mediaIds.add(itemId);removedBoardItemIds.add(itemId)}}
@@ -338,6 +339,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         readableDatabase.rawQuery("SELECT id,imageUri FROM board_items WHERE imageUri IS NOT NULL AND imageUri<>''",null).use { cursor ->
             while(cursor.moveToNext()) addBlob(cursor.getString(0),"board_item","image/*","Board card image",cursor.getString(1))
         }
+        readableDatabase.rawQuery("SELECT id,coverUri FROM records WHERE coverUri IS NOT NULL AND coverUri<>''",null).use { cursor ->
+            while(cursor.moveToNext()) addBlob(cursor.getString(0),"cover","image/*","Novel cover",cursor.getString(1))
+        }
         root.put("attachment_blobs",blobs)
         return root.toString(2)
     }
@@ -392,7 +396,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
 
     private fun cleanupOrphanedImportedMedia() {
         val referenced=mutableSetOf<String>()
-        listOf("attachments","planning_boards","board_items").forEach{table->
+        listOf("attachments","planning_boards","board_items","records").forEach{table->
             readableDatabase.rawQuery("SELECT id FROM $table",null).use{cursor->while(cursor.moveToNext())referenced.add(cursor.getString(0))}
         }
         val dir=java.io.File(appContext.filesDir,"attachments")
@@ -451,6 +455,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 "board"->{values.put("backgroundUri",uri.toString());writableDatabase.update("planning_boards",values,"id=?",arrayOf(id))}
                 "board_item"->{values.put("imageUri",uri.toString());writableDatabase.update("board_items",values,"id=?",arrayOf(id))}
                 "attachment"->{values.put("uri",uri.toString());writableDatabase.update("attachments",values,"id=?",arrayOf(id))}
+                "cover"->{values.put("coverUri",uri.toString());writableDatabase.update("records",values,"id=?",arrayOf(id))}
                 else->throw IllegalArgumentException("Backup contains an unsupported media type '$kind'.")
             }
             require(updated==1){"Media '$id' has no matching database record; the backup may be inconsistent."}
