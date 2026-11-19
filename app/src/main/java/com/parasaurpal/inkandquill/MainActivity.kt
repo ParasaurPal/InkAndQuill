@@ -323,9 +323,9 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
     var templateQuery by remember{mutableStateOf("")}
     var templateCategory by remember{mutableStateOf("All")}
     val templateCategories=listOf("All","Writing","Characters & Worldbuilding","Magic & Systems","Plot & Structure","Timeline & Calendar","Visual Planning","Research & Reference","Other")
-    val templates=remember(refresh,templateQuery,templateCategory){db.templates().filter{it.title.contains(templateQuery,true)&&(templateCategory=="All"||it.tags==templateCategory)}}
-    var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
     var fieldRefresh by remember{mutableIntStateOf(0)}
+    val templates=remember(refresh,templateQuery,templateCategory,fieldRefresh){db.templates().filter{it.title.contains(templateQuery,true)&&(templateCategory=="All"||it.tags==templateCategory)}}
+    var selectedTemplate by remember{mutableStateOf<InkRecord?>(null)}
     val exportTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->val template=selectedTemplate;if(uri!=null&&template!=null)runCatching{context.contentResolver.openOutputStream(uri)?.use{out->out.write(db.exportTemplateJson(template.id).toByteArray())};val share=Intent(Intent.ACTION_SEND).apply{type="application/json";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)};context.startActivity(Intent.createChooser(share,"Share template"))}}
     val importTemplateLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->if(uri!=null)runCatching{val raw=context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->reader.readText()}?:return@runCatching;selectedTemplate=db.importTemplateJson(raw);fieldRefresh++}}
 
