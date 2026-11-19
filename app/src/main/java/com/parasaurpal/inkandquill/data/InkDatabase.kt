@@ -43,7 +43,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
     }
     override fun onCreate(db:SQLiteDatabase){
-        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0)")
+        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0,coverUri TEXT DEFAULT '')")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,term TEXT,endPosition INTEGER,UNIQUE(sourceId,targetId,label,position))")
         db.execSQL("CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         db.execSQL("CREATE TABLE revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)")
