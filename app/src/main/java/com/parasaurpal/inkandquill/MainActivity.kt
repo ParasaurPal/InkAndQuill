@@ -309,6 +309,9 @@ class MainActivity:ComponentActivity(){
 }
 @Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit){
     if(depth>8)return
+    val parent=db.get(parentId)
+    val nextKind=when(parent?.kind){"Series"->"Book";"Story"->"Chapter";"Book"->"Chapter";"Chapter"->"Scene";else->""}
+    if(nextKind.isNotBlank())TextButton(onClick={val child=InkRecord(title="Untitled $nextKind",kind=nextKind,parentId=parentId,scope=parent?.scope?: "World");db.save(child);open(child)},modifier=Modifier.padding(start=(depth*12).dp)){Icon(Icons.Default.Add,null);Text(" Add $nextKind")}
     val children=db.all().filter{it.parentId==parentId}
     children.forEach{child->Column(Modifier.padding(start=(depth*12).dp)){RecordCard(db,child,open);WorldTreeChildren(db,child.id,depth+1,open)}}
 }
