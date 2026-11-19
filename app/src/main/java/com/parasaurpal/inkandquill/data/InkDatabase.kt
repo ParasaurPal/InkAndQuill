@@ -253,14 +253,15 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     private fun android.database.Cursor.record()=InkRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("title")),getString(getColumnIndexOrThrow("body")),getString(getColumnIndexOrThrow("kind")),getString(getColumnIndexOrThrow("parentId"))?:"",getString(getColumnIndexOrThrow("scope"))?:"World",getString(getColumnIndexOrThrow("tags"))?:"",getString(getColumnIndexOrThrow("aliases"))?:"",getLong(getColumnIndexOrThrow("createdAt")),getLong(getColumnIndexOrThrow("updatedAt")),getInt(getColumnIndexOrThrow("favorite"))==1,getString(getColumnIndex("coverUri").takeIf{it>=0}?:-1)?.let{it}?:"")
     fun descendants(parentId:String):List<InkRecord>{val allRecords=all();val result=mutableListOf<InkRecord>();val visited=mutableSetOf<String>();fun visit(id:String){allRecords.filter{it.parentId==id&&visited.add(it.id)}.forEach{record->result.add(record);visit(record.id)}};visit(parentId);return result}
     fun all(query:String="",kind:String?=null):List<InkRecord>{
-        val sql=StringBuilder("SELECT * FROM records WHERE kind!='Template'");val args=mutableListOf<String>()
+        val sql=StringBuilder("SELECT * FROM records WHERE kind NOT IN ('Template','Archived Template')");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
         if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ? OR EXISTS(SELECT 1 FROM record_tags rt JOIN tags t ON t.id=rt.tagId WHERE rt.recordId=records.id AND t.name LIKE ?))");val q="%$query%";args.addAll(listOf(q,q,q,q,q))}
         sql.append(" ORDER BY favorite DESC,updatedAt DESC")
         return readableDatabase.rawQuery(sql.toString(),args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.record())}}
     }
     fun get(id:String)=readableDatabase.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.record()else null}
-    fun templates()=readableDatabase.rawQuery("SELECT * FROM records WHERE kind='Template' ORDER BY title",null).use{c->buildList{while(c.moveToNext())add(c.record())}}
+    fun templates()=readableDatabase.rawQuery("SELECT * FROM records WHERE kind IN ('Template','Archived Template') ORDER BY title",null).use{c->buildList{while(c.moveToNext())add(c.record())}}
+    fun restoreCustomType(id:String){writableDatabase.execSQL("UPDATE records SET kind='Template',updatedAt=? WHERE id=? AND kind='Archived Template' AND parentId<>''",arrayOf(System.currentTimeMillis(),id))}
     fun save(r:InkRecord){
         val db=writableDatabase
         val old=get(r.id)
@@ -271,6 +272,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun delete(id:String){
         val existing=get(id)
         val db=writableDatabase
+        if(existing?.kind=="Template"&&existing.parentId.isNotBlank()){
+            db.execSQL("UPDATE records SET kind='Archived Template',updatedAt=? WHERE id=?",arrayOf(System.currentTimeMillis(),id))
+            return
+        }
         val mediaIds=mutableSetOf<String>()
         if(existing?.coverUri?.contains(".fileprovider") == true)mediaIds.add(id)
         db.rawQuery("SELECT id FROM attachments WHERE recordId=?",arrayOf(id)).use{while(it.moveToNext())mediaIds.add(it.getString(0))}
