@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -316,7 +317,7 @@ fun MapScreen(
         var linkedBoardId by remember(editPin.id) { mutableStateOf(editPin.linkedBoardId) }
         var recordMenu by remember { mutableStateOf(false) }
         var boardMenu by remember { mutableStateOf(false) }
-        val cancelEdit = {
+        val cancelEdit: () -> Unit = {
             if (editPin.id == newPinId) db.deleteMapPin(editPin.id)
             editingPin = null
             newPinId = ""
