@@ -11,6 +11,9 @@ import java.util.UUID
 data class RecordLink(val recordId:String,val title:String,val label:String,val position:Int,val term:String="")
 data class CalendarEntry(val id:String,val year:Int,val month:Int,val day:Int,val title:String,val description:String,val repeatYearly:Boolean)
 
+// Map pin: x/y are normalized 0..1 coordinates relative to the map image, so pins survive background image changes.
+data class MapPin(val id:String,val boardId:String,val x:Float,val y:Float,val label:String,val color:String,val recordId:String="",val linkedBoardId:String="")
+
 data class TemplateField(val id:String,val templateId:String,val name:String,val fieldType:String,val required:Boolean,val position:Int,val section:String="",val options:String="",val hint:String="",val conditionField:String="",val conditionValue:String="",val formula:String="",val repeatable:Boolean=false)
 
 data class InkRecord(
@@ -28,7 +31,7 @@ data class InkRecord(
     val coverUri:String=""
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,18){
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,19){
     private val appContext=context.applicationContext
     init {
         seed(writableDatabase)
@@ -69,6 +72,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE planning_boards(id TEXT PRIMARY KEY,worldId TEXT,name TEXT NOT NULL,boardType TEXT NOT NULL,createdAt INTEGER,backgroundUri TEXT)")
         db.execSQL("CREATE TABLE board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT,imageUri TEXT)")
         db.execSQL("CREATE TABLE board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
+        db.execSQL("CREATE TABLE map_pins(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,x REAL NOT NULL,y REAL NOT NULL,label TEXT,color TEXT,recordId TEXT,linkedBoardId TEXT,createdAt INTEGER)")
         db.execSQL("CREATE TABLE record_shares(recordId TEXT NOT NULL,projectId TEXT NOT NULL,createdAt INTEGER,PRIMARY KEY(recordId,projectId))")
         db.execSQL("CREATE TABLE tags(id TEXT PRIMARY KEY,name TEXT NOT NULL,tagType TEXT NOT NULL,color TEXT,UNIQUE(name,tagType))")
         db.execSQL("CREATE TABLE record_tags(recordId TEXT NOT NULL,tagId TEXT NOT NULL,PRIMARY KEY(recordId,tagId))")
@@ -80,6 +84,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
     }
     override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int){
+        if(oldVersion<19){db.execSQL("CREATE TABLE IF NOT EXISTS map_pins(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,x REAL NOT NULL,y REAL NOT NULL,label TEXT,color TEXT,recordId TEXT,linkedBoardId TEXT,createdAt INTEGER)")}
         if(oldVersion<18){runCatching{db.execSQL("ALTER TABLE records ADD COLUMN coverUri TEXT DEFAULT ''")}}
         if(oldVersion<2){db.execSQL("CREATE TABLE IF NOT EXISTS revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)");db.execSQL("CREATE TABLE IF NOT EXISTS template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER)")}
         if(oldVersion<3) seed(db)
@@ -292,6 +297,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
             listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
             db.delete("timeline_events","recordId=?",arrayOf(id))
+            db.execSQL("UPDATE map_pins SET recordId='' WHERE recordId=?",arrayOf(id))
             removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
             db.delete("board_items","recordId=?",arrayOf(id))
             if(existing?.kind=="Template")listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
@@ -300,6 +306,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 worldBoardIds.forEach{boardId->
                     db.delete("board_links","boardId=?",arrayOf(boardId))
                     db.delete("board_items","boardId=?",arrayOf(boardId))
+                    db.delete("map_pins","boardId=?",arrayOf(boardId))
                 }
                 db.delete("planning_boards","worldId=?",arrayOf(id))
                 db.delete("world_calendars","worldId=?",arrayOf(id))
@@ -319,7 +326,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun undoLastLinkChange():Boolean{val db=writableDatabase;val last= db.rawQuery("SELECT id,sourceId,targetId,COALESCE(label,'mention'),COALESCE(position,0),action,COALESCE(term,''),COALESCE(endPosition,position) FROM link_history ORDER BY createdAt DESC LIMIT 1",null).use{if(it.moveToFirst())listOf(it.getString(0),it.getString(1),it.getString(2),it.getString(3),it.getInt(4).toString(),it.getString(5),it.getString(6),it.getInt(7).toString())else null}?:return false;db.beginTransaction();try{if(last[5]=="added")db.delete("links","sourceId=? AND targetId=? AND label=?",arrayOf(last[1],last[2],last[3]))else{val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",last[1]);put("targetId",last[2]);put("label",last[3]);put("position",last[4].toInt());put("term",last[6]);put("endPosition",last[7].toInt())};db.insertWithOnConflict("links",null,v,SQLiteDatabase.CONFLICT_IGNORE)};db.delete("link_history","id=?",arrayOf(last[0]));db.setTransactionSuccessful()}finally{db.endTransaction()};return true}
     fun backlinks(id:String)=readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.sourceId WHERE l.targetId=?",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(1),c.getString(2),c.getInt(3)))}}
     fun revisions(id:String)=readableDatabase.rawQuery("SELECT title,body,createdAt FROM revisions WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getLong(2)))}}
-    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","record_shares","tags","record_tags","tag_aliases","world_calendars","calendar_entries","link_history")
+    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","map_pins","record_shares","tags","record_tags","tag_aliases","world_calendars","calendar_entries","link_history")
     private fun exportTable(table:String):JSONArray{val arr=JSONArray();readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){val o=JSONObject();for(i in 0 until c.columnCount){val name=c.getColumnName(i);when(c.getType(i)){android.database.Cursor.FIELD_TYPE_NULL->o.put(name,JSONObject.NULL);android.database.Cursor.FIELD_TYPE_INTEGER->o.put(name,c.getLong(i));android.database.Cursor.FIELD_TYPE_FLOAT->o.put(name,c.getDouble(i));android.database.Cursor.FIELD_TYPE_BLOB->o.put(name,android.util.Base64.encodeToString(c.getBlob(i),android.util.Base64.NO_WRAP));else->o.put(name,c.getString(i))}};arr.put(o)}};return arr}
     fun exportJson():String {
         val root = JSONObject().put("format","inkandquill").put("version",4)
@@ -358,7 +365,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             "link_exclusions"->setOf("id","recordId","term");"link_suggestions"->setOf("id","sourceId","targetId","term","position","status");"open_tabs"->setOf("position","recordId");
             "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
             "entity_snapshots"->setOf("id","recordId","label","payload","createdAt");"timeline_events"->setOf("id","worldId","title","startDate","endDate","description","recordId");
-            "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color","imageUri");"board_links"->setOf("id","boardId","fromItem","toItem","label");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt","term","endPosition");else->emptySet()}
+            "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color","imageUri");"board_links"->setOf("id","boardId","fromItem","toItem","label");"map_pins"->setOf("id","boardId","x","y","label","color","recordId","linkedBoardId","createdAt");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt","term","endPosition");else->emptySet()}
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     }
     fun replaceWithJson(raw:String){
@@ -559,5 +566,11 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun boardLinkLabel(boardId:String,from:String,to:String):String=readableDatabase.rawQuery("SELECT COALESCE(label,'') FROM board_links WHERE boardId=? AND fromItem=? AND toItem=?",arrayOf(boardId,from,to)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun boardLinks(boardId:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT fromItem,toItem FROM board_links WHERE boardId=?",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun linkBoardItems(boardId:String,from:String,to:String,label:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("boardId",boardId);put("fromItem",from);put("toItem",to);put("label",label)};writableDatabase.insertWithOnConflict("board_links",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
+    fun addMapPin(boardId:String,x:Float,y:Float,label:String,color:String="#D64545",recordId:String="",linkedBoardId:String=""):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("boardId",boardId);put("x",x.coerceIn(0f,1f));put("y",y.coerceIn(0f,1f));put("label",label);put("color",color);put("recordId",recordId);put("linkedBoardId",linkedBoardId);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("map_pins",null,v);return id}
+    fun mapPins(boardId:String):List<MapPin> = readableDatabase.rawQuery("SELECT id,boardId,COALESCE(x,0),COALESCE(y,0),COALESCE(label,''),COALESCE(color,'#D64545'),COALESCE(recordId,''),COALESCE(linkedBoardId,'') FROM map_pins WHERE boardId=? ORDER BY createdAt",arrayOf(boardId)).use{c->buildList{while(c.moveToNext())add(MapPin(c.getString(0),c.getString(1),c.getFloat(2),c.getFloat(3),c.getString(4),c.getString(5),c.getString(6),c.getString(7)))}}
+    fun updateMapPin(id:String,label:String,color:String,recordId:String,linkedBoardId:String){val v=ContentValues().apply{put("label",label);put("color",color);put("recordId",recordId);put("linkedBoardId",linkedBoardId)};writableDatabase.update("map_pins",v,"id=?",arrayOf(id))}
+    fun moveMapPin(id:String,x:Float,y:Float){val v=ContentValues().apply{put("x",x.coerceIn(0f,1f));put("y",y.coerceIn(0f,1f))};writableDatabase.update("map_pins",v,"id=?",arrayOf(id))}
+    fun deleteMapPin(id:String){writableDatabase.delete("map_pins","id=?",arrayOf(id))}
+    fun boardName(id:String):String=readableDatabase.rawQuery("SELECT name FROM planning_boards WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.getString(0)else ""}
     fun recordsForRevision(id:String)=revisions(id)
 }

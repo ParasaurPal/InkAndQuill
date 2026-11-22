@@ -13,6 +13,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, recursive world tree, and world-scoped record creation
 - [x] Selective multi-project sharing with chosen Series/Stories; explicit labeled record relationships; labeled alternate entity snapshots and restore
 - [x] World timelines; custom calendars with user-defined months, month lengths, weekdays, seasons, moons, eras, leap-rule notes, a month grid, dated entries, and yearly recurring events
+- [x] Interactive maps: Map boards render the background image as a zoomable, pannable canvas with tap-to-place pins (normalized 0..1 coordinates, so pins survive image changes), colored/labeled pins that open their linked location, character, event, or nested map, and pins included in JSON backup/restore (DB v19)
 - [x] Visual planning boards (corkboard, moodboard, map, flowchart, relationship graph, family tree, floor plan, reference board) with draggable image-backed colored cards, persistent positions, user-selected board backgrounds, linked record pins, and visual card-to-card links with labeled directional arrows, and deterministic auto-layout for family trees, flowcharts, timelines, relationship graphs, and corkboards
 - [x] Shared reusable typed taxonomy tags across record types, assignment chips, and search integration
 - [x] Starter template gallery expanded across novels, series, stories, poetry, journals, nonfiction, research, characters, worldbuilding, systems, plotting, calendars, maps, and references
@@ -31,7 +32,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Folder/collection management needs deeper hierarchy editing, bulk operations, and dedicated favorites manager
 - [ ] Attachments still need a full in-app gallery, recovery of preserved previous-media files after process termination (requires commit-aware recovery before safe deletion), cleanup of obsolete blobs after successful full replacement, and robust behavior for revoked provider permissions; portable backup currently reads attachment bytes into memory
 - [ ] Editor still needs a structured document model, true automatic multi-page pagination, page headers/footers, advanced table editing, imported font validation, and verified formatting/image fidelity across all exports
-- [ ] Planning boards still need geographic map layers/coordinates, specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
+- [ ] Planning boards still need specialized family-tree and relationship graph layouts, timeline visualization, flowchart-specific connectors, inventory views, and board collaboration
 - [ ] Calendars need validated custom-date arithmetic, era conversion, recurring-event expansion, and calendar grid views
 - [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, change journal, field-level merge, provider-specific adapters, and multi-device end-to-end testing remain
 - [ ] PDF import fidelity tests, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
