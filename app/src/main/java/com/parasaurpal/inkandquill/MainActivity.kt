@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.parasaurpal.inkandquill.data.*
 import com.parasaurpal.inkandquill.ui.RichTextEditor
 import com.parasaurpal.inkandquill.ui.MapScreen
+import com.parasaurpal.inkandquill.ui.OutlineScreen
 import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -64,6 +65,7 @@ class MainActivity:ComponentActivity(){
     DisposableEffect(context){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP&&AppLock.isEnabled(context))unlocked=false};ProcessLifecycleOwner.get().lifecycle.addObserver(observer);onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}}
     var screen by remember{mutableStateOf("Worlds")}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
+    var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
     var pendingFindTerm by remember{mutableStateOf("")}
     var pendingFindOccurrence by remember{mutableIntStateOf(0)}
     var openTabs by remember{mutableStateOf(db.openTabs().filter{db.get(it)!=null})}
@@ -98,13 +100,13 @@ class MainActivity:ComponentActivity(){
         if(!unlocked){LockScreen(onUnlock={pin->if(AppLock.verify(context,pin))unlocked=true})}else{
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
-            topBar={TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={if(selected==null)IconButton(onClick={settings=true}){Icon(Icons.Default.Settings,"Settings")}})},
-            bottomBar={if(selected==null)NavigationBar{navTabs.forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
+            topBar={TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(outlineFor!=null)IconButton(onClick={outlineFor=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}else if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={if(selected==null)IconButton(onClick={settings=true}){Icon(Icons.Default.Settings,"Settings")}})},
+            bottomBar={if(selected==null&&outlineFor==null)NavigationBar{navTabs.forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
         ){padding->
             Column(Modifier.fillMaxSize().padding(padding)){
-                if(openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id)selected=null}){Text("×")}}}
+                if(openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab;outlineFor=null},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id){selected=null;outlineFor=null}}){Text("×")}}}
                 Box(Modifier.weight(1f).fillMaxWidth()){
-                    if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);openTabs=openTabs.filterNot{it==id};db.saveOpenTabs(openTabs);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size},jumpTerm=pendingFindTerm,jumpOccurrence=pendingFindOccurrence,onJumpHandled={pendingFindTerm="";pendingFindOccurrence=0},onOpen={record,term,occurrence->selected=record;pendingFindTerm=term;pendingFindOccurrence=occurrence}) else when(screen){
+                    if(outlineFor!=null)OutlineScreen(db=db,root=outlineFor!!,onOpen={record->selected=record;outlineFor=null;refresh++},onBack={outlineFor=null;refresh++}) else if(selected!=null)EditorScreen(db,selected!!,fontSize,onSaved={record->db.save(record);selected=db.get(record.id);refresh++},onDelete={id->db.delete(id);openTabs=openTabs.filterNot{it==id};db.saveOpenTabs(openTabs);selected=null;refresh++},onLinkScan={record->val hits=LocalLinkEngine(db).scan(record);refresh++;hits.size},jumpTerm=pendingFindTerm,jumpOccurrence=pendingFindOccurrence,onJumpHandled={pendingFindTerm="";pendingFindOccurrence=0},onOpen={record,term,occurrence->selected=record;pendingFindTerm=term;pendingFindOccurrence=occurrence},onOutline={record->outlineFor=record;refresh++}) else when(screen){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh){selected=it}
                         "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true})
@@ -456,7 +458,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         Row(verticalAlignment=Alignment.CenterVertically){Checkbox(required,{required=it});Text("Required field")}
     }},confirmButton={TextButton(onClick={if(fieldName.isNotBlank()){selectedTemplate?.let{if(editingField==null)db.addTemplateField(it.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)else db.updateTemplateField(editingField!!.id,fieldName,fieldType,required,fieldSection,fieldOptions,fieldHint,fieldConditionField,fieldConditionValue,fieldFormula,fieldRepeatable)};editingField=null;fieldName="";fieldHint="";fieldOptions="";fieldConditionField="";fieldConditionValue="";fieldFormula="";fieldRepeatable=false;required=false;addField=false;fieldRefresh++}}){Text("Add field")}},dismissButton={TextButton(onClick={addField=false;editingField=null}){Text("Cancel")}})
 }
-@Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int,jumpTerm:String,jumpOccurrence:Int,onJumpHandled:()->Unit,onOpen:(InkRecord,String,Int)->Unit){
+@Composable private fun EditorScreen(db:InkDatabase,record:InkRecord,fontSize:Float,onSaved:(InkRecord)->Unit,onDelete:(String)->Unit,onLinkScan:(InkRecord)->Int,jumpTerm:String,jumpOccurrence:Int,onJumpHandled:()->Unit,onOpen:(InkRecord,String,Int)->Unit,onOutline:(InkRecord)->Unit={}){
     val appContext=LocalContext.current.applicationContext
     var title by remember(record.id){mutableStateOf(record.title)}
     var html by remember(record.id){mutableStateOf(record.body)}
@@ -523,6 +525,7 @@ private fun calculateTemplateField(field:TemplateField,fields:List<TemplateField
         if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){
             Text(record.kind,color=Plum,modifier=Modifier.weight(1f))
             if(record.kind=="Novel"||record.kind=="Book")TextButton(onClick={coverPicker.launch(arrayOf("image/*"))}){Text(if(coverUri.isBlank())"Add cover" else "Change cover")}
+            if(record.kind in listOf("Novel","Book","Story","Series"))IconButton(onClick={onOutline(record)}){Icon(Icons.Default.FormatListBulleted,"Outline")}
             TextButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,coverUri=coverUri))}){Text("Save")}
             IconButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,favorite=!record.favorite))}){Icon(if(record.favorite)Icons.Default.Star else Icons.Default.StarBorder,"Favorite")}
             IconButton(onClick={details=!details}){Icon(Icons.Default.Tune,"Details")}
