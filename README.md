@@ -27,7 +27,7 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 JDK 17 and Gradle 8.11.1:
 `gradle :app:assembleDebug`
 
-GitHub Actions builds and uploads `ink-and-quill-debug` on pushes to `main`.
+GitHub Actions builds on pushes to `main` and publishes the APK to the [latest test release](https://github.com/ParasaurPal/InkAndQuill/releases/tag/debug-latest), shown on the repo's main page. Download it directly: [InkAndQuill.apk](https://github.com/ParasaurPal/InkAndQuill/releases/download/debug-latest/InkAndQuill.apk).
 
 ## Product scope and remaining work
 See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). The product is still under active implementation. Optional cloud sync now supports encrypted bidirectional whole-backup exchange, offline WorkManager retry, hash-based change detection, explicit keep-phone/use-cloud conflict choices, and a persistent recent sync history including failures. Field-level merging and detailed sync history remain unfinished. Geographic map coordinates/layers, advanced family-tree layout tuning, inventory-specific views, more advanced template formulas and conditional logic, automatic multi-page pagination, richer DOCX/PDF formatting fidelity, detailed sync history/field-level merging, and extensive automated testing remain in the roadmap.
