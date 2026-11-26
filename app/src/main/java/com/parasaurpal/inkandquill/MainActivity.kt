@@ -81,12 +81,12 @@ class MainActivity:ComponentActivity(){
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent{InkAndQuillApp(database)}
+        setContent{InkAndQuillApp(database,intent?.getBooleanExtra("open_novel_studio",false)==true)}
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun InkAndQuillApp(db:InkDatabase){
+@Composable fun InkAndQuillApp(db:InkDatabase,startNovelStudio:Boolean=false){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val autoSaveManager=remember(context){TemplateAutoSaveManager(context)}
@@ -103,7 +103,7 @@ class MainActivity:ComponentActivity(){
         onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}
     }
     var screen by remember{mutableStateOf("Worlds")}
-    var novelStudio by remember{mutableStateOf(false)}
+    var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var activeBlueprint by remember{mutableStateOf<InkRecord?>(null)}
     var showCreateSheetPicker by remember{mutableStateOf(false)}

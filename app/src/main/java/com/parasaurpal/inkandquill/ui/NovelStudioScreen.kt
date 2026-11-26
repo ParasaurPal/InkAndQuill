@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.parasaurpal.inkandquill.data.NovelStudioStore
+import com.parasaurpal.inkandquill.data.DocumentExport
 import com.parasaurpal.inkandquill.data.StudioNode
 import org.json.JSONObject
 
@@ -41,6 +42,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var extra by remember{mutableStateOf("")}
     var title by remember{mutableStateOf("")}
     var prose by remember{mutableStateOf("")}
+    var editorHtml by remember{mutableStateOf("")}
     var summary by remember{mutableStateOf("")}
     var goal by remember{mutableStateOf("")}
     var conflict by remember{mutableStateOf("")}
@@ -62,17 +64,24 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     }
     fun loadScene(node:StudioNode){
         sceneId=node.id;title=node.title
-        store.readableDatabase.rawQuery("SELECT s.summary,s.goal,s.conflict,s.hook,d.plain_text FROM scenes s LEFT JOIN documents d ON d.scene_id=s.id WHERE s.id=?",arrayOf(node.id)).use{c->
-            if(c.moveToFirst()){summary=c.getString(0)?: "";goal=c.getString(1)?: "";conflict=c.getString(2)?: "";hook=c.getString(3)?: "";prose=c.getString(4)?: ""}
+        store.readableDatabase.rawQuery("SELECT s.summary,s.goal,s.conflict,s.hook,d.content_json,d.plain_text FROM scenes s LEFT JOIN documents d ON d.scene_id=s.id WHERE s.id=?",arrayOf(node.id)).use{c->
+            if(c.moveToFirst()){
+                summary=c.getString(0)?: "";goal=c.getString(1)?: "";conflict=c.getString(2)?: "";hook=c.getString(3)?: ""
+                prose=c.getString(5)?: ""
+                val stored=runCatching{JSONObject(c.getString(4)?: "{}")}.getOrDefault(JSONObject())
+                editorHtml=stored.optString("html").ifBlank{android.text.Html.escapeHtml(prose).replace("\n","<br>")}
+            }
         }
         level=NovelLevel.EDITOR;saved=false
     }
-    LaunchedEffect(sceneId,title,prose,summary,goal,conflict,hook) {
+    LaunchedEffect(sceneId,title,editorHtml,summary,goal,conflict,hook) {
         if(sceneId.isNotBlank()) {
             kotlinx.coroutines.delay(650)
             val meta=JSONObject().put("summary",summary).put("goal",goal).put("conflict",conflict).put("hook",hook)
-            val content=JSONObject().put("blocks",org.json.JSONArray().put(JSONObject().put("type","paragraph").put("text",prose)))
-            store.saveScene(sceneId,title,meta,content,prose)
+            val plain=DocumentExport.plain(editorHtml)
+            prose=plain
+            val content=JSONObject().put("format_version",2).put("html",editorHtml)
+            store.saveScene(sceneId,title,meta,content,plain)
             saved=true
         }
     }
@@ -129,13 +138,21 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                         OutlinedTextField(hook,{hook=it;saved=false},label={Text("Hook")},modifier=Modifier.fillMaxWidth())
                         Text("MANUSCRIPT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
                     }
-                    OutlinedTextField(prose,{prose=it;saved=false},modifier=Modifier.weight(1f).fillMaxWidth(),placeholder={Text("Write your scene…")},textStyle=MaterialTheme.typography.bodyLarge.copy(fontSize=18.sp),minLines=12)
+                    RichTextEditor(
+                        value=editorHtml,
+                        onValueChange={editorHtml=it;prose=DocumentExport.plain(it);saved=false},
+                        modifier=Modifier.weight(1f).fillMaxWidth(),
+                        fontSize=18f,
+                        enabledCommands=if(focus) emptySet() else null
+                    )
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
                         Text(prose.trim().split(Regex("\\s+")).count{it.isNotBlank()}.toString()+" words",style=MaterialTheme.typography.labelSmall)
                         Button(onClick={
                             val meta=JSONObject().put("summary",summary).put("goal",goal).put("conflict",conflict).put("hook",hook)
-                            val content=JSONObject().put("blocks",org.json.JSONArray().put(JSONObject().put("type","paragraph").put("text",prose)))
-                            store.saveScene(sceneId,title,meta,content,prose)
+                            val plain=DocumentExport.plain(editorHtml)
+                            prose=plain
+                            val content=JSONObject().put("format_version",2).put("html",editorHtml)
+                            store.saveScene(sceneId,title,meta,content,plain)
                             store.saveVersion("scene",sceneId,"Manual checkpoint",content)
                             saved=true
                         }){Icon(Icons.Default.Save,null);Spacer(Modifier.width(6.dp));Text("Save")}
