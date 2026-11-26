@@ -1,12 +1,17 @@
 package com.parasaurpal.inkandquill.ui
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -418,18 +423,55 @@ fun SheetFieldInput(
             }
 
             "Image" -> {
-                val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+                var pendingCam by remember { mutableStateOf<PendingCameraCapture?>(null) }
+                val takePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+                    val pending = pendingCam
+                    pendingCam = null
+                    if (saved && pending != null) {
+                        val recKind = db.get(recordId)?.kind.orEmpty()
+                        val asset = MediaManager.finalizeCameraCapture(
+                            db = db,
+                            pending = pending,
+                            recordId = recordId,
+                            templateId = field.templateId,
+                            fieldId = field.id,
+                            subjectKind = recKind,
+                            displayName = "${field.name} photo"
+                        )
+                        if (asset != null) {
+                            onValueChange(asset.uri)
+                        }
+                    } else if (pending != null) {
+                        runCatching { pending.file.delete() }
+                    }
+                }
+                val camPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                    if (granted) {
+                        val dest = MediaManager.createCameraDestination(context)
+                        pendingCam = dest
+                        takePhotoLauncher.launch(dest.contentUri)
+                    } else {
+                        Toast.makeText(context, "Camera permission denied. You can still choose a photo.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
                     uri?.let {
-                        runCatching {
-                            val bytes = context.contentResolver.openInputStream(it)?.use { s -> s.readBytes() } ?: byteArrayOf()
-                            if (bytes.isNotEmpty()) {
-                                val mime = context.contentResolver.getType(it) ?: "image/png"
-                                onValueChange("data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}")
-                            }
+                        val recKind = db.get(recordId)?.kind.orEmpty()
+                        val asset = MediaManager.importPickedPhoto(
+                            context = context,
+                            db = db,
+                            sourceUri = it,
+                            recordId = recordId,
+                            templateId = field.templateId,
+                            fieldId = field.id,
+                            subjectKind = recKind
+                        )
+                        if (asset != null) {
+                            onValueChange(asset.uri)
                         }
                     }
                 }
-                val bitmap = remember(value) { decodeBase64Image(value) }
+                val bitmap = remember(value) { MediaManager.decodeImageBitmap(context, value) }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (bitmap != null) {
                         Image(
@@ -442,11 +484,30 @@ fun SheetFieldInput(
                             contentScale = ContentScale.Crop
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = { imagePicker.launch(arrayOf("image/*")) }) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = {
+                            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                            if (granted) {
+                                val dest = MediaManager.createCameraDestination(context)
+                                pendingCam = dest
+                                takePhotoLauncher.launch(dest.contentUri)
+                            } else {
+                                camPermLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        }) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Take Photo")
+                        }
+                        FilledTonalButton(onClick = {
+                            imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }) {
                             Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (bitmap == null) "Choose Image" else "Replace Image")
+                            Text(if (bitmap == null) "Choose Photo" else "Replace")
                         }
                         if (value.isNotBlank()) {
                             TextButton(onClick = { onValueChange("") }) { Text("Remove") }
@@ -457,18 +518,52 @@ fun SheetFieldInput(
 
             "Gallery" -> {
                 val existing = remember(value) {
-                    value.split("||").filter { it.startsWith("data:") }
+                    value.split("||").filter { it.isNotBlank() }
                 }
-                val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                var pendingCam by remember { mutableStateOf<PendingCameraCapture?>(null) }
+                val takePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+                    val pending = pendingCam
+                    pendingCam = null
+                    if (saved && pending != null) {
+                        val recKind = db.get(recordId)?.kind.orEmpty()
+                        val asset = MediaManager.finalizeCameraCapture(
+                            db = db,
+                            pending = pending,
+                            recordId = recordId,
+                            templateId = field.templateId,
+                            fieldId = field.id,
+                            subjectKind = recKind,
+                            displayName = "${field.name} gallery photo"
+                        )
+                        if (asset != null) {
+                            onValueChange((existing + asset.uri).joinToString("||"))
+                        }
+                    } else if (pending != null) {
+                        runCatching { pending.file.delete() }
+                    }
+                }
+                val camPermLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                    if (granted) {
+                        val dest = MediaManager.createCameraDestination(context)
+                        pendingCam = dest
+                        takePhotoLauncher.launch(dest.contentUri)
+                    } else {
+                        Toast.makeText(context, "Camera permission denied. You can still add photos from your library.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
                     if (uris.isNotEmpty()) {
+                        val recKind = db.get(recordId)?.kind.orEmpty()
                         val added = uris.mapNotNull { uri ->
-                            runCatching {
-                                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: byteArrayOf()
-                                if (bytes.isEmpty()) null else {
-                                    val mime = context.contentResolver.getType(uri) ?: "image/png"
-                                    "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
-                                }
-                            }.getOrNull()
+                            MediaManager.importPickedPhoto(
+                                context = context,
+                                db = db,
+                                sourceUri = uri,
+                                recordId = recordId,
+                                templateId = field.templateId,
+                                fieldId = field.id,
+                                subjectKind = recKind
+                            )?.uri
                         }
                         if (added.isNotEmpty()) {
                             onValueChange((existing + added).joinToString("||"))
@@ -481,8 +576,8 @@ fun SheetFieldInput(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            existing.forEachIndexed { idx, imgData ->
-                                val bmp = remember(imgData) { decodeBase64Image(imgData) }
+                            existing.forEachIndexed { idx, imgRef ->
+                                val bmp = remember(imgRef) { MediaManager.decodeImageBitmap(context, imgRef, maxDim = 640) }
                                 Box(modifier = Modifier.size(110.dp)) {
                                     if (bmp != null) {
                                         Image(
@@ -508,10 +603,31 @@ fun SheetFieldInput(
                             }
                         }
                     }
-                    FilledTonalButton(onClick = { galleryPicker.launch(arrayOf("image/*")) }) {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (existing.isEmpty()) "Add Gallery Images" else "Add More Images (${existing.size})")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = {
+                            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                            if (granted) {
+                                val dest = MediaManager.createCameraDestination(context)
+                                pendingCam = dest
+                                takePhotoLauncher.launch(dest.contentUri)
+                            } else {
+                                camPermLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        }) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Take Photo")
+                        }
+                        FilledTonalButton(onClick = {
+                            galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }) {
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (existing.isEmpty()) "Add Photos" else "Add More (${existing.size})")
+                        }
                     }
                 }
             }

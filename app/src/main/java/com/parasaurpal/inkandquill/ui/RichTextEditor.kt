@@ -500,10 +500,8 @@ fun RichTextEditor(
                         """.trimIndent(),
                         null
                     )
-                    if (!view.hasFocus()) {
-                        val q = JSONObject.quote(value)
-                        view.evaluateJavascript("setEditorHtml($q)", null)
-                    }
+                    val q = JSONObject.quote(value)
+                    view.evaluateJavascript("setEditorHtml($q, ${!view.hasFocus()})", null)
                     if (findTerm.isNotBlank()) {
                         view.setFindListener { _, count, done ->
                             if (done) {
@@ -710,9 +708,11 @@ a{color:#bfa7df}
 </style></head><body><div id="editor" contenteditable="true"></div><script>
 const editor=document.getElementById('editor');
 editor.innerHTML=$initialQuoted;
+let lastSyncedHtml=editor.innerHTML;
 
 function syncEditorChange(){
-    InkBridge.changed(editor.innerHTML);
+    lastSyncedHtml=editor.innerHTML;
+    InkBridge.changed(lastSyncedHtml);
     reportSelectionState();
 }
 
@@ -725,9 +725,10 @@ editor.addEventListener('change', function(e){
     }
 });
 
-function setEditorHtml(v){
-    if(document.activeElement!==editor && editor.innerHTML!==v){
+function setEditorHtml(v, canForce){
+    if(v!==lastSyncedHtml && (canForce || document.activeElement!==editor) && editor.innerHTML!==v){
         editor.innerHTML=v;
+        lastSyncedHtml=editor.innerHTML;
     }
 }
 

@@ -43,7 +43,22 @@ data class IndexedSearchRow(
     val proseContent: String
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,21){
+data class MediaAsset(
+    val id: String,
+    val recordId: String,
+    val templateId: String,
+    val fieldId: String,
+    val subjectKind: String,
+    val uri: String,
+    val mimeType: String,
+    val displayName: String,
+    val caption: String,
+    val source: String,
+    val size: Long,
+    val createdAt: Long
+)
+
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,23){
     private val appContext=context.applicationContext
     init {
         seed(writableDatabase, overwriteUnmodified = false)
@@ -72,7 +87,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE record_folders(recordId TEXT PRIMARY KEY,folderId TEXT NOT NULL)")
         db.execSQL("CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
         db.execSQL("CREATE TABLE collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
-        db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER,templateId TEXT DEFAULT '',fieldId TEXT DEFAULT '',subjectKind TEXT DEFAULT '',caption TEXT DEFAULT '',source TEXT DEFAULT 'file')")
         db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
         db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
@@ -95,9 +110,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE calendar_entries(id TEXT PRIMARY KEY,calendarId TEXT NOT NULL,year INTEGER,month INTEGER,day INTEGER,title TEXT NOT NULL,description TEXT,repeatYearly INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE link_history(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT,position INTEGER,action TEXT,createdAt INTEGER,term TEXT,endPosition INTEGER)")
         db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
+        db.execSQL("CREATE INDEX attachments_template ON attachments(templateId)")
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
         db.execSQL("CREATE INDEX record_sheet_values_record ON record_sheet_values(recordId)")
-        db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(docId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+        db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
         seed(db, overwriteUnmodified = true)
         rebuildSearchIndex(db)
     }
@@ -152,7 +168,20 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             seed(db, overwriteUnmodified = true)
         }
         if(oldVersion<21){
-            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(docId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+            rebuildSearchIndex(db)
+        }
+        if(oldVersion<22){
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN templateId TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN fieldId TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN subjectKind TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN caption TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN source TEXT DEFAULT 'file'")}
+            db.execSQL("CREATE INDEX IF NOT EXISTS attachments_template ON attachments(templateId)")
+        }
+        if(oldVersion<23){
+            runCatching{db.execSQL("DROP TABLE IF EXISTS search_fts")}
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
             rebuildSearchIndex(db)
         }
     }
@@ -304,7 +333,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 db.delete("world_calendars","worldId=?",arrayOf(id))
             }
             db.delete("records","id=?",arrayOf(id))
-            db.delete("search_fts","docId=?",arrayOf(id))
+            db.delete("search_fts","recordId=?",arrayOf(id))
             db.setTransactionSuccessful()
         }finally{db.endTransaction()}
         mediaIds.forEach(::deleteImportedMediaBlob)
@@ -354,7 +383,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val allowed=when(table){
             "links"->setOf("id","sourceId","targetId","label","position","term","endPosition");"settings"->setOf("key","value");"revisions"->setOf("id","recordId","title","body","createdAt");
             "template_fields"->setOf("id","templateId","name","fieldType","required","position","section","options","hint","removed","conditionField","conditionValue","formula","repeatable");"folders"->setOf("id","name","parentId","color","position");"record_folders"->setOf("recordId","folderId");
-            "collections"->setOf("id","name","description","color","createdAt");"collection_records"->setOf("collectionId","recordId");"attachments"->setOf("id","recordId","uri","mimeType","displayName","size","createdAt");
+            "collections"->setOf("id","name","description","color","createdAt");"collection_records"->setOf("collectionId","recordId");"attachments"->setOf("id","recordId","uri","mimeType","displayName","size","createdAt","templateId","fieldId","subjectKind","caption","source");
             "link_exclusions"->setOf("id","recordId","term");"link_suggestions"->setOf("id","sourceId","targetId","term","position","status");"open_tabs"->setOf("position","recordId");
             "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_sheets"->setOf("recordId","templateId","updatedAt");"record_sheet_values"->setOf("recordId","fieldId","value","updatedAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
             "entity_snapshots"->setOf("id","recordId","label","payload","createdAt");"timeline_events"->setOf("id","worldId","title","startDate","endDate","description","recordId");
@@ -408,7 +437,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
         val dir=java.io.File(appContext.filesDir,"attachments")
         if(!dir.isDirectory)return
-        dir.listFiles()?.filter{file->file.isFile&&file.name.endsWith(".bin")&&file.name.removeSuffix(".bin") !in referenced}?.forEach{file->
+        dir.listFiles()?.filter{file->file.isFile&&!file.name.startsWith(".")&&file.name.substringBeforeLast('.') !in referenced}?.forEach{file->
             runCatching{if(file.exists()&&!file.delete())android.util.Log.w("InkDatabase","Could not remove obsolete imported media: ${file.name}")}
         }
     }
@@ -484,7 +513,90 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun removeFromCollection(collectionId:String,recordId:String){writableDatabase.delete("collection_records","collectionId=? AND recordId=?",arrayOf(collectionId,recordId))}
     fun recordCollections(recordId:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT c.id,c.name FROM collections c JOIN collection_records cr ON cr.collectionId=c.id WHERE cr.recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun collections():List<Pair<String,String>> = readableDatabase.rawQuery("SELECT id,name FROM collections ORDER BY name",null).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
-    fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("uri",uri);put("mimeType",mimeType);put("displayName",displayName);put("size",size);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("attachments",null,v)}
+    fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){
+        addMediaAsset(recordId=recordId,uri=uri,mimeType=mimeType,displayName=displayName,size=size)
+    }
+    fun addMediaAsset(
+        id:String=UUID.randomUUID().toString(),
+        recordId:String,
+        uri:String,
+        mimeType:String="image/jpeg",
+        displayName:String="",
+        size:Long=0L,
+        templateId:String="",
+        fieldId:String="",
+        subjectKind:String="",
+        caption:String="",
+        source:String="file"
+    ):MediaAsset{
+        val now=System.currentTimeMillis()
+        val resolvedTpl=templateId.ifBlank{ if(recordId.isNotBlank()) sheetTemplateId(recordId) else "" }
+        val resolvedKind=subjectKind.ifBlank{ if(recordId.isNotBlank()) get(recordId)?.kind.orEmpty() else "" }
+        val v=ContentValues().apply{
+            put("id",id)
+            put("recordId",recordId)
+            put("uri",uri)
+            put("mimeType",mimeType)
+            put("displayName",displayName)
+            put("size",size)
+            put("createdAt",now)
+            put("templateId",resolvedTpl)
+            put("fieldId",fieldId)
+            put("subjectKind",resolvedKind)
+            put("caption",caption)
+            put("source",source)
+        }
+        writableDatabase.insertWithOnConflict("attachments",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+        return MediaAsset(id,recordId,resolvedTpl,fieldId,resolvedKind,uri,mimeType,displayName,caption,source,size,now)
+    }
+    private fun android.database.Cursor.mediaAsset()=MediaAsset(
+        id = getString(0),
+        recordId = getString(1) ?: "",
+        uri = getString(2) ?: "",
+        mimeType = getString(3) ?: "",
+        displayName = getString(4) ?: "",
+        size = getLong(5),
+        createdAt = getLong(6),
+        templateId = getString(7) ?: "",
+        fieldId = getString(8) ?: "",
+        subjectKind = getString(9) ?: "",
+        caption = getString(10) ?: "",
+        source = getString(11) ?: "file"
+    )
+    private val mediaSelectCols="id,recordId,uri,COALESCE(mimeType,''),COALESCE(displayName,''),COALESCE(size,0),COALESCE(createdAt,0),COALESCE(templateId,''),COALESCE(fieldId,''),COALESCE(subjectKind,''),COALESCE(caption,''),COALESCE(source,'file')"
+    fun mediaForRecord(recordId:String):List<MediaAsset> = readableDatabase.rawQuery(
+        "SELECT $mediaSelectCols FROM attachments WHERE recordId=? ORDER BY createdAt DESC",
+        arrayOf(recordId)
+    ).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    fun mediaForTemplate(templateId:String):List<MediaAsset> = readableDatabase.rawQuery(
+        "SELECT $mediaSelectCols FROM attachments WHERE templateId=? OR recordId=? ORDER BY createdAt DESC",
+        arrayOf(templateId,templateId)
+    ).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    fun allMediaAssets(subjectKindFilter:String?=null,templateIdFilter:String?=null):List<MediaAsset>{
+        val where=mutableListOf<String>()
+        val args=mutableListOf<String>()
+        if(!subjectKindFilter.isNullOrBlank()&&subjectKindFilter!="All"){
+            where.add("subjectKind=?")
+            args.add(subjectKindFilter)
+        }
+        if(!templateIdFilter.isNullOrBlank()){
+            where.add("(templateId=? OR recordId=?)")
+            args.add(templateIdFilter)
+            args.add(templateIdFilter)
+        }
+        val sql="SELECT $mediaSelectCols FROM attachments"+(if(where.isEmpty())"" else " WHERE "+where.joinToString(" AND "))+" ORDER BY createdAt DESC"
+        return readableDatabase.rawQuery(sql,args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    }
+    fun updateMediaAsset(id:String,recordId:String,templateId:String,fieldId:String,subjectKind:String,caption:String){
+        val v=ContentValues().apply{
+            put("recordId",recordId)
+            put("templateId",templateId)
+            put("fieldId",fieldId)
+            put("subjectKind",subjectKind)
+            put("caption",caption)
+        }
+        writableDatabase.update("attachments",v,"id=?",arrayOf(id))
+    }
     fun attachments(recordId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments WHERE recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"uri" to c.getString(1),"mimeType" to (c.getString(2)?: ""),"displayName" to (c.getString(3)?: "")))}}
     fun removeAttachment(id:String){
         writableDatabase.delete("attachments","id=?",arrayOf(id))
@@ -494,8 +606,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
         if(safeName.isBlank()||safeName!=id)return
         val dir=java.io.File(appContext.filesDir,"attachments")
-        val file=java.io.File(dir,"$safeName.bin")
-        if(file.isFile&&!file.delete())android.util.Log.w("InkDatabase","Could not remove imported media: ${file.name}")
+        listOf(".bin",".jpg",".jpeg",".png",".webp").forEach{ext->
+            val file=java.io.File(dir,"$safeName$ext")
+            if(file.isFile&&!file.delete())android.util.Log.w("InkDatabase","Could not remove imported media: ${file.name}")
+        }
     }
     fun excludeLinkTerm(recordId:String,term:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("term",term.trim())};writableDatabase.insertWithOnConflict("link_exclusions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun isLinkExcluded(recordId:String,term:String)=readableDatabase.rawQuery("SELECT 1 FROM link_exclusions WHERE recordId=? AND lower(term)=lower(?)",arrayOf(recordId,term)).use{it.moveToFirst()}
@@ -798,7 +912,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             }
             db.delete("record_sheets", "templateId=?", arrayOf(id))
             db.delete("records", "id=?", arrayOf(id))
-            db.delete("search_fts", "docId=?", arrayOf(id))
+            db.delete("search_fts", "recordId=?", arrayOf(id))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -846,7 +960,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }finally{db.endTransaction()}
     }
     private fun indexRecord(db:SQLiteDatabase,recordId:String){
-        db.delete("search_fts","docId=?",arrayOf(recordId))
+        db.delete("search_fts","recordId=?",arrayOf(recordId))
         val rec=db.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(recordId)).use{if(it.moveToFirst())it.record()else null} ?: return
         val isTemplate=rec.kind=="Template"||rec.kind=="Archived Template"
         val docType=if(isTemplate)"template" else "entry"
@@ -881,7 +995,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val plainProse=DocumentExport.plain(rec.body).replace(Regex("data:[^\\s\"']+"),"").trim()
         val kindCol=if(isTemplate)"${rec.scope} Template".trim() else rec.kind
         val cv=ContentValues().apply{
-            put("docId",rec.id)
+            put("recordId",rec.id)
             put("docType",docType)
             put("kind",kindCol)
             put("title",rec.title)
@@ -897,7 +1011,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         if(ftsQuery.isBlank())return emptyList()
         return runCatching{
             readableDatabase.rawQuery(
-                "SELECT docId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts WHERE search_fts MATCH ? LIMIT ?",
+                "SELECT recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts WHERE search_fts MATCH ? LIMIT ?",
                 arrayOf(ftsQuery,limit.toString())
             ).use{c->
                 buildList{
@@ -910,7 +1024,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     }
     fun allIndexedRows(limit:Int=200):List<IndexedSearchRow>{
         return readableDatabase.rawQuery(
-            "SELECT docId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts LIMIT ?",
+            "SELECT recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts LIMIT ?",
             arrayOf(limit.toString())
         ).use{c->
             buildList{

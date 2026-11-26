@@ -197,10 +197,7 @@ fun ReadingModeScreen(
     }
 
     val wordCount = remember(compiledBodyHtml) {
-        DocumentExport.plain(compiledBodyHtml)
-            .trim()
-            .split(Regex("\\s+"))
-            .count { it.isNotBlank() }
+        WordCountEngine.countWordsInPlain(WordCountEngine.htmlToPlainFast(compiledBodyHtml))
     }
     val readMinutes = remember(wordCount) {
         if (wordCount == 0) 0 else ceil(wordCount / 225.0).toInt().coerceAtLeast(1)

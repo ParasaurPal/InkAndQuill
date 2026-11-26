@@ -346,6 +346,7 @@ object SheetEngine {
         sectionOrder: List<String>,
         values: Map<String, String>,
         proseHtml: String,
+        imageDataResolver: ((String) -> String?)? = null,
         recordResolver: (String) -> InkRecord?
     ): String {
         val ordered = orderedFields(fields, sectionOrder).filter { isFieldVisible(it, fields, values) }
@@ -356,12 +357,17 @@ object SheetEngine {
                     sectionFields.forEach { f ->
                         val raw = values[f.id].orEmpty()
                         when (f.fieldType) {
-                            "Image" -> if (raw.startsWith("data:")) {
-                                append("<p><strong>").append(TextUtils.htmlEncode(f.name)).append(":</strong><br/>")
-                                append("<img src=\"").append(raw).append("\" style=\"max-width:100%;height:auto;border-radius:8px;margin:4px 0;\"/></p>")
+                            "Image" -> {
+                                val resolved = if (raw.startsWith("data:")) raw else imageDataResolver?.invoke(raw)
+                                if (!resolved.isNullOrBlank()) {
+                                    append("<p><strong>").append(TextUtils.htmlEncode(f.name)).append(":</strong><br/>")
+                                    append("<img src=\"").append(resolved).append("\" style=\"max-width:100%;height:auto;border-radius:8px;margin:4px 0;\"/></p>")
+                                }
                             }
                             "Gallery" -> {
-                                val imgs = raw.split("||").filter { it.startsWith("data:") }
+                                val imgs = raw.split("||")
+                                    .filter { it.isNotBlank() }
+                                    .mapNotNull { item -> if (item.startsWith("data:")) item else imageDataResolver?.invoke(item) }
                                 if (imgs.isNotEmpty()) {
                                     append("<p><strong>").append(TextUtils.htmlEncode(f.name)).append(":</strong><br/>")
                                     imgs.forEach { img ->

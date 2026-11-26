@@ -55,6 +55,9 @@ import com.parasaurpal.inkandquill.ui.TemplateLibraryDialog
 import com.parasaurpal.inkandquill.ui.CreateTemplateDialog
 import com.parasaurpal.inkandquill.ui.SaveAsTemplateDialog
 import com.parasaurpal.inkandquill.ui.ReadingModeScreen
+import com.parasaurpal.inkandquill.ui.LiveWordCountBar
+import com.parasaurpal.inkandquill.ui.WordCountDashboardDialog
+import com.parasaurpal.inkandquill.ui.MediaManagerDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -106,6 +109,7 @@ class MainActivity:ComponentActivity(){
     var showGoogleDriveBackup by remember{mutableStateOf(false)}
     var showTemplateLibrary by remember{mutableStateOf(false)}
     var showCreateCustomTemplate by remember{mutableStateOf(false)}
+    var showGlobalMediaManager by remember{mutableStateOf(false)}
     var readingRecord by remember{mutableStateOf<InkRecord?>(null)}
     var pendingFindTerm by remember{mutableStateOf("")}
     var pendingFindOccurrence by remember{mutableIntStateOf(0)}
@@ -251,7 +255,7 @@ class MainActivity:ComponentActivity(){
                     ) else when(screen){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh,{readingRecord=it}){selected=it}
-                        "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
+                        "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true},{readingRecord=it},{showGlobalMediaManager=true})
                         "Templates"->TemplateScreen(
                             db = db,
                             refresh = refresh,
@@ -263,6 +267,7 @@ class MainActivity:ComponentActivity(){
                                 }
                             },
                             onOpenTemplateLibrary = { showTemplateLibrary = true },
+                            onOpenMediaManager = { showGlobalMediaManager = true },
                             edit = { selected = it },
                             designBlueprint = { activeBlueprint = it },
                             use = { created -> selected = created; refresh++ }
@@ -340,6 +345,15 @@ class MainActivity:ComponentActivity(){
                 activeBlueprint = tpl
                 refresh++
             }
+        )
+        if(showGlobalMediaManager)MediaManagerDialog(
+            db = db,
+            onOpenRecord = { rec ->
+                showGlobalMediaManager = false
+                selected = rec
+            },
+            onMediaChanged = { refresh++ },
+            onDismiss = { showGlobalMediaManager = false }
         )
         if(settings)SettingsDialog(
             db,appearance,{appearance=it;db.setSetting("appearance",it)},
@@ -455,6 +469,11 @@ class MainActivity:ComponentActivity(){
     val cover=remember(record.coverUri){if(record.coverUri.isNotBlank())runCatching{context.contentResolver.openInputStream(Uri.parse(record.coverUri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()else null}
     val sharedTags=db.allTags().filter{it.first in db.tagsForRecord(record.id)}.map{it.second}
     val sheetTplId=remember(record.id,record.updatedAt){db.sheetTemplateId(record.id)}
+    val cardWordCount=remember(record.id,record.body,sheetTplId,record.updatedAt){
+        val fields=if(sheetTplId.isNotBlank())db.templateFields(sheetTplId) else emptyList()
+        val vals=if(sheetTplId.isNotBlank())db.sheetValues(record.id) else emptyMap()
+        WordCountEngine.analyzeDocument(record.body,fields,vals).totalWords
+    }
     val previewText=remember(record.id,record.body,sheetTplId,record.updatedAt){
         if(record.body.isNotBlank()){
             android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().take(150).replace('\n',' ')
@@ -491,6 +510,9 @@ class MainActivity:ComponentActivity(){
             Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Text(record.title.ifBlank{"Untitled"},Modifier.weight(1f),fontWeight=FontWeight.SemiBold,fontSize=15.sp,maxLines=1)
+                    if(cardWordCount>0){
+                        Text("${WordCountEngine.formatCompact(cardWordCount)} w · ",fontSize=9.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Text((if(sheetTplId.isNotBlank())"SHEET · " else "")+record.kind.uppercase(),fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=.7.sp,color=Plum)
                 }
                 if(previewText.isNotBlank())Text(previewText,maxLines=2,fontSize=12.sp,lineHeight=17.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.66f))
@@ -545,7 +567,7 @@ class MainActivity:ComponentActivity(){
     if(createCollection)AlertDialog(onDismissRequest={createCollection=false},title={Text("New collection")},text={OutlinedTextField(collectionName,{collectionName=it},label={Text("Collection name")})},confirmButton={TextButton(onClick={if(collectionName.isNotBlank()){db.createCollection(collectionName);collectionName="";createCollection=false}}){Text("Create")}},dismissButton={TextButton(onClick={createCollection=false}){Text("Cancel")}})
     if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={Column{OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true);Box{OutlinedButton(onClick={folderParentMenu=true}){Text("Parent: "+(folders.firstOrNull{it.first==newFolderParent}?.second?: "None"))};DropdownMenu(expanded=folderParentMenu,onDismissRequest={folderParentMenu=false}){DropdownMenuItem(text={Text("No parent")},onClick={newFolderParent="";folderParentMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={newFolderParent=f.first;folderParentMenu=false})}}}}},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName,newFolderParent);newFolderName="";newFolderParent="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
-@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit,onRead:(InkRecord)->Unit={}){
+@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit,onRead:(InkRecord)->Unit={},onOpenMediaManager:()->Unit={}){
     val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
     var world by remember{mutableStateOf<InkRecord?>(null)}
     var createChild by remember{mutableStateOf(false)}
@@ -586,6 +608,8 @@ class MainActivity:ComponentActivity(){
     var calendarMonthIndex by remember{mutableIntStateOf(0)}
     var calendarYear by remember{mutableIntStateOf(1)}
     var localRefresh by remember{mutableIntStateOf(0)}
+    var showWorldWordStats by remember{mutableStateOf(false)}
+    val wordSnapshot=remember(refresh,localRefresh){WordCountEngine.buildSnapshot(db)}
     var linkMode by remember{mutableStateOf(false)}
     var boardLinkLabel by remember{mutableStateOf("related to")}
     var linkFrom by remember{mutableStateOf("")}
@@ -600,19 +624,39 @@ class MainActivity:ComponentActivity(){
         Column(Modifier.fillMaxSize().padding(16.dp)){ 
             Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
             Text("Worlds are the top-level home for each fictional universe. Expand a Series to see its books, chapters, and scenes.")
-            Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
+            Row(Modifier.fillMaxWidth().padding(vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
+                FilledTonalButton(onClick=onOpenMediaManager,modifier=Modifier.testTag("worlds_media_manager_button")){
+                    Icon(Icons.Default.PhotoCamera,null,modifier=Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Media")
+                }
+            }
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){
-                items(worlds){ w -> WorldListCard(db,w,open,onRead) }
+                items(worlds){ w -> WorldListCard(db,w,open,onRead,wordSnapshot) }
                 if(worlds.isEmpty()) item { Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp)) }
             }
         }
     }else{
         val w=world!!
-        Column(Modifier.fillMaxSize().padding(12.dp)){Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={world=null;selectedBoard=""}){Icon(Icons.Default.ArrowBack,"Worlds")};Text(w.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
+        val worldTotalWords=remember(w.id,wordSnapshot){wordSnapshot.subtreeWords(w.id)}
+        Column(Modifier.fillMaxSize().padding(12.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick={world=null;selectedBoard=""}){Icon(Icons.Default.ArrowBack,"Worlds")}
+                Column(Modifier.weight(1f)){
+                    Text(w.title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                    Text("%,d total words in world".format(worldTotalWords),fontSize=11.sp,color=Plum)
+                }
+                TextButton(onClick={showWorldWordStats=true},modifier=Modifier.testTag("world_word_counts_button")){
+                    Icon(Icons.Default.Analytics,null,modifier=Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Words")
+                }
+            }
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Hierarchy","Resources","Timeline","Calendar","Boards","Connections").forEach{FilterChip(mode==it,{mode=it},label={Text(it)})}}
             when(mode){
-                "Hierarchy"->{Row(Modifier.fillMaxWidth().padding(vertical=4.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={createParentId=w.id;createChild=true}){Text("Add to world")};FilledTonalButton(onClick={showWorldSheetPicker=true},modifier=Modifier.testTag("world_new_from_sheet")){Icon(Icons.Default.DashboardCustomize,null,modifier=Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("New from Sheet")}};val allWorldRecords=remember(w.id,localRefresh,refresh){db.all()};val direct=allWorldRecords.filter{it.parentId==w.id};val series=direct.filter{it.kind=="Series"};val stories=direct.filter{it.kind=="Story"||it.kind=="Novel"};val resources=direct.filter{it.kind!="Series"&&it.kind!="Story"};LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp)){if(series.isNotEmpty())item{Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)};items(series){seriesRecord->var expanded by remember(w.id,seriesRecord.id){mutableStateOf(true)};Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(seriesRecord.title,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={open(seriesRecord)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand series")}};if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allWorldRecords)}}};if(stories.isNotEmpty())item{Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)};items(stories){story->var expanded by remember(w.id,story.id){mutableStateOf(true)};Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(story.title,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={open(story)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand story")}};if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allWorldRecords)}}};if(resources.isNotEmpty())item{Text("World resources",fontWeight=FontWeight.SemiBold,color=Plum)};items(resources){resource->Column{RecordCard(db,resource,open,onRead);WorldTreeChildren(db,resource.id,1,open,onRead,allWorldRecords)}}}}
-                "Resources"->{WorldResourcesScreen(db,w,refresh+localRefresh,open,onRead){parentId->createParentId=parentId;createChild=true}}
+                "Hierarchy"->{Row(Modifier.fillMaxWidth().padding(vertical=4.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={createParentId=w.id;createChild=true}){Text("Add to world")};FilledTonalButton(onClick={showWorldSheetPicker=true},modifier=Modifier.testTag("world_new_from_sheet")){Icon(Icons.Default.DashboardCustomize,null,modifier=Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("New from Sheet")}};val allWorldRecords=remember(w.id,localRefresh,refresh){db.all()};val direct=allWorldRecords.filter{it.parentId==w.id};val series=direct.filter{it.kind=="Series"};val stories=direct.filter{it.kind=="Story"||it.kind=="Novel"};val resources=direct.filter{it.kind!="Series"&&it.kind!="Story"};LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp)){if(series.isNotEmpty())item{Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)};items(series){seriesRecord->var expanded by remember(w.id,seriesRecord.id){mutableStateOf(true)};val seriesWords=wordSnapshot.subtreeWords(seriesRecord.id);Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(seriesRecord.title,fontWeight=FontWeight.SemiBold);Text("%,d words".format(seriesWords),fontSize=11.sp,color=Plum)};TextButton(onClick={open(seriesRecord)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand series")}};if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allWorldRecords,wordSnapshot)}}};if(stories.isNotEmpty())item{Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)};items(stories){story->var expanded by remember(w.id,story.id){mutableStateOf(true)};val storyWords=wordSnapshot.subtreeWords(story.id);Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(story.title,fontWeight=FontWeight.SemiBold);Text("%,d words".format(storyWords),fontSize=11.sp,color=Plum)};TextButton(onClick={open(story)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand story")}};if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allWorldRecords,wordSnapshot)}}};if(resources.isNotEmpty())item{Text("World resources",fontWeight=FontWeight.SemiBold,color=Plum)};items(resources){resource->Column{RecordCard(db,resource,open,onRead);WorldTreeChildren(db,resource.id,1,open,onRead,allWorldRecords,wordSnapshot)}}}}
+                "Resources"->{WorldResourcesScreen(db,w,refresh+localRefresh,open,onRead,onOpenMediaManager){parentId->createParentId=parentId;createChild=true}}
                 "Timeline"->{val events=db.timeline(w.id);Row(verticalAlignment=Alignment.CenterVertically){Text("World chronology",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={eventDialog=true}){Text("Add event")}};LazyColumn{itemsIndexed(events){index,e->Row(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(horizontalAlignment=Alignment.CenterHorizontally,modifier=Modifier.width(24.dp)){Box(Modifier.size(12.dp).background(Plum,CircleShape));if(index<events.lastIndex)Box(Modifier.width(2.dp).height(70.dp).background(Plum.copy(alpha=.5f))) };Card(Modifier.weight(1f)){Column(Modifier.padding(12.dp)){Text(e.second,color=Plum,fontSize=12.sp);Text(e.first,fontWeight=FontWeight.SemiBold);Text(e.third,fontSize=12.sp)}}}}}}
                 "Calendar"->{val calendars=remember(w.id,localRefresh){db.worldCalendars(w.id)};Row(verticalAlignment=Alignment.CenterVertically){Text("Custom world calendars",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={calendarDialog=true}){Text("New calendar")}};calendars.forEach{cal->Card(Modifier.fillMaxWidth().clickable{selectedCalendar=cal["id"].orEmpty();calendarMonthIndex=0}.padding(vertical=3.dp)){Column(Modifier.padding(10.dp)){Text(cal["name"].orEmpty(),fontWeight=FontWeight.SemiBold);Text("Months: "+cal["months"].orEmpty(),fontSize=11.sp);Text("Moons: "+cal["moons"].orEmpty(),fontSize=11.sp)}}};if(selectedCalendar.isNotBlank()){val cal=calendars.firstOrNull{it["id"]==selectedCalendar};val months=(cal?.get("months")?: "Month 1").split(",").map{it.trim()}.filter{it.isNotBlank()}.ifEmpty{listOf("Month 1")};val monthIndex=calendarMonthIndex.coerceIn(0,months.lastIndex);val lengths=(cal?.get("monthLengths")?: "").split(",").map{it.trim().toIntOrNull()?:30};val daysInMonth=lengths.getOrNull(monthIndex)?.coerceIn(1,100)?:30;val events=db.calendarEntries(selectedCalendar);Row(verticalAlignment=Alignment.CenterVertically){Text(cal?.get("name")?:"Calendar",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={calendarEntryYear=calendarYear.toString();calendarEntryMonth=(monthIndex+1).toString();calendarEntryDay="1";calendarEntryDialog=true}){Text("Add date")}};Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center){TextButton(onClick={if(monthIndex>0)calendarMonthIndex=monthIndex-1 else{calendarMonthIndex=months.lastIndex;calendarYear--}}){Text("‹")};Text("${months[monthIndex]} · Year $calendarYear",Modifier.weight(1f),textAlign=TextAlign.Center,fontWeight=FontWeight.SemiBold);TextButton(onClick={if(monthIndex<months.lastIndex)calendarMonthIndex=monthIndex+1 else{calendarMonthIndex=0;calendarYear++}}){Text("›")}};Row(Modifier.fillMaxWidth()){cal?.get("weekdays").orEmpty().split(",").map{it.trim()}.filter{it.isNotBlank()}.take(7).forEach{Text(it,Modifier.weight(1f),fontSize=9.sp,textAlign=TextAlign.Center)}};LazyVerticalGrid(columns=GridCells.Fixed(7),modifier=Modifier.height(300.dp)){items((1..daysInMonth).toList()){day->val dayEvents=events.filter{(it.year==calendarYear||it.repeatYearly)&&it.month==monthIndex+1&&it.day==day};Card(Modifier.padding(2.dp).clickable{calendarEntryYear=calendarYear.toString();calendarEntryMonth=(monthIndex+1).toString();calendarEntryDay=day.toString();calendarEntryDialog=true}){Column(Modifier.padding(5.dp)){Text(day.toString(),fontWeight=FontWeight.Bold);dayEvents.take(2).forEach{Text(it.title,maxLines=2,fontSize=9.sp,color=Plum)}}}}};Text("Seasons: "+cal?.get("seasons").orEmpty(),fontSize=11.sp);Text("Moons: "+cal?.get("moons").orEmpty(),fontSize=11.sp);Text("Eras: "+cal?.get("eras").orEmpty(),fontSize=11.sp);Text("Leap rules: "+cal?.get("leapRules").orEmpty(),fontSize=11.sp)}}
                 "Boards"->{val boards=remember(w.id,localRefresh){db.boards(w.id)};Row(verticalAlignment=Alignment.CenterVertically){Text("Visual planning boards",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={boardDialog=true}){Text("New board")}};boards.forEach{b->Card(Modifier.fillMaxWidth().clickable{selectedBoard=b.first}.padding(vertical=3.dp)){Row(Modifier.padding(12.dp)){Text(b.second,Modifier.weight(1f));Text(b.third,color=Plum,fontSize=11.sp)}}};if(selectedBoard.isNotBlank()&&db.boardType(selectedBoard)=="Map")MapScreen(db,selectedBoard,w.id,{open(it)},{boardId->selectedBoard=boardId;localRefresh++},{selectedBoard=""})else if(selectedBoard.isNotBlank()){val boardItems=remember(selectedBoard,localRefresh){db.boardItems(selectedBoard)};Row(verticalAlignment=Alignment.CenterVertically){Text("Board items",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);TextButton(onClick={db.autoArrangeBoard(selectedBoard,db.boardType(selectedBoard));localRefresh++}){Text("Auto arrange")};TextButton(onClick={boardBackgroundPicker.launch(arrayOf("image/*"))}){Text("Background")};TextButton(onClick={boardItemDialog=true}){Text("Add card")};TextButton(onClick={linkMode=!linkMode;linkFrom=""}){Text(if(linkMode)"Cancel linking" else "Link cards")}};if(linkMode){Text(if(linkFrom.isBlank())"Choose the first card, then the card it connects to." else "Now choose the second card.",fontSize=12.sp,color=Plum);OutlinedTextField(boardLinkLabel,{boardLinkLabel=it},label={Text("Connection label")},singleLine=true)};Box(Modifier.fillMaxWidth().height(560.dp).verticalScroll(rememberScrollState())){val bgUri=db.boardBackground(selectedBoard);val bgBitmap=remember(bgUri){if(bgUri.isNotBlank())runCatching{context.contentResolver.openInputStream(Uri.parse(bgUri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()else null};if(bgBitmap!=null)Image(bgBitmap,"Board background",Modifier.matchParentSize(),contentScale=ContentScale.Crop,alpha=0.32f);Canvas(Modifier.matchParentSize()){val scale=density;db.boardLinks(selectedBoard).forEach{edge->val a=db.boardItemPosition(edge.first);val b=db.boardItemPosition(edge.second);val start=Offset((a.first+77f)*scale,(a.second+50f)*scale);val end=Offset((b.first+77f)*scale,(b.second+50f)*scale);val edgeColor=Color(0xFF9B83B5);drawLine(edgeColor,start,end,strokeWidth=3f);val angle=kotlin.math.atan2((end.y-start.y).toDouble(),(end.x-start.x).toDouble());val left=Offset(end.x-14f*kotlin.math.cos(angle-0.55).toFloat(),end.y-14f*kotlin.math.sin(angle-0.55).toFloat());val right=Offset(end.x-14f*kotlin.math.cos(angle+0.55).toFloat(),end.y-14f*kotlin.math.sin(angle+0.55).toFloat());drawLine(edgeColor,end,left,strokeWidth=3f);drawLine(edgeColor,end,right,strokeWidth=3f)}};Column(Modifier.align(Alignment.TopEnd).padding(5.dp)){db.boardLinks(selectedBoard).forEach{edge->Text("${boardItems.firstOrNull{it.first==edge.first}?.second.orEmpty()} ${db.boardLinkLabel(selectedBoard,edge.first,edge.second)} ${boardItems.firstOrNull{it.first==edge.second}?.second.orEmpty()}",fontSize=9.sp,color=Color.White)}};boardItems.forEach{item->var pos by remember(item.first){mutableStateOf(db.boardItemPosition(item.first))};val density=LocalDensity.current;val cardImageUri=db.boardItemImage(item.first);val cardImage=remember(cardImageUri){if(cardImageUri.isNotBlank())runCatching{context.contentResolver.openInputStream(Uri.parse(cardImageUri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()else null};val cardColor=remember(item.first){runCatching{Color(android.graphics.Color.parseColor(db.boardItemColor(item.first)))}.getOrDefault(Color(0xFFD9C7EE))};Card(Modifier.offset(x=pos.first.dp,y=pos.second.dp).width(155.dp).clickable{if(linkMode){if(linkFrom.isBlank())linkFrom=item.first else if(linkFrom!=item.first){db.linkBoardItems(selectedBoard,linkFrom,item.first,boardLinkLabel);linkFrom="";localRefresh++}}}.pointerInput(item.first){detectDragGestures(onDragEnd={db.moveBoardItem(item.first,pos.first,pos.second)}){change,drag->change.consume();with(density){pos=(pos.first+drag.x.toDp().value).coerceAtLeast(0f) to (pos.second+drag.y.toDp().value).coerceAtLeast(0f)}}},colors=CardDefaults.cardColors(containerColor=cardColor)){Column(Modifier.padding(10.dp)){if(cardImage!=null)Image(cardImage,"Board card image",Modifier.fillMaxWidth().height(90.dp),contentScale=ContentScale.Crop);Text(item.second,fontWeight=FontWeight.SemiBold);Text(item.third,fontSize=12.sp);val linkedRecord=db.boardItemRecord(item.first);if(linkedRecord.isNotBlank())TextButton(onClick={db.get(linkedRecord)?.let(open)}){Text("Open linked record",fontSize=10.sp)};if(linkFrom==item.first)Text("Selected",color=Plum,fontSize=10.sp)}}}}}}
@@ -658,8 +702,23 @@ class MainActivity:ComponentActivity(){
     if(eventDialog)AlertDialog(onDismissRequest={eventDialog=false},title={Text("Timeline event")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(eventTitle,{eventTitle=it},label={Text("Event title")});OutlinedTextField(eventDate,{eventDate=it},label={Text("Date or era (sortable text)")});OutlinedTextField(eventDescription,{eventDescription=it},label={Text("Description")})}},confirmButton={TextButton(onClick={if(eventTitle.isNotBlank()&&eventDate.isNotBlank()){world?.let{db.addTimelineEvent(it.id,eventTitle,eventDate,description=eventDescription)};eventTitle="";eventDate="";eventDescription="";eventDialog=false;localRefresh++}}){Text("Save event")}},dismissButton={TextButton(onClick={eventDialog=false}){Text("Cancel")}})
     if(boardDialog)AlertDialog(onDismissRequest={boardDialog=false},title={Text("Create planning board")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardName,{boardName=it},label={Text("Board name")});Text("Board type");Row(Modifier.horizontalScroll(rememberScrollState())){boardTypes.forEach{FilterChip(boardType==it,{boardType=it},label={Text(it)})}}}},confirmButton={TextButton(onClick={if(boardName.isNotBlank()){world?.let{selectedBoard=db.createBoard(it.id,boardName,boardType)};boardName="";boardDialog=false;localRefresh++}}){Text("Create")}},dismissButton={TextButton(onClick={boardDialog=false}){Text("Cancel")}})
     if(boardItemDialog)AlertDialog(onDismissRequest={boardItemDialog=false},title={Text("Add board card")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardItemTitle,{boardItemTitle=it},label={Text("Title")});OutlinedTextField(boardItemBody,{boardItemBody=it},label={Text("Notes")});OutlinedTextField(boardItemColor,{boardItemColor=it},label={Text("Card color · hex")},singleLine=true);Box{OutlinedButton(onClick={boardRecordMenu=true}){Text("Linked record: "+(db.get(boardItemRecordId)?.title?: "None"))};DropdownMenu(expanded=boardRecordMenu,onDismissRequest={boardRecordMenu=false}){DropdownMenuItem(text={Text("No linked record")},onClick={boardItemRecordId="";boardRecordMenu=false});db.all().filter{it.kind!="Template"}.forEach{r->DropdownMenuItem(text={Text(r.title)},onClick={boardItemRecordId=r.id;boardRecordMenu=false})}}};TextButton(onClick={boardItemImagePicker.launch(arrayOf("image/*"))}){Text(if(boardItemImageUri.isBlank())"Add image" else "Image selected")}}},confirmButton={TextButton(onClick={if(boardItemTitle.isNotBlank()){db.addBoardItem(selectedBoard,boardItemTitle,boardItemBody,recordId=boardItemRecordId,color=boardItemColor,imageUri=boardItemImageUri);boardItemTitle="";boardItemBody="";boardItemRecordId="";boardItemColor="#D9C7EE";boardItemImageUri="";boardItemDialog=false;localRefresh++}}){Text("Add")}},dismissButton={TextButton(onClick={boardItemDialog=false}){Text("Cancel")}})
+    if(showWorldWordStats && world!=null){
+        val w=world!!
+        val worldReport=remember(w.id,wordSnapshot){WordCountEngine.buildReport(wordSnapshot,w,w.body)}
+        WordCountDashboardDialog(
+            db = db,
+            report = worldReport,
+            sessionStartWords = worldReport.currentStats.totalWords,
+            onGoalUpdated = { localRefresh++ },
+            onOpenRecord = { target ->
+                showWorldWordStats = false
+                open(target)
+            },
+            onDismiss = { showWorldWordStats = false }
+        )
+    }
 }
-@Composable fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onCreate:(String)->Unit){
+@Composable fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onOpenMediaManager:()->Unit={},onCreate:(String)->Unit){
     var query by remember(world.id){mutableStateOf("")}
     var selectedKind by remember(world.id){mutableStateOf("All")}
     var selectedProjectId by remember(world.id){mutableStateOf(world.id)}
@@ -676,12 +735,13 @@ class MainActivity:ComponentActivity(){
     val kinds=resources.map{it.kind}.distinct().sorted()
     val filtered=resources.filter{(selectedKind=="All"||it.kind==selectedKind)&&(query.isBlank()||it.title.contains(query,true)||it.kind.contains(query,true)||it.tags.contains(query,true)||it.aliases.contains(query,true))}
     Column(Modifier.fillMaxSize().padding(4.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
             Column(Modifier.weight(1f)){
                 Text(if(selectedProjectId==world.id)"World resource library" else "$projectLabel resources",fontWeight=FontWeight.SemiBold)
                 Text(resources.size.toString()+" linked resources in this project",fontSize=11.sp,color=Plum)
             }
-            Button(onClick={onCreate(selectedProjectId)}){Icon(Icons.Default.Add,null);Text("Add resource")}
+            FilledTonalButton(onClick=onOpenMediaManager){Icon(Icons.Default.PhotoCamera,null,modifier=Modifier.size(16.dp));Spacer(Modifier.width(4.dp));Text("Media")}
+            Button(onClick={onCreate(selectedProjectId)}){Icon(Icons.Default.Add,null);Text("Add")}
         }
         if(projects.isNotEmpty()){
             Text("Project view",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=FontWeight.SemiBold)
@@ -715,56 +775,65 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={}){
+@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)}){
     var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
     var expandedStories by remember(world.id){mutableStateOf(setOf<String>())}
-    val allRecords=db.all()
+    val allRecords=wordSnapshot.allRecords
     val direct=allRecords.filter{it.parentId==world.id}
     val series=direct.filter{it.kind=="Series"}
     val stories=direct.filter{it.kind=="Story"}
+    val worldTotalWords=wordSnapshot.subtreeWords(world.id)
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
         Card(Modifier.fillMaxWidth().clickable{open(world)}){
             Column(Modifier.padding(12.dp)){
                 Text(world.title,fontWeight=FontWeight.SemiBold)
-                Text("${db.descendants(world.id).size} linked records",fontSize=12.sp,color=Plum)
+                Text("${db.descendants(world.id).size} linked records · %,d words".format(worldTotalWords),fontSize=12.sp,color=Plum)
             }
         }
         if(series.isNotEmpty())Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)
         series.forEach{seriesRecord->
             val expanded=seriesRecord.id in expandedSeries
+            val seriesWords=wordSnapshot.subtreeWords(seriesRecord.id)
             Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
                 Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
                     Row(verticalAlignment=Alignment.CenterVertically){
-                        Text(seriesRecord.title,Modifier.weight(1f),fontWeight=FontWeight.Medium)
+                        Column(Modifier.weight(1f)){
+                            Text(seriesRecord.title,fontWeight=FontWeight.Medium)
+                            Text("%,d words".format(seriesWords),fontSize=11.sp,color=Plum)
+                        }
                         IconButton(onClick={expandedSeries=if(expanded)expandedSeries-seriesRecord.id else expandedSeries+seriesRecord.id}){
                             Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse series" else "Expand series")
                         }
                         TextButton(onClick={open(seriesRecord)}){Text("Open")}
                     }
-                    if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allRecords)
+                    if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allRecords,wordSnapshot)
                 }
             }
         }
         if(stories.isNotEmpty())Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)
         stories.forEach{story->
             val expanded=story.id in expandedStories
+            val storyWords=wordSnapshot.subtreeWords(story.id)
             Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
                 Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
                     Row(verticalAlignment=Alignment.CenterVertically){
-                        Text(story.title,Modifier.weight(1f),fontWeight=FontWeight.Medium)
+                        Column(Modifier.weight(1f)){
+                            Text(story.title,fontWeight=FontWeight.Medium)
+                            Text("%,d words".format(storyWords),fontSize=11.sp,color=Plum)
+                        }
                         IconButton(onClick={expandedStories=if(expanded)expandedStories-story.id else expandedStories+story.id}){
                             Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse story" else "Expand story")
                         }
                         TextButton(onClick={open(story)}){Text("Open")}
                     }
-                    if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allRecords)
+                    if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allRecords,wordSnapshot)
                 }
             }
         }
     }
 }
 
-@Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},records:List<InkRecord> = db.all()){
+@Composable private fun WorldTreeChildren(db:InkDatabase,parentId:String,depth:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},records:List<InkRecord> = db.all(),wordSnapshot:WorldWordSnapshot? = null){
     if(depth>8)return
     val parent=db.get(parentId)
     val nextKind=when(parent?.kind){"Series"->"Book";"Story"->"Chapter";"Novel"->"Chapter";"Book"->"Chapter";"Chapter"->"Scene";else->""}
@@ -773,7 +842,16 @@ class MainActivity:ComponentActivity(){
     Column(Modifier.padding(start=(depth*10).dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
         if(nextKind.isNotBlank())TextButton(onClick={val child=InkRecord(title="Untitled $nextKind",kind=nextKind,parentId=parentId,scope=parent?.scope?: "World");db.save(child);open(child)},contentPadding=PaddingValues(horizontal=8.dp,vertical=2.dp)){Icon(Icons.Default.Add,null,modifier=Modifier.size(16.dp));Text(" Add $nextKind")}
         if(children.isNotEmpty())Row(verticalAlignment=Alignment.CenterVertically){Text(children.size.toString()+" "+(if(children.size==1)"item" else "items"),Modifier.weight(1f),fontSize=11.sp,color=Plum);TextButton(onClick={expanded=!expanded},contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp)){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null,modifier=Modifier.size(16.dp));Text(if(expanded)"Collapse" else "Expand",fontSize=11.sp)}}
-        if(expanded)children.forEach{child->Column(Modifier.padding(start=8.dp)){RecordCard(db,child,open,onRead);WorldTreeChildren(db,child.id,depth+1,open,onRead,records)}}
+        if(expanded)children.forEach{child->
+            val subWords=wordSnapshot?.subtreeWords(child.id)?:0
+            Column(Modifier.padding(start=8.dp)){
+                if(subWords>0 && child.kind in setOf("Series","Book","Novel","Story","Chapter")){
+                    Text("${child.kind} subtree: %,d words".format(subWords),fontSize=10.sp,color=Plum,modifier=Modifier.padding(start=4.dp,bottom=2.dp))
+                }
+                RecordCard(db,child,open,onRead)
+                WorldTreeChildren(db,child.id,depth+1,open,onRead,records,wordSnapshot)
+            }
+        }
     }
 }
 
@@ -783,6 +861,7 @@ class MainActivity:ComponentActivity(){
     autoSaveStatus: AutoSaveStatus,
     onAutoSaveNow: () -> Unit,
     onOpenTemplateLibrary: () -> Unit,
+    onOpenMediaManager: () -> Unit = {},
     edit: (InkRecord) -> Unit,
     designBlueprint: (InkRecord) -> Unit,
     use: (InkRecord) -> Unit
@@ -863,13 +942,26 @@ class MainActivity:ComponentActivity(){
                 Text("Save Now")
             }
         }
-        FilledTonalButton(
-            onClick = onOpenTemplateLibrary,
-            modifier = Modifier.fillMaxWidth().testTag("open_template_library_button")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Default.CollectionsBookmark, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Template Library · Pre-built JSON Archetypes")
+            FilledTonalButton(
+                onClick = onOpenTemplateLibrary,
+                modifier = Modifier.weight(1f).testTag("open_template_library_button")
+            ) {
+                Icon(Icons.Default.CollectionsBookmark, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("JSON Library", maxLines = 1)
+            }
+            FilledTonalButton(
+                onClick = onOpenMediaManager,
+                modifier = Modifier.testTag("template_gallery_media_button")
+            ) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Media")
+            }
         }
         OutlinedTextField(
             value = templateQuery,
@@ -1150,12 +1242,29 @@ class MainActivity:ComponentActivity(){
     var replaceText by remember{mutableStateOf("")}
     var attachmentRefresh by remember{mutableIntStateOf(0)}
     val attachmentList=remember(record.id,attachmentRefresh){db.attachments(record.id)}
+    val mediaCount=remember(record.id,attachmentRefresh){db.mediaForRecord(record.id).size}
+    var showMediaManager by remember{mutableStateOf(false)}
+    var showWordDashboard by remember{mutableStateOf(false)}
+    var wordGoalRefresh by remember{mutableIntStateOf(0)}
+    val sheetFields=remember(attachedTemplateId,sheetRefresh){if(attachedTemplateId.isNotBlank())db.templateFields(attachedTemplateId) else emptyList()}
+    val wordSnapshot=remember(record.id,parent,wordGoalRefresh){WordCountEngine.buildSnapshot(db)}
+    val sessionStartWords=remember(record.id){WordCountEngine.analyzeDocument(record.body,sheetFields,sheetValues).totalWords}
+    val liveWordReport=remember(record.id,html,sheetFields,sheetValues,parent,wordSnapshot){
+        WordCountEngine.buildReport(
+            snapshot = wordSnapshot,
+            record = latestRecordState.value,
+            liveHtml = html,
+            liveFields = sheetFields,
+            liveSheetValues = sheetValues,
+            liveParentId = parent
+        )
+    }
     val attachmentPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{appContext.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};db.addAttachment(record.id,it.toString(),appContext.contentResolver.getType(it).orEmpty(),it.lastPathSegment.orEmpty());attachmentRefresh++}}
 
     fun compiledHtml():String = if(attachedTemplateId.isNotBlank()){
         val fields=db.templateFields(attachedTemplateId)
         val sections=db.templateSections(attachedTemplateId)
-        SheetEngine.compileToHtml(fields,sections,sheetValues,html){db.get(it)}
+        SheetEngine.compileToHtml(fields,sections,sheetValues,html,{MediaManager.toInlineDataUri(appContext,it)}){db.get(it)}
     }else html
 
     fun compiledMarkdown():String = if(attachedTemplateId.isNotBlank()){
@@ -1228,6 +1337,11 @@ class MainActivity:ComponentActivity(){
                     Text("JSON Library")
                 }
             }
+            TextButton(onClick={showMediaManager=true},modifier=Modifier.testTag("editor_media_manager_button")){
+                Icon(Icons.Default.PhotoCamera,null,modifier=Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(if(mediaCount>0)"Media ($mediaCount)" else "Media")
+            }
             TextButton(onClick={showSaveAsTemplate=true},modifier=Modifier.testTag("save_as_template_button")){
                 Icon(Icons.Default.BookmarkAdd,null,modifier=Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
@@ -1237,9 +1351,13 @@ class MainActivity:ComponentActivity(){
             TextButton(onClick={db.saveSheetValues(record.id,sheetValues);linkCount=onLinkScan(record.copy(title=title,body=html,aliases=aliases))}){Text("Scan mentions")}
             if(linkCount>0)Text("$linkCount found",fontSize=11.sp,color=Plum)
         }
-        if(!focusMode&&editorMode=="Prose"){
-            Text("Word count: ${android.text.Html.fromHtml(html,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().split(Regex("\\s+")).count{it.isNotBlank()}}",fontSize=11.sp,color=Plum,modifier=Modifier.padding(bottom=4.dp))
-        }
+        LiveWordCountBar(
+            report = liveWordReport,
+            sessionStartWords = sessionStartWords,
+            compactFocusMode = focusMode,
+            onOpenDashboard = { showWordDashboard = true },
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
         if(showFindReplace)Column(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) { OutlinedTextField(findText,{findText=it},Modifier.fillMaxWidth(),label={Text("Find")},singleLine=true);OutlinedTextField(replaceText,{replaceText=it},Modifier.fillMaxWidth(),label={Text("Replace with")},singleLine=true);Button(onClick={val count=db.replaceInRecord(record.id,findText,replaceText);html=db.get(record.id)?.body?:html;Toast.makeText(appContext,"Replaced $count occurrence(s).",Toast.LENGTH_SHORT).show()},enabled=findText.isNotEmpty()){Text("Replace all in this document")} }
         HorizontalDivider()
         if(attachedTemplateId.isNotBlank()&&editorMode=="Sheet"){
@@ -1260,7 +1378,7 @@ class MainActivity:ComponentActivity(){
                 onCopyToProse = {
                     val fields = db.templateFields(attachedTemplateId)
                     val sections = db.templateSections(attachedTemplateId)
-                    val snapshotHtml = SheetEngine.compileToHtml(fields, sections, sheetValues, "") { db.get(it) }
+                    val snapshotHtml = SheetEngine.compileToHtml(fields, sections, sheetValues, "", { MediaManager.toInlineDataUri(appContext, it) }) { db.get(it) }
                     if (snapshotHtml.isNotBlank()) {
                         html = if (DocumentExport.plain(html).isBlank()) snapshotHtml else html + "<hr/>" + snapshotHtml
                         editorMode = "Prose"
@@ -1337,8 +1455,11 @@ class MainActivity:ComponentActivity(){
             Text("Sharing scope")
             Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("World","Series","Story").forEach{FilterChip(scope==it,{scope=it},label={Text(it)})}}
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){TextButton(onClick={documentImport.launch(arrayOf("text/plain","text/markdown","text/html","application/xhtml+xml","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/epub+zip"))}){Text("Import")};TextButton(onClick={txtExport.launch(title.ifBlank{"Untitled"}+".txt")}){Text("TXT")};TextButton(onClick={mdExport.launch(title.ifBlank{"Untitled"}+".md")}){Text("Markdown")};TextButton(onClick={htmlExport.launch(title.ifBlank{"Untitled"}+".html")}){Text("HTML")};TextButton(onClick={pdfExport.launch(title.ifBlank{"Untitled"}+".pdf")}){Text("PDF")};TextButton(onClick={docxExport.launch(title.ifBlank{"Untitled"}+".docx")}){Text("DOCX")};TextButton(onClick={epubExport.launch(title.ifBlank{"Untitled"}+".epub")}){Text("EPUB")}}
-            Text("Attachments",fontWeight=FontWeight.SemiBold)
-            TextButton(onClick={attachmentPicker.launch(arrayOf("image/*","application/pdf","text/*","application/*"))}){Text("Add image or file")}
+            Text("Attachments & Camera Media",fontWeight=FontWeight.SemiBold)
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                FilledTonalButton(onClick={showMediaManager=true}){Text("Open Media Manager ($mediaCount)")}
+                TextButton(onClick={attachmentPicker.launch(arrayOf("image/*","application/pdf","text/*","application/*"))}){Text("Add file")}
+            }
             attachmentList.forEach{attachment->AttachmentPreview(attachment){id->db.removeAttachment(id);attachmentRefresh++}}
             Text("Mention suggestions",fontWeight=FontWeight.SemiBold)
             db.pendingLinkSuggestions(record.id).forEach{suggestion->Row(verticalAlignment=Alignment.CenterVertically){Text("“${suggestion.second}” → ${db.get(suggestion.first)?.title?: "Unknown"}",Modifier.weight(1f),fontSize=12.sp);TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,true);linkCount++}){Text("Link")};TextButton(onClick={db.resolveLinkSuggestion(record.id,suggestion.first,suggestion.third,false);linkCount++}){Text("Dismiss")}}}
@@ -1388,13 +1509,59 @@ class MainActivity:ComponentActivity(){
             onTemplateCreated(createdTpl)
         }
     )
+    if(showWordDashboard)WordCountDashboardDialog(
+        db = db,
+        report = liveWordReport,
+        sessionStartWords = sessionStartWords,
+        onGoalUpdated = { wordGoalRefresh++ },
+        onOpenRecord = { target ->
+            showWordDashboard = false
+            onOpen(target, "", 0)
+        },
+        onDismiss = { showWordDashboard = false }
+    )
+    if(showMediaManager)MediaManagerDialog(
+        db = db,
+        initialRecord = latestRecordState.value,
+        initialTemplateId = attachedTemplateId,
+        onAssignToSheetField = { fieldId, uri ->
+            val field = sheetFields.firstOrNull { it.id == fieldId }
+            if (field?.fieldType == "Gallery") {
+                val cur = sheetValues[fieldId].orEmpty().split("||").filter { it.isNotBlank() }
+                sheetValues = sheetValues + (fieldId to (cur + uri).distinct().joinToString("||"))
+            } else {
+                sheetValues = sheetValues + (fieldId to uri)
+            }
+            db.saveSheetValues(record.id, sheetValues)
+            sheetRefresh++
+        },
+        onInsertIntoProse = { asset ->
+            val dataUri = MediaManager.toInlineDataUri(appContext, asset.uri)
+            if (!dataUri.isNullOrBlank()) {
+                val captionHtml = if (asset.caption.isNotBlank()) "<figcaption>${android.text.TextUtils.htmlEncode(asset.caption)}</figcaption>" else ""
+                val fig = """<figure style="margin:12px 0;text-align:center;"><img src="$dataUri" style="max-width:100%;height:auto;border-radius:10px;" />$captionHtml</figure><p></p>"""
+                html += fig
+                editorMode = "Prose"
+            }
+        },
+        onSetAsCover = { asset ->
+            coverUri = asset.uri
+            onSaved(latestRecordState.value.copy(coverUri = asset.uri))
+        },
+        onOpenRecord = { target ->
+            showMediaManager = false
+            onOpen(target, "", 0)
+        },
+        onMediaChanged = { attachmentRefresh++ },
+        onDismiss = { showMediaManager = false }
+    )
 }
 
 @Composable private fun AttachmentPreview(attachment:Map<String,String>,remove:(String)->Unit){
     val context=LocalContext.current
     val uri=attachment["uri"].orEmpty()
     val mime=attachment["mimeType"].orEmpty()
-    val bitmap=remember(uri){if(mime.startsWith("image/"))runCatching{context.contentResolver.openInputStream(Uri.parse(uri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()else null}
+    val bitmap=remember(uri){if(mime.startsWith("image/"))MediaManager.decodeImageBitmap(context,uri,maxDim=640)else null}
     Card(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(Modifier.padding(8.dp)){Text(attachment["displayName"]?.ifBlank{"Attached file"}?: "Attached file",fontWeight=FontWeight.Medium);if(bitmap!=null)Image(bitmap=bitmap,contentDescription=attachment["displayName"],modifier=Modifier.fillMaxWidth().heightIn(max=180.dp),contentScale=ContentScale.Fit);Row(verticalAlignment=Alignment.CenterVertically){TextButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(uri),mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))}}){Text("Open")};TextButton(onClick={remove(attachment["id"].orEmpty())}){Text("Remove")}}}}
 }
 

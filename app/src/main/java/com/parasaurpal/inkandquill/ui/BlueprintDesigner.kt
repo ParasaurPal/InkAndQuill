@@ -131,7 +131,7 @@ fun BlueprintDesignerScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf("Fields", "Sections", "Settings & Versions").forEach { tab ->
+            listOf("Fields", "Sections", "Media", "Settings & Versions").forEach { tab ->
                 FilterChip(
                     selected = designerTab == tab,
                     onClick = { designerTab = tab },
@@ -348,6 +348,16 @@ fun BlueprintDesignerScreen(
                         }
                     }
                 }
+            }
+
+            "Media" -> {
+                MediaManagerContent(
+                    db = db,
+                    initialRecord = null,
+                    initialTemplateId = currentTemplate.id,
+                    onMediaChanged = { refresh++ },
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                )
             }
 
             else -> {
