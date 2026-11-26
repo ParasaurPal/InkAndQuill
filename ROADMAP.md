@@ -37,7 +37,26 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [ ] Cloud sync has whole-backup replacement conflict resolution, not field-level merging. Provider-specific adapters, change journal, offline merge queue visibility, restore preview, change journal, field-level merge, provider-specific adapters, and multi-device end-to-end testing remain
 - [ ] PDF import fidelity tests, comprehensive migration tests, unit/instrumentation/UI/accessibility/performance tests, and real-device regression testing remain
 
+## Cross-platform delivery status
+- [ ] Shared Kotlin Multiplatform domain/data core
+- [ ] Desktop Compose client with resizable split panes and keyboard navigation
+- [ ] Web/PWA client with IndexedDB persistence and offline operation
+- [ ] Cross-platform import/export and migration parity tests
+- [ ] Cross-platform sync protocol and conflict behavior tests
+
+The architecture and data contract for this expansion are documented in [docs/CROSS_PLATFORM_ARCHITECTURE.md](docs/CROSS_PLATFORM_ARCHITECTURE.md). That document is a target design, not a claim that desktop/web clients or every listed feature already exist.
+
+## New five-milestone delivery plan
+1. **Core manuscript:** relational Universe → Book → Chapter → Scene model; structured rich-text editor; universal custom text; Focus Mode; autosave/recovery; TXT and versioned JSON backup. Verify offline and after process death.
+2. **Story Bible:** built-in entities, nested Location/Item trees, many-to-many links/backlinks, attachments/tags, Quick Explore and desktop split view.
+3. **Planning/productivity:** synced scene outliner, multiple timelines, sprint timer, goals, analytics, daily logbook, reminders.
+4. **Canvas:** pan/zoom boards, custom text/cards/connectors, plot diagrams, family trees, PNG/PDF export.
+5. **Extensibility/publishing:** custom schemas, embedded tables, schema templates, DOCX/EPUB, scoped collaboration, public wiki.
+
+A milestone is complete only when data migrations, offline behavior, export/restore, accessibility basics, and automated tests pass on each supported platform. Do not label a platform supported until its build and persistence tests run in CI.
+
 ## Non-negotiable product constraints
 - No AI features, SDKs, APIs, model downloads, or services.
 - Local phone storage is primary; writing and organization remain fully usable offline.
 - Cloud backup/sync is optional, encrypted on-device, and user-selected. No mandatory account or subscription.
+- All user-authored text remains free-form. Preset values may be offered as shortcuts but may never restrict custom text.
