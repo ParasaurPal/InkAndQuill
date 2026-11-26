@@ -246,7 +246,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         rebuildSearchIndex(db)
     }
     private fun android.database.Cursor.record()=InkRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("title")),getString(getColumnIndexOrThrow("body")),getString(getColumnIndexOrThrow("kind")),getString(getColumnIndexOrThrow("parentId"))?:"",getString(getColumnIndexOrThrow("scope"))?:"World",getString(getColumnIndexOrThrow("tags"))?:"",getString(getColumnIndexOrThrow("aliases"))?:"",getLong(getColumnIndexOrThrow("createdAt")),getLong(getColumnIndexOrThrow("updatedAt")),getInt(getColumnIndexOrThrow("favorite"))==1,getString(getColumnIndex("coverUri").takeIf{it>=0}?:-1)?.let{it}?:"")
-    fun descendants(parentId:String):List<InkRecord>{val allRecords=all();val result=mutableListOf<InkRecord>();val visited=mutableSetOf<String>();fun visit(id:String){allRecords.filter{it.parentId==id&&visited.add(it.id)}.forEach{record->result.add(record);visit(record.id)}};visit(parentId);return result}
+    fun descendants(parentId:String):List<InkRecord>{val childrenByParent=all().groupBy{it.parentId};val result=mutableListOf<InkRecord>();val visited=mutableSetOf(parentId);fun visit(id:String){childrenByParent[id].orEmpty().forEach{record->if(visited.add(record.id)){result.add(record);visit(record.id)}}};visit(parentId);return result}
     fun all(query:String="",kind:String?=null):List<InkRecord>{
         val sql=StringBuilder("SELECT * FROM records WHERE kind NOT IN ('Template','Archived Template')");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
