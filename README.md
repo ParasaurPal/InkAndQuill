@@ -34,3 +34,29 @@ See [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) and [ROADMAP.md](ROADMAP.md). T
 
 
 Cloud sync setup and conflict behavior: [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md).
+
+
+## Novel Studio and offline web app
+
+The Android app now includes a separate **Novel Studio** workspace backed by its own local SQLite database. It creates Universes, Books, Chapters and Scenes; stores scene planning fields and manuscript text; supports focus mode, local autosave, manual scene checkpoints, plain-text scene export, and portable Fortelling JSON project export/import. Existing Ink & Quill libraries remain untouched by the new store.
+
+A responsive offline-capable web/PWA client is in `web/`. It uses IndexedDB for local persistence and includes manuscript outline/editor, browser rich-text controls, focus mode, Story Bible entries, timelines, text-card boards, writing goals/logs, and JSON project import/export.
+
+Run the web client locally:
+
+```sh
+cd web
+npm install
+npm run dev
+```
+
+Create a production web build:
+
+```sh
+cd web
+npm run build
+```
+
+The web client is a PWA and can be installed from a supported browser. It stores content in that browser's IndexedDB; export backups regularly, especially before clearing browser data or changing devices.
+
+**Implementation status:** this is an active implementation. The new schema establishes the wider relational feature model, but advanced canvas drawing/family-tree interactions, full rich-text document parity, DOCX/EPUB publishing, multi-user collaboration, public wiki hosting, and a native desktop package are not yet complete. The product remains no-AI and local-first.
