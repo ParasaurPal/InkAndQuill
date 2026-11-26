@@ -53,7 +53,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
     val worlds= remember(level,refresh){store.universes()}
     val nodes= remember(level,worldId,bookId,chapterId,refresh){
-        if(toolsOpen){NovelStudioToolsScreen(worldId,store){toolsOpen=false;refresh++}} else when(level){
+        when(level){
             NovelLevel.BOOKS->store.orderedNodes(worldId,"Book")
             NovelLevel.CHAPTERS->store.orderedNodes(bookId,"Chapter")
             NovelLevel.SCENES->store.orderedNodes(chapterId,"Scene")
@@ -89,7 +89,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
         )
-        when(level){
+        if(toolsOpen){NovelStudioToolsScreen(worldId,store){toolsOpen=false;refresh++}} else when(level){
             NovelLevel.WORLDS->{
                 LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
                     item{Text("Build a world. Write its stories.",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Offline-first. Your work stays on this device.",color=MaterialTheme.colorScheme.onSurfaceVariant)}
