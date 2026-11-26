@@ -651,7 +651,7 @@ class MainActivity:ComponentActivity(){
     if(boardDialog)AlertDialog(onDismissRequest={boardDialog=false},title={Text("Create planning board")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardName,{boardName=it},label={Text("Board name")});Text("Board type");Row(Modifier.horizontalScroll(rememberScrollState())){boardTypes.forEach{FilterChip(boardType==it,{boardType=it},label={Text(it)})}}}},confirmButton={TextButton(onClick={if(boardName.isNotBlank()){world?.let{selectedBoard=db.createBoard(it.id,boardName,boardType)};boardName="";boardDialog=false;localRefresh++}}){Text("Create")}},dismissButton={TextButton(onClick={boardDialog=false}){Text("Cancel")}})
     if(boardItemDialog)AlertDialog(onDismissRequest={boardItemDialog=false},title={Text("Add board card")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardItemTitle,{boardItemTitle=it},label={Text("Title")});OutlinedTextField(boardItemBody,{boardItemBody=it},label={Text("Notes")});OutlinedTextField(boardItemColor,{boardItemColor=it},label={Text("Card color · hex")},singleLine=true);Box{OutlinedButton(onClick={boardRecordMenu=true}){Text("Linked record: "+(db.get(boardItemRecordId)?.title?: "None"))};DropdownMenu(expanded=boardRecordMenu,onDismissRequest={boardRecordMenu=false}){DropdownMenuItem(text={Text("No linked record")},onClick={boardItemRecordId="";boardRecordMenu=false});db.all().filter{it.kind!="Template"}.forEach{r->DropdownMenuItem(text={Text(r.title)},onClick={boardItemRecordId=r.id;boardRecordMenu=false})}}};TextButton(onClick={boardItemImagePicker.launch(arrayOf("image/*"))}){Text(if(boardItemImageUri.isBlank())"Add image" else "Image selected")}}},confirmButton={TextButton(onClick={if(boardItemTitle.isNotBlank()){db.addBoardItem(selectedBoard,boardItemTitle,boardItemBody,recordId=boardItemRecordId,color=boardItemColor,imageUri=boardItemImageUri);boardItemTitle="";boardItemBody="";boardItemRecordId="";boardItemColor="#D9C7EE";boardItemImageUri="";boardItemDialog=false;localRefresh++}}){Text("Add")}},dismissButton={TextButton(onClick={boardItemDialog=false}){Text("Cancel")}})
 }
-@Composable fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onCreate:()->Unit){
+@Composable fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onCreate:(String)->Unit){
     var query by remember(world.id){mutableStateOf("")}
     var selectedKind by remember(world.id){mutableStateOf("All")}
     var selectedProjectId by remember(world.id){mutableStateOf(world.id)}
@@ -673,7 +673,7 @@ class MainActivity:ComponentActivity(){
                 Text(if(selectedProjectId==world.id)"World resource library" else "$projectLabel resources",fontWeight=FontWeight.SemiBold)
                 Text(resources.size.toString()+" linked resources in this project",fontSize=11.sp,color=Plum)
             }
-            Button(onClick=onCreate){Icon(Icons.Default.Add,null);Text("Add resource")}
+            Button(onClick={onCreate(selectedProjectId)}){Icon(Icons.Default.Add,null);Text("Add resource")}
         }
         if(projects.isNotEmpty()){
             Text("Project view",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=FontWeight.SemiBold)
