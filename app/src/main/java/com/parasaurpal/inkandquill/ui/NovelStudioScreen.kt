@@ -1,6 +1,5 @@
 package com.parasaurpal.inkandquill.ui
 
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -30,8 +29,6 @@ private enum class NovelLevel { WORLDS, BOOKS, CHAPTERS, SCENES, EDITOR }
 fun NovelStudioScreen(onClose: () -> Unit) {
     val context=LocalContext.current
     val store= remember(context){NovelStudioStore(context)}
-    val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
-    val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     var level by remember{mutableStateOf(NovelLevel.WORLDS)}
     var worldId by remember{mutableStateOf("")}
     var bookId by remember{mutableStateOf("")}
@@ -50,6 +47,9 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var hook by remember{mutableStateOf("")}
     var focus by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
+    val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
+    val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
+    val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
     val worlds= remember(level,refresh){store.universes()}
     val nodes= remember(level,worldId,bookId,chapterId,refresh){
         when(level){
@@ -66,6 +66,15 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         }
         level=NovelLevel.EDITOR;saved=false
     }
+    LaunchedEffect(sceneId,title,prose,summary,goal,conflict,hook) {
+        if(sceneId.isNotBlank()) {
+            kotlinx.coroutines.delay(650)
+            val meta=JSONObject().put("summary",summary).put("goal",goal).put("conflict",conflict).put("hook",hook)
+            val content=JSONObject().put("blocks",org.json.JSONArray().put(JSONObject().put("type","paragraph").put("text",prose)))
+            store.saveScene(sceneId,title,meta,content,prose)
+            saved=true
+        }
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
         TopAppBar(
             title={Column{Text("Novel Studio",fontWeight=FontWeight.Bold);Text(when(level){NovelLevel.WORLDS->"Universes";NovelLevel.BOOKS,NovelLevel.CHAPTERS,NovelLevel.SCENES->parentTitle;NovelLevel.EDITOR->title},style=MaterialTheme.typography.labelSmall)}},
@@ -74,7 +83,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }){Icon(if(level==NovelLevel.WORLDS)Icons.Default.Close else Icons.Default.ArrowBack,"Back")}},
             actions={
                 if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
-                if(level==NovelLevel.EDITOR) IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}
+                if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
         )
@@ -111,11 +120,11 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             NovelLevel.EDITOR->{
                 Column(Modifier.weight(1f).fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                     if(!focus){
-                        OutlinedTextField(title,{title=it},label={Text("Scene title")},modifier=Modifier.fillMaxWidth(),singleLine=true)
-                        OutlinedTextField(summary,{summary=it},label={Text("Summary")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(goal,{goal=it},label={Text("Goal")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(conflict,{conflict=it},label={Text("Conflict")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(hook,{hook=it},label={Text("Hook")},modifier=Modifier.fillMaxWidth())
+                        OutlinedTextField(title,{title=it;saved=false},label={Text("Scene title")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                        OutlinedTextField(summary,{summary=it;saved=false},label={Text("Summary")},modifier=Modifier.fillMaxWidth())
+                        OutlinedTextField(goal,{goal=it;saved=false},label={Text("Goal")},modifier=Modifier.fillMaxWidth())
+                        OutlinedTextField(conflict,{conflict=it;saved=false},label={Text("Conflict")},modifier=Modifier.fillMaxWidth())
+                        OutlinedTextField(hook,{hook=it;saved=false},label={Text("Hook")},modifier=Modifier.fillMaxWidth())
                         Text("MANUSCRIPT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
                     }
                     OutlinedTextField(prose,{prose=it;saved=false},modifier=Modifier.weight(1f).fillMaxWidth(),placeholder={Text("Write your scene…")},textStyle=MaterialTheme.typography.bodyLarge.copy(fontSize=18.sp),minLines=12)
