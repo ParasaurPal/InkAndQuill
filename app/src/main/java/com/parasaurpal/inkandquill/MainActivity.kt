@@ -265,7 +265,7 @@ class MainActivity:ComponentActivity(){
                     ) else when(screen){
                         "Home"->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
                         "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh,{readingRecord=it}){selected=it}
-                        "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true},{readingRecord=it},{showGlobalMediaManager=true})
+                        "Worlds"->WorldScreen(db,refresh,{selected=it},onRead={readingRecord=it},onOpenMediaManager={showGlobalMediaManager=true})
                         "Templates"->TemplateScreen(
                             db = db,
                             refresh = refresh,
@@ -578,8 +578,9 @@ class MainActivity:ComponentActivity(){
     if(createCollection)AlertDialog(onDismissRequest={createCollection=false},title={Text("New collection")},text={OutlinedTextField(collectionName,{collectionName=it},label={Text("Collection name")})},confirmButton={TextButton(onClick={if(collectionName.isNotBlank()){db.createCollection(collectionName);collectionName="";createCollection=false}}){Text("Create")}},dismissButton={TextButton(onClick={createCollection=false}){Text("Cancel")}})
     if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={Column{OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true);Box{OutlinedButton(onClick={folderParentMenu=true}){Text("Parent: "+(folders.firstOrNull{it.first==newFolderParent}?.second?: "None"))};DropdownMenu(expanded=folderParentMenu,onDismissRequest={folderParentMenu=false}){DropdownMenuItem(text={Text("No parent")},onClick={newFolderParent="";folderParentMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={newFolderParent=f.first;folderParentMenu=false})}}}}},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName,newFolderParent);newFolderName="";newFolderParent="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
-@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit,onRead:(InkRecord)->Unit={},onOpenMediaManager:()->Unit={}){
-    val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
+@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},onOpenMediaManager:()->Unit={}){
+    var localRefresh by remember{mutableIntStateOf(0)}
+    val worlds=remember(refresh,localRefresh){db.all().filter{it.kind=="World"}}
     var world by remember{mutableStateOf<InkRecord?>(null)}
     var createChild by remember{mutableStateOf(false)}
     var createParentId by remember{mutableStateOf("")}
@@ -622,7 +623,6 @@ class MainActivity:ComponentActivity(){
     var calendarRepeat by remember{mutableStateOf(false)}
     var calendarMonthIndex by remember{mutableIntStateOf(0)}
     var calendarYear by remember{mutableIntStateOf(1)}
-    var localRefresh by remember{mutableIntStateOf(0)}
     var showWorldWordStats by remember{mutableStateOf(false)}
     val wordSnapshot=remember(refresh,localRefresh){WordCountEngine.buildSnapshot(db)}
     var linkMode by remember{mutableStateOf(false)}
@@ -640,7 +640,7 @@ class MainActivity:ComponentActivity(){
             Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
             Text("Worlds are the top-level home for each fictional universe. Expand a Series to see its books, chapters, and scenes.")
             Row(Modifier.fillMaxWidth().padding(vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
+                Button(onClick={val created=InkRecord(title="Untitled World",kind="World");db.save(created);world=created;mode="Modules";moduleKinds=emptyList();localRefresh++}){Icon(Icons.Default.Add,null);Text(" Create a world")}
                 FilledTonalButton(onClick=onOpenMediaManager,modifier=Modifier.testTag("worlds_media_manager_button")){
                     Icon(Icons.Default.PhotoCamera,null,modifier=Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
@@ -648,7 +648,7 @@ class MainActivity:ComponentActivity(){
                 }
             }
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){
-                items(worlds){ w -> WorldListCard(db,w,open,onRead,wordSnapshot) }
+                items(worlds){ w -> WorldListCard(db,w,open,onRead,wordSnapshot){world=it;mode="Modules";moduleKinds=emptyList()} }
                 if(worlds.isEmpty()) item { Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp)) }
             }
         }
@@ -805,7 +805,7 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)}){
+@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)},onOpenWorld:(InkRecord)->Unit={}){
     var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
     var expandedStories by remember(world.id){mutableStateOf(setOf<String>())}
     val allRecords=wordSnapshot.allRecords
@@ -814,7 +814,7 @@ class MainActivity:ComponentActivity(){
     val stories=direct.filter{it.kind=="Story"}
     val worldTotalWords=wordSnapshot.subtreeWords(world.id)
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
-        Card(Modifier.fillMaxWidth().clickable{open(world)}){
+        Card(Modifier.fillMaxWidth().clickable{onOpenWorld(world)}){
             Column(Modifier.padding(12.dp)){
                 Text(world.title,fontWeight=FontWeight.SemiBold)
                 Text("${db.descendants(world.id).size} linked records · %,d words".format(worldTotalWords),fontSize=12.sp,color=Plum)
