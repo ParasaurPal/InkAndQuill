@@ -279,7 +279,6 @@ class MainActivity:ComponentActivity(){
                         else->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
                     }
                 }
-            }
                 }
             }
         }
