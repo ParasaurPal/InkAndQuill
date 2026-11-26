@@ -1,3 +1,4 @@
+import "./style.css";
 type Kind="universe"|"book"|"chapter"|"scene"|"entity"|"timeline"|"moment"|"board"|"boardText"|"goal"|"log"|"tag"|"link"|"snapshot";
 type Row={id:string;kind:Kind;parentId?:string;universeId?:string;title:string;body?:string;customText?:string;status?:string;metadata?:Record<string,unknown>;position?:number;updatedAt:number;createdAt:number};
 const DB_NAME="ink-quill-web";const STORE="records";let db:IDBDatabase;let current:Row|null=null;let activeUniverse="";let currentView="writing";let focus=false;let search="";
