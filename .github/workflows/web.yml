@@ -1,7 +1,7 @@
 name: Web PWA
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/cross-platform-writing-studio ]
     paths: [ 'web/**', '.github/workflows/web.yml' ]
   pull_request:
     branches: [ main ]
