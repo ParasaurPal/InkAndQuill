@@ -11,9 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.parasaurpal.inkandquill.data.NovelStudioStore
+import com.parasaurpal.inkandquill.WritingProgressWidget
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,6 +45,8 @@ fun NovelStudioToolsScreen(universeId:String,store:NovelStudioStore,onClose:()->
     var sprintWords by remember { mutableStateOf("0") }
     var sprintNotes by remember { mutableStateOf("") }
     val db=store.writableDatabase
+    val context=LocalContext.current
+    LaunchedEffect(refresh) { WritingProgressWidget.refresh(context) }
 
     val entities=remember(universeId,refresh,tab,search) {
         db.rawQuery("SELECT id,entity_type,title,description,custom_label,fields_json,parent_entity_id FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ?) ORDER BY title",
