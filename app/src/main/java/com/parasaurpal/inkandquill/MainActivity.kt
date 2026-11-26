@@ -649,14 +649,18 @@ class MainActivity:ComponentActivity(){
 }
 @Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={}){
     var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
-    val series=remember(world.id){db.all().filter{it.parentId==world.id&&it.kind=="Series"}}
+    var expandedStories by remember(world.id){mutableStateOf(setOf<String>())}
+    val direct=remember(world.id){db.all().filter{it.parentId==world.id}}
+    val series=direct.filter{it.kind=="Series"}
+    val stories=direct.filter{it.kind=="Story"}
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
         Card(Modifier.fillMaxWidth().clickable{open(world)}){
             Column(Modifier.padding(12.dp)){
                 Text(world.title,fontWeight=FontWeight.SemiBold)
-                Text("${db.all().count{it.parentId==world.id}} linked records",fontSize=12.sp,color=Plum)
+                Text("${db.descendants(world.id).size} linked records",fontSize=12.sp,color=Plum)
             }
         }
+        if(series.isNotEmpty())Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)
         series.forEach{seriesRecord->
             val expanded=seriesRecord.id in expandedSeries
             Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
@@ -669,6 +673,22 @@ class MainActivity:ComponentActivity(){
                         TextButton(onClick={open(seriesRecord)}){Text("Open")}
                     }
                     if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead)
+                }
+            }
+        }
+        if(stories.isNotEmpty())Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)
+        stories.forEach{story->
+            val expanded=story.id in expandedStories
+            Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
+                Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Text(story.title,Modifier.weight(1f),fontWeight=FontWeight.Medium)
+                        IconButton(onClick={expandedStories=if(expanded)expandedStories-story.id else expandedStories+story.id}){
+                            Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse story" else "Expand story")
+                        }
+                        TextButton(onClick={open(story)}){Text("Open")}
+                    }
+                    if(expanded)WorldTreeChildren(db,story.id,1,open,onRead)
                 }
             }
         }
