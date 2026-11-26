@@ -60,3 +60,10 @@ npm run build
 The web client is a PWA and can be installed from a supported browser. It stores content in that browser's IndexedDB; export backups regularly, especially before clearing browser data or changing devices.
 
 **Implementation status:** this is an active implementation. The new schema establishes the wider relational feature model, but advanced canvas drawing/family-tree interactions, full rich-text document parity, DOCX/EPUB publishing, multi-user collaboration, public wiki hosting, and a native desktop package are not yet complete. The product remains no-AI and local-first.
+
+
+### Expanded offline studio modules
+
+The web client now includes responsive workspaces for the manuscript editor, Story Bible, multiple timelines and events, visual boards with draggable cards/connectors/freehand drawing, family relationship records, custom entity schemas, inline relational tables, writing sprints, word goals and daily logs, editable writing prompts, sharing/role manifests, static read-only wiki export, DOCX/TXT import, DOCX/EPUB/TXT publishing, theme and type-size controls, and portable JSON/ZIP project exports. It remains browser-local and does not transmit manuscript content.
+
+The web CI workflow also runs on pushes to the active Novel Studio feature branch so that the client can be validated while development continues.
