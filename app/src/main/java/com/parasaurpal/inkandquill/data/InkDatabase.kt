@@ -32,10 +32,38 @@ data class InkRecord(
     val position:Int=0
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,20){
+data class IndexedSearchRow(
+    val docId: String,
+    val docType: String,
+    val kind: String,
+    val title: String,
+    val aliases: String,
+    val tags: String,
+    val templateTitle: String,
+    val sheetContent: String,
+    val proseContent: String
+)
+
+data class MediaAsset(
+    val id: String,
+    val recordId: String,
+    val templateId: String,
+    val fieldId: String,
+    val subjectKind: String,
+    val uri: String,
+    val mimeType: String,
+    val displayName: String,
+    val caption: String,
+    val source: String,
+    val size: Long,
+    val createdAt: Long
+)
+
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,24){
     private val appContext=context.applicationContext
     init {
-        seed(writableDatabase)
+        seed(writableDatabase, overwriteUnmodified = false)
+        ensureSearchIndexPopulated(writableDatabase)
         cleanupAbandonedMediaStages()
     }
 
@@ -56,17 +84,18 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE INDEX records_parent ON records(parentId)")
         db.execSQL("CREATE INDEX links_target ON links(targetId)")
         db.execSQL("INSERT INTO settings VALUES('appearance','system'),('fontSize','18'),('autoLink','suggest'),('caseSensitive','false')")
-        seed(db)
         db.execSQL("CREATE TABLE folders(id TEXT PRIMARY KEY,name TEXT NOT NULL,parentId TEXT,color TEXT,position INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE record_folders(recordId TEXT PRIMARY KEY,folderId TEXT NOT NULL)")
         db.execSQL("CREATE TABLE collections(id TEXT PRIMARY KEY,name TEXT NOT NULL,description TEXT,color TEXT,createdAt INTEGER)")
         db.execSQL("CREATE TABLE collection_records(collectionId TEXT NOT NULL,recordId TEXT NOT NULL,PRIMARY KEY(collectionId,recordId))")
-        db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE attachments(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,uri TEXT NOT NULL,mimeType TEXT,displayName TEXT,size INTEGER,createdAt INTEGER,templateId TEXT DEFAULT '',fieldId TEXT DEFAULT '',subjectKind TEXT DEFAULT '',caption TEXT DEFAULT '',source TEXT DEFAULT 'file')")
         db.execSQL("CREATE TABLE link_exclusions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,term TEXT NOT NULL,UNIQUE(recordId,term))")
         db.execSQL("CREATE TABLE link_suggestions(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,term TEXT NOT NULL,position INTEGER DEFAULT 0,status TEXT,UNIQUE(sourceId,targetId,position))")
         db.execSQL("CREATE TABLE open_tabs(position INTEGER PRIMARY KEY,recordId TEXT NOT NULL UNIQUE)")
         db.execSQL("CREATE TABLE template_sections(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,name TEXT NOT NULL,position INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE template_versions(id TEXT PRIMARY KEY,templateId TEXT NOT NULL,snapshot TEXT NOT NULL,createdAt INTEGER)")
+        db.execSQL("CREATE TABLE record_sheets(recordId TEXT PRIMARY KEY,templateId TEXT NOT NULL,updatedAt INTEGER)")
+        db.execSQL("CREATE TABLE record_sheet_values(recordId TEXT NOT NULL,fieldId TEXT NOT NULL,value TEXT NOT NULL,updatedAt INTEGER,PRIMARY KEY(recordId,fieldId))")
         db.execSQL("CREATE TABLE record_relationships(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,notes TEXT,createdAt INTEGER,UNIQUE(sourceId,targetId,label))")
         db.execSQL("CREATE TABLE entity_snapshots(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,label TEXT NOT NULL,payload TEXT NOT NULL,createdAt INTEGER)")
         db.execSQL("CREATE TABLE timeline_events(id TEXT PRIMARY KEY,worldId TEXT NOT NULL,title TEXT NOT NULL,startDate TEXT NOT NULL,endDate TEXT,description TEXT,recordId TEXT)")
@@ -82,10 +111,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         db.execSQL("CREATE TABLE calendar_entries(id TEXT PRIMARY KEY,calendarId TEXT NOT NULL,year INTEGER,month INTEGER,day INTEGER,title TEXT NOT NULL,description TEXT,repeatYearly INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE link_history(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT,position INTEGER,action TEXT,createdAt INTEGER,term TEXT,endPosition INTEGER)")
         db.execSQL("CREATE INDEX attachments_record ON attachments(recordId)")
+        db.execSQL("CREATE INDEX attachments_template ON attachments(templateId)")
         db.execSQL("CREATE INDEX collection_records_record ON collection_records(recordId)")
+        db.execSQL("CREATE INDEX record_sheet_values_record ON record_sheet_values(recordId)")
+        db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+        seed(db, overwriteUnmodified = true)
+        rebuildSearchIndex(db)
     }
     override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int){
-        if(oldVersion<20){runCatching{db.execSQL("ALTER TABLE records ADD COLUMN position INTEGER DEFAULT 0")};migrateRecordPositions(db)}
         if(oldVersion<19){db.execSQL("CREATE TABLE IF NOT EXISTS map_pins(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,x REAL NOT NULL,y REAL NOT NULL,label TEXT,color TEXT,recordId TEXT,linkedBoardId TEXT,createdAt INTEGER)")}
         if(oldVersion<18){runCatching{db.execSQL("ALTER TABLE records ADD COLUMN coverUri TEXT DEFAULT ''")}}
         if(oldVersion<2){db.execSQL("CREATE TABLE IF NOT EXISTS revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)");db.execSQL("CREATE TABLE IF NOT EXISTS template_fields(id TEXT PRIMARY KEY,templateId TEXT,name TEXT,fieldType TEXT,required INTEGER,position INTEGER)")}
@@ -129,145 +162,130 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             db.execSQL("CREATE TABLE IF NOT EXISTS board_items(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,recordId TEXT,title TEXT NOT NULL,content TEXT,x REAL DEFAULT 0,y REAL DEFAULT 0,color TEXT)")
             db.execSQL("CREATE TABLE IF NOT EXISTS board_links(id TEXT PRIMARY KEY,boardId TEXT NOT NULL,fromItem TEXT NOT NULL,toItem TEXT NOT NULL,label TEXT,UNIQUE(boardId,fromItem,toItem))")
         }
+        if(oldVersion<20){
+            db.execSQL("CREATE TABLE IF NOT EXISTS record_sheets(recordId TEXT PRIMARY KEY,templateId TEXT NOT NULL,updatedAt INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS record_sheet_values(recordId TEXT NOT NULL,fieldId TEXT NOT NULL,value TEXT NOT NULL,updatedAt INTEGER,PRIMARY KEY(recordId,fieldId))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS record_sheet_values_record ON record_sheet_values(recordId)")
+            seed(db, overwriteUnmodified = true)
+        }
+        if(oldVersion<21){
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+            rebuildSearchIndex(db)
+        }
+        if(oldVersion<22){
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN templateId TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN fieldId TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN subjectKind TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN caption TEXT DEFAULT ''")}
+            runCatching{db.execSQL("ALTER TABLE attachments ADD COLUMN source TEXT DEFAULT 'file'")}
+            db.execSQL("CREATE INDEX IF NOT EXISTS attachments_template ON attachments(templateId)")
+        }
+        if(oldVersion<23){
+            runCatching{db.execSQL("DROP TABLE IF EXISTS search_fts")}
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
+            rebuildSearchIndex(db)
+        }
+        if(oldVersion<24){runCatching{db.execSQL("ALTER TABLE records ADD COLUMN position INTEGER DEFAULT 0")};migrateRecordPositions(db)}
     }
-    private fun seed(db:SQLiteDatabase){
-        val data=listOf(
-            "Character|character|Identity,Appearance,Personality,Backstory,Goals,Fears,Relationships,Abilities,Voice,Arc",
-            "Location|location|Overview,Geography,Climate,History,Architecture,People,Culture,Secrets",
-            "Culture|culture|Values,Customs,Language,Clothing,Food,Arts,Religion,Social Structure",
-            "Faction|faction|Purpose,Leadership,Members,Allies,Enemies,Resources,History,Secrets",
-            "Magic System|magic|Source,Rules,Costs,Limits,Practitioners,History,Exceptions",
-            "Creature|creature|Description,Habitat,Behavior,Diet,Abilities,Weaknesses,Lore",
-            "Deity|deity|Domains,Symbols,Myths,Worship,Followers,Relationships,Manifestations",
-            "Timeline Event|event|Date,Era,Location,People Involved,Cause,Consequences,Sources",
-            "Plot Outline|outline|Premise,Beginning,Inciting Incident,Turning Points,Climax,Resolution,Themes",
-            "Scene|scene|Purpose,POV,Setting,Goal,Conflict,Outcome,Continuity Notes",
-            "Research Note|research|Question,Summary,Source,Quotes,Relevance,Follow-up",
-            "Poem|poem|Form,Theme,Imagery,Structure,Draft,Revision Notes",
-            "NPC Profile|npc|Role,Appearance,Personality,Motivation,Knowledge,Relationships,Notes",
-            "Character Arc|arc|Starting State,Want,Need,Flaw,Turning Points,Change,Ending",
-            "Relationship|relationship|People Involved,Type,History,Dynamics,Conflict,Current State",
-            "Family Tree|family|Members,Lineage,Branches,Inheritance,Secrets,Notes",
-            "Inventory|inventory|Owner,Items,Origin,Properties,Condition,Notes",
-            "World Overview|world|Premise,Themes,History,Rules,Regions,Peoples,Conflicts",
-            "Continent or Region|region|Geography,Climate,Settlements,Resources,History,Politics",
-            "Country or Kingdom|country|Government,Capital,Population,Economy,Military,Allies,Enemies",
-            "City or Settlement|city|Districts,Landmarks,Government,Population,Trade,History",
-            "Building or Interior|building|Purpose,Layout,Rooms,Materials,Occupants,Secrets",
-            "Species Profile|species|Biology,Habitat,Culture,Language,Abilities,Life Cycle",
-            "Society|society|Values,Class Structure,Law,Customs,Education,Economy",
-            "Organization|organization|Mission,Structure,Leadership,Membership,Resources,Influence",
-            "Spell or Ability|spell|Effect,Source,Requirements,Cost,Limitations,Countermeasures",
-            "Artifact|artifact|Appearance,Origin,Abilities,Limitations,Ownership,History",
-            "Technology or Invention|technology|Purpose,Components,Operation,Limitations,History",
-            "Religion or Philosophy|belief|Beliefs,Practices,Texts,Symbols,Leadership,Schisms",
-            "Language|language|Sounds,Grammar,Writing System,Vocabulary,History,Examples",
-            "Three Act Outline|threeact|Act One,Act Two,Act Three,Turning Points,Climax",
-            "Hero Journey|hero|Ordinary World,Call,Threshold,Trials,Ordeal,Reward,Return",
-            "Subplot|subplot|Characters,Setup,Development,Intersection,Resolution",
-            "Chapter Plan|chapter|Purpose,POV,Opening,Beats,Ending,Continuity",
-            "Plot Twist|twist|Setup,Clues,Reveal,Impact,Aftermath",
-            "Mystery and Clues|mystery|Question,Known Facts,Clues,Red Herrings,Revelation",
-            "Calendar|calendar|Era,Months,Week Length,Seasons,Moons,Special Dates",
-            "Historical Era|era|Dates,Major Events,Technology,Politics,Culture",
-            "Map Reference|map|Area,Scale,Landmarks,Routes,Boundaries,Notes",
-            "Floor Plan|floorplan|Levels,Rooms,Entrances,Exits,Hidden Areas",
-            "Moodboard|moodboard|Visual Themes,Palette,Textures,References,Atmosphere",
-            "Research Source|source|Citation,Author,Publication,URL,Summary,Trust Notes",
-            "Reference Entry|reference|Subject,Description,Source,Connections,Notes",
-            "Novel Project|novel|Premise,Genre,Audience,Themes,Synopsis,Main Cast,World,Outline,Revision Plan",
-            "Standalone Story|standalone|Premise,POV,Setting,Characters,Conflict,Structure,Ending,Themes",
-            "Series Bible|series|Series Premise,Core Themes,Volume List,Long Arc,Cast,Continuity Rules,Open Threads",
-            "Book Plan|bookplan|Logline,Summary,POV,Cast,Chapter Outline,Subplots,Continuity,Revision Notes",
-            "Short Story|shortstory|Hook,Character,Setting,Conflict,Turning Point,Climax,Resolution",
-            "Flash Fiction|flash|Opening Image,Central Idea,Turn,Ending,Word Limit",
-            "Screenplay|screenplay|Logline,Format,Characters,Sequence Outline,Scenes,Dialogue,Production Notes",
-            "Stage Play|play|Premise,Cast,Acts,Scenes,Stage Directions,Dialogue,Themes",
-            "Essay|essay|Question,Thesis,Arguments,Evidence,Counterargument,Conclusion,Sources",
-            "Article or Blog Post|article|Headline,Audience,Angle,Outline,Key Points,Sources,Call to Action",
-            "Research Paper|paper|Research Question,Thesis,Method,Findings,Discussion,Citations",
-            "Journal Entry|journal|Date,Mood,Events,Reflections,Gratitude,Next Steps",
-            "Daily Log|dailylog|Date,Highlights,Tasks,Notes,Reflection",
-            "Dream Journal|dream|Date,Setting,People,Events,Emotions,Symbols,Interpretation",
-            "Travel Journal|travel|Date,Place,Itinerary,Experiences,People,Memories,Expenses",
-            "Meeting Notes|meeting|Date,Attendees,Agenda,Discussion,Decisions,Action Items",
-            "Project Brief|project|Goal,Audience,Scope,Deliverables,Milestones,Risks,Resources",
-            "World Flora and Fauna|ecology|Biomes,Plants,Animals,Food Webs,Adaptations,Threats",
-            "Climate and Biomes|biome|Regions,Seasons,Weather,Climate Patterns,Resources,Effects",
-            "Custom Calendar System|calendar-system|Year Length,Months,Weekdays,Seasons,Moons,Eras,Leap Rules",
-            "Moon and Lunar Cycle|moon-cycle|Name,Orbit,Phases,Calendar Effects,Cultural Meaning",
-            "Economy and Trade|economy|Currency,Resources,Industries,Trade Routes,Taxes,Class Effects",
-            "Law and Government|government|Government Type,Leaders,Laws,Courts,Enforcement,Political Tensions",
-            "Customs and Traditions|tradition|Name,Origin,Participants,Timing,Rituals,Meaning,Variations",
-            "Save the Cat Outline|savecat|Opening Image,Theme Stated,Set-Up,Catalyst,Debate,Midpoint,All Is Lost,Finale",
-            "Snowflake Method|snowflake|One Sentence,One Paragraph,Character Summaries,Expanded Synopsis,Scene List",
-            "Story Circle|storycircle|You,Need,Go,Search,Find,Take,Return,Change",
-            "Character Relationship Map|relationship-map|Nodes,Connections,Conflicts,Alliances,Changes",
-            "Scene Breakdown|scene-breakdown|Scene Goal,Conflict,Disaster,Reaction,Dilemma,Decision",
-            "Continuity Tracker|continuity|Fact,First Mention,Related Records,Dependencies,Potential Conflicts",
-            "Source Citation|citation|Author,Title,Publisher,Publication Date,URL,Access Date,Notes",
-            "Plant Profile|plant|Common Name,Scientific Name,Plant Type,Description,Native Range,Habitat,Climate,Soil,Seasonality,Uses,Edible Parts,Toxicity,Medicinal Properties,Magical Properties,Harvesting,Conservation,Image Gallery,References",
-            "Animal or Fauna Profile|animal|Common Name,Scientific Name,Classification,Description,Range,Habitat,Diet,Predators,Behavior,Social Structure,Reproduction,Lifespan,Adaptations,Domestication,Conservation,Image Gallery,References",
-            "Fungus Profile|fungus|Common Name,Scientific Name,Type,Appearance,Habitat,Seasonality,Ecological Role,Edibility,Toxicity,Uses,Reproduction,Harvesting,Image Gallery,References",
-            "Mineral and Gemstone|mineral|Name,Classification,Composition,Hardness,Color,Formation,Locations,Physical Properties,Magical Properties,Industrial Uses,Rarity,Trade Value,Image Gallery,References",
-            "Biome Profile|biome-profile|Name,Climate,Temperature Range,Precipitation,Seasons,Flora,Fauna,Geography,Resources,Hazards,Settlements,Ecological Changes,Image Gallery",
-            "Weather and Climate Pattern|weather-pattern|Pattern,Season,Duration,Frequency,Temperature,Precipitation,Winds,Regional Effects,Hazards,Cultural Effects",
-            "Celestial Body|celestial|Name,Type,Size,Mass,Orbit,Rotation,Atmosphere,Surface,Moons,Visibility,Mythology,Effects on World,Image Gallery",
-            "Plane or Realm|realm|Name,Type,Description,Physical Laws,Environment,Inhabitants,Access Methods,Time Flow,Threats,Connections,Image Gallery",
-            "Portal or Gateway|portal|Name,Origin,Destination,Activation,Requirements,Appearance,Stability,Limitations,Guardians,Known Locations",
-            "Resource and Material|resource|Name,Type,Source,Locations,Extraction,Properties,Uses,Rarity,Renewability,Ownership,Trade Value,Environmental Impact",
-            "Food and Cuisine|cuisine|Dish or Ingredient,Origin,Ingredients,Preparation,Flavor,Availability,Regional Variations,Cultural Meaning,Restrictions,Image Gallery",
-            "Clothing and Fashion|clothing|Garment,Materials,Construction,Function,Climate,Social Meaning,Regional Styles,Status Markers,Variations,Image Gallery",
-            "Custom or Tradition|custom-detail|Name,Origin,Occasion,Participants,Procedure,Materials,Symbolism,Regional Variations,Restrictions,Changes Over Time",
-            "Holiday or Festival|festival|Name,Date or Season,Origin,Duration,Participants,Traditions,Food,Symbols,Events,Regional Variations,Historical Changes",
-            "Ritual and Ceremony|ceremony|Name,Purpose,Tradition,Participants,Location,Timing,Preparation,Steps,Objects,Words or Chants,Expected Outcome,Risks,Variations",
-            "Art and Craft Tradition|art-tradition|Medium,Materials,Techniques,Styles,Practitioners,Training,Uses,Symbolism,History,Regional Variations,Image Gallery",
-            "Music and Instruments|music|Style,Instruments,Structure,Scales or Modes,Performance Context,Practitioners,History,Social Meaning,Examples",
-            "Sport and Games|game|Name,Type,Equipment,Rules,Objective,Players,Scoring,Locations,Professional Scene,Cultural Importance,Variations",
-            "Currency and Banking|currency|Currency Name,Symbol,Denominations,Materials,Issuing Authority,Exchange Rate,Backing,Counterfeiting,Institutions,Historical Changes",
-            "Trade Route and Market|trade-route|Route,Origin,Destination,Distance,Travel Time,Goods,Carriers,Costs,Risks,Control,Seasonality,Political Importance",
-            "Military and Warfare|military|Force Name,Command Structure,Branches,Recruitment,Training,Equipment,Doctrine,Strength,Weaknesses,Conflicts,Alliances,Logistics",
-            "Law and Legal Code|law|Law or Code,Jurisdiction,Authority,Protected Rights,Prohibitions,Enforcement,Trial Process,Penalties,Exceptions,Historical Context",
-            "Education and Knowledge|education|Institutions,Access,Teaching Methods,Curriculum,Literacy,Apprenticeships,Knowledge Keepers,Restrictions,History",
-            "Medicine and Healing|medicine|Practice,Practitioners,Training,Tools,Remedies,Diagnosis,Treatments,Limitations,Ethics,Access,Regional Traditions",
-            "Transportation and Travel|transport|Method,Vehicle or Animal,Capacity,Speed,Range,Infrastructure,Costs,Hazards,Availability,Regional Variations",
-            "Architecture and Building Style|architecture|Style,Materials,Structural Methods,Climate Adaptation,Typical Layout,Decoration,Builders,Regional Variations,Historical Period,Image Gallery",
-            "Measurement and Units|measurement|System Name,Length Units,Mass Units,Volume Units,Time Units,Temperature Units,Conversion Rules,Standards,Regional Variations",
-            "Magic School or Tradition|magic-school|Name,Philosophy,Source,Practitioners,Training,Techniques,Rules,Costs,Limitations,Taboos,History,Related Traditions",
-            "Magical Creature or Monster|magical-creature|Name,Classification,Appearance,Origin,Habitat,Behavior,Abilities,Weaknesses,Diet,Threat Level,Encounters,Lore,Image Gallery",
-            "Dragon or Great Beast|dragon|Species,Appearance,Anatomy,Habitat,Intelligence,Abilities,Breath or Weapon,Weaknesses,Lifecycle,Social Structure,Treasures,History,Image Gallery",
-            "Planting and Agriculture|agriculture|Crops,Growing Season,Soil,Climate,Methods,Tools,Irrigation,Yields,Pests,Storage,Trade,Food Security",
-            "Population and Demographics|population|Region,Population,Population Density,Age Distribution,Languages,Migration,Birth Rate,Life Expectancy,Urbanization,Data Sources",
-            "Political System and Succession|politics|System,Head of State,Legislature,Judiciary,Local Government,Succession,Parties or Factions,Checks and Balances,Current Tensions",
-            "Historical Conflict or War|war|Name,Dates,Causes,Parties,Leaders,Major Battles,Strategies,Turning Points,Consequences,Treaties,Legacy,Primary Sources",
-            "Myth, Legend, or Folktale|myth|Title,Tradition,Characters,Setting,Plot,Themes,Symbolism,Versions,Historical Basis,Cultural Function,Sources",
-            "Prophecy and Omen|prophecy|Text or Sign,Origin,Interpreter,Conditions,Possible Meanings,Known Versions,Related Events,Who Believes It,Consequences",
-            "Secret Society|secret-society|Purpose,Public Face,Membership,Initiation,Leadership,Symbols,Resources,Operations,Secrets,Allies,Enemies,Known Members",
-            "Plant or Animal Species Taxonomy|taxonomy|Common Name,Scientific Name,Kingdom,Phylum,Class,Order,Family,Genus,Species,Subspecies,Related Species,References",
-            "World Rules and Constants|world-rules|Rule,Scope,Exceptions,Origin,Observable Effects,Who Knows,Consequences,Related Systems",
-            "Geographic Feature|geographic-feature|Name,Feature Type,Coordinates or Position,Formation,Dimensions,Climate,Flora and Fauna,Resources,Hazards,Settlements,History,Map Image",
-            "Settlement District|district|Name,Location,Population,Architecture,Landmarks,Services,Economy,Authorities,Notable Residents,Conflicts,Map Image",
-            "Character Lineage and Heritage|lineage|Person or Family,Ancestors,Descendants,House or Clan,Inheritance,Heritage,Adoptions,Disputed Claims,Secrets,Family Tree",
-            "House, Clan, or Dynasty|dynasty|Name,Founder,Lineage,Motto,Symbols,Seat,Holdings,Allies,Rivals,Notable Members,Succession,History",
-            "Magic Spell Catalogue|spell-catalogue|Spell Name,School,Effect,Range,Duration,Components,Requirements,Cost,Side Effects,Counterspell,Known Users",
-            "Technology System|tech-system|Technology Level,Energy Sources,Materials,Manufacturing,Transportation,Communication,Medicine,Weapons,Limitations,Uneven Access",
-            "Worldbuilding Glossary|glossary|Term,Definition,Pronunciation,Language,Category,First Use,Related Terms,Notes",
-            "Worldbuilding Open Questions|open-questions|Question,Why It Matters,Current Assumptions,Options,Dependencies,Decision,Status,Related Records"
-        )
-        data.forEach{line->val p=line.split("|");val templateId="template_"+p[1];val category=when{p[1].contains("character")||p[1] in listOf("npc","faction","species","creature","location","culture","deity","religion")->"Characters & Worldbuilding";p[1].contains("magic")||p[1] in listOf("spell","artifact","technology","power")->"Magic & Systems";p[1].contains("plot")||p[1] in listOf("savecat","snowflake","storycircle","scene-breakdown","relationship-map")->"Plot & Structure";p[1].contains("calendar")||p[1].contains("moon")||p[1].contains("timeline")->"Timeline & Calendar";p[1].contains("map")||p[1].contains("floor")||p[1].contains("mood")||p[1].contains("board")->"Visual Planning";p[1].contains("reference")||p[1].contains("citation")||p[1].contains("research")->"Research & Reference";p[1] in listOf("novel","standalone","series","bookplan","shortstory","flash","screenplay","play","essay","article","paper","journal","dailylog","dream","travel","meeting","project")->"Writing";else->"Characters & Worldbuilding"};val v=ContentValues().apply{put("id",templateId);put("title",p[0]);put("body",p[2].split(",").joinToString("\n\n"){"@@{it}:\n"});put("kind","Template");put("tags",category)};db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_IGNORE);db.execSQL("UPDATE records SET tags=? WHERE id=? AND (tags IS NULL OR tags='')",arrayOf(category,templateId));p[2].split(",").forEachIndexed{index,field->val fieldName=field.trim();val fieldType=when{fieldName.contains("Date",true)||fieldName=="Seasonality"->"Date";fieldName in listOf("Population","Population Density","Age Distribution","Birth Rate","Life Expectancy","Distance","Travel Time","Capacity","Speed","Range","Duration","Temperature","Precipitation","Hardness","Mass","Size","Length Units","Mass Units","Volume Units","Time Units","Temperature Units","Yields","Year Length","Week Length","Days per Month","Lifespan","Scoring") ->"Number";fieldName.contains("Image",true)||fieldName.contains("Map Image")||fieldName=="Family Tree"->"Table";fieldName in listOf("Related Records","Related Systems","Related Terms","Related Species","People Involved","Notable Residents","Known Members","Allies","Enemies","Practitioners","Inhabitants","Followers","Members","Ancestors","Descendants","Owners","Leaders") ->"Relationship";fieldName in listOf("Type","Classification","Climate","Season","Government Type","School","Status","Threat Level","Rarity","Currency Name","System","Medium","Style","Occasion","Purpose","Jurisdiction","Kingdom","Phylum","Class","Order","Family","Genus","Species","Subspecies") ->"Dropdown";fieldName.endsWith("s")||fieldName in listOf("Abilities","Weaknesses","Ingredients","Materials","Symbols","Resources","Techniques","Traditions","Rules","Exceptions","Crops","Languages","Instruments","Branches","Denominations","Landmarks","Regions","Settlements","Moons","Seasons","Flora","Fauna","Predators","Adaptations","Side Effects","Components","Equipment","Major Battles","Turning Points","Known Versions") ->"Repeatable group";else->"Long text"};val fieldOptions=when(fieldName){"Type"->"Natural,Artificial,Magical,Social,Political,Religious,Other";"Classification"->"Mammal,Bird,Reptile,Amphibian,Fish,Insect,Arachnid,Fungus,Plant,Mineral,Other";"Climate"->"Tropical,Dry,Temperate,Continental,Polar,Alpine,Other";"Season"->"Spring,Summer,Autumn,Winter,Wet,Dry,Other";"Government Type"->"Monarchy,Republic,Democracy,Oligarchy,Theocracy,Dictatorship,Tribal Council,Anarchy,Other";"School"->"Elemental,Illusion,Divination,Enchantment,Conjuration,Abjuration,Necromancy,Transmutation,Other";"Status"->"Draft,Proposed,Established,Disputed,Deprecated,Other";"Threat Level"->"Negligible,Low,Moderate,High,Severe,Catastrophic";"Rarity"->"Common,Uncommon,Rare,Very Rare,Legendary,Unique";"Currency Name"->"Coin,Barter,Commodity,Paper,Digital,Other";"System"->"Metric,Imperial,Customary,Other";"Medium"->"Painting,Sculpture,Textile,Ceramic,Metalwork,Woodwork,Other";"Style"->"Traditional,Formal,Regional,Religious,Military,Everyday,Other";"Occasion"->"Birth,Coming of Age,Marriage,Death,Harvest,New Year,Solstice,Equinox,Other";"Purpose"->"Practical,Religious,Political,Social,Protective,Ceremonial,Other";"Jurisdiction"->"Local,Regional,National,International,Other";else->"Other"};val fv=ContentValues().apply{put("id","field_"+p[1]+"_"+index);put("templateId",templateId);put("name",fieldName);put("fieldType",fieldType);put("options",fieldOptions);put("required",0);put("position",index);put("section",when{fieldName.contains("Image",true)||fieldName.contains("Map",true)||fieldName.contains("Family Tree")->"Visual References";fieldName in listOf("History","Origin","Historical Context","Historical Changes","Historical Basis","Legacy")->"History & Lore";fieldName in listOf("Related Records","Related Systems","Related Terms","Related Species","References","Sources","Data Sources")->"Connections & Sources";else->"Details"})};db.insertWithOnConflict("template_fields",null,fv,SQLiteDatabase.CONFLICT_IGNORE);db.update("template_fields",ContentValues().apply{put("fieldType",fieldType);put("options",fieldOptions);put("section",when{fieldName.contains("Image",true)||fieldName.contains("Map",true)||fieldName.contains("Family Tree")->"Visual References";fieldName in listOf("History","Origin","Historical Context","Historical Changes","Historical Basis","Legacy")->"History & Lore";fieldName in listOf("Related Records","Related Systems","Related Terms","Related Species","References","Sources","Data Sources")->"Connections & Sources";else->"Details"})},"id=?",arrayOf("field_"+p[1]+"_"+index))}}
+    private fun seed(db:SQLiteDatabase, overwriteUnmodified:Boolean=false){
+        FantasyTemplateCatalog.allSpecs.forEach{spec->
+            val templateId="template_"+spec.slug
+            val exists=db.rawQuery("SELECT 1 FROM records WHERE id=?",arrayOf(templateId)).use{it.moveToFirst()}
+            val editedByUser=db.rawQuery("SELECT 1 FROM template_versions WHERE templateId=? LIMIT 1",arrayOf(templateId)).use{it.moveToFirst()}
+            val hasFields=db.rawQuery("SELECT 1 FROM template_fields WHERE templateId=? LIMIT 1",arrayOf(templateId)).use{it.moveToFirst()}
+            val hasSections=db.rawQuery("SELECT 1 FROM template_sections WHERE templateId=? LIMIT 1",arrayOf(templateId)).use{it.moveToFirst()}
+            val shouldWriteFields=!exists||!hasFields||(overwriteUnmodified&&!editedByUser)
+            if(!exists){
+                val v=ContentValues().apply{
+                    put("id",templateId)
+                    put("title",spec.title)
+                    put("body",spec.description)
+                    put("kind","Template")
+                    put("scope",spec.defaultKind)
+                    put("tags",spec.category)
+                    put("createdAt",System.currentTimeMillis())
+                    put("updatedAt",System.currentTimeMillis())
+                }
+                db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_IGNORE)
+            } else if(overwriteUnmodified&&!editedByUser){
+                db.update("records",ContentValues().apply{
+                    put("title",spec.title)
+                    put("body",spec.description)
+                    put("scope",spec.defaultKind)
+                    put("tags",spec.category)
+                },"id=?",arrayOf(templateId))
+            }
+            if(shouldWriteFields){
+                if(overwriteUnmodified&&!editedByUser){
+                    db.delete("template_fields","templateId=?",arrayOf(templateId))
+                    db.delete("template_sections","templateId=?",arrayOf(templateId))
+                }
+                spec.sections.forEachIndexed{sIndex,sectionName->
+                    val sv=ContentValues().apply{
+                        put("id","section_${spec.slug}_$sIndex")
+                        put("templateId",templateId)
+                        put("name",sectionName)
+                        put("position",sIndex)
+                    }
+                    db.insertWithOnConflict("template_sections",null,sv,SQLiteDatabase.CONFLICT_REPLACE)
+                }
+                spec.fields.forEachIndexed{index,field->
+                    val fv=ContentValues().apply{
+                        put("id","field_${spec.slug}_$index")
+                        put("templateId",templateId)
+                        put("name",field.name)
+                        put("fieldType",field.type)
+                        put("options",field.options)
+                        put("hint",field.hint)
+                        put("required",if(field.required)1 else 0)
+                        put("position",index)
+                        put("section",field.section)
+                        put("removed",0)
+                        put("conditionField",field.conditionField)
+                        put("conditionValue",field.conditionValue)
+                        put("formula",field.formula)
+                        put("repeatable",if(field.repeatable)1 else 0)
+                    }
+                    db.insertWithOnConflict("template_fields",null,fv,SQLiteDatabase.CONFLICT_REPLACE)
+                }
+            } else if(!hasSections){
+                spec.sections.forEachIndexed{sIndex,sectionName->
+                    val sv=ContentValues().apply{
+                        put("id","section_${spec.slug}_$sIndex")
+                        put("templateId",templateId)
+                        put("name",sectionName)
+                        put("position",sIndex)
+                    }
+                    db.insertWithOnConflict("template_sections",null,sv,SQLiteDatabase.CONFLICT_IGNORE)
+                }
+            }
+        }
     }
-    fun restoreStarterTemplates(){val db=writableDatabase;val ids=mutableListOf<String>();db.rawQuery("SELECT id FROM records WHERE kind='Template' AND id LIKE 'template_%'",null).use{while(it.moveToNext())ids.add(it.getString(0))};db.beginTransaction();try{ids.forEach{id->listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))};db.delete("records","id=?",arrayOf(id))};db.setTransactionSuccessful()}finally{db.endTransaction()};seed(db)}
+    fun restoreStarterTemplates(){
+        val db=writableDatabase
+        val ids=mutableListOf<String>()
+        db.rawQuery("SELECT id FROM records WHERE kind='Template' AND id LIKE 'template_%'",null).use{while(it.moveToNext())ids.add(it.getString(0))}
+        db.beginTransaction()
+        try{
+            ids.forEach{id->
+                listOf("template_fields","template_sections","template_versions").forEach{table->db.delete(table,"templateId=?",arrayOf(id))}
+                db.delete("records","id=?",arrayOf(id))
+            }
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        seed(db, overwriteUnmodified = true)
+        rebuildSearchIndex(db)
+    }
     private fun android.database.Cursor.record():InkRecord{val posIdx=getColumnIndex("position");return InkRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("title")),getString(getColumnIndexOrThrow("body")),getString(getColumnIndexOrThrow("kind")),getString(getColumnIndexOrThrow("parentId"))?:"",getString(getColumnIndexOrThrow("scope"))?:"World",getString(getColumnIndexOrThrow("tags"))?:"",getString(getColumnIndexOrThrow("aliases"))?:"",getLong(getColumnIndexOrThrow("createdAt")),getLong(getColumnIndexOrThrow("updatedAt")),getInt(getColumnIndexOrThrow("favorite"))==1,getString(getColumnIndex("coverUri").takeIf{it>=0}?:-1)?.let{it}?:"",position=if(posIdx>=0)getInt(posIdx) else 0)}
-    fun descendants(parentId:String):List<InkRecord>{val allRecords=all();val result=mutableListOf<InkRecord>();val visited=mutableSetOf<String>();fun visit(id:String){allRecords.filter{it.parentId==id&&visited.add(it.id)}.forEach{record->result.add(record);visit(record.id)}};visit(parentId);return result}
+    fun descendants(parentId:String):List<InkRecord>{val childrenByParent=all().groupBy{it.parentId};val result=mutableListOf<InkRecord>();val visited=mutableSetOf(parentId);fun visit(id:String){childrenByParent[id].orEmpty().forEach{record->if(visited.add(record.id)){result.add(record);visit(record.id)}}};visit(parentId);return result}
     // Manuscript outline ordering: position orders siblings within a parent (chapters in a
-    // book, scenes in a chapter). The v20 migration numbers each parent's children from
+    // book, scenes in a chapter). The v24 migration numbers each parent's children from
     // least-recently-edited to most-recently-edited, which matches creation order for
-    // manuscripts written in sequence.
+    // manuscripts written in sequence. onUpgrade already runs inside a transaction.
     private fun migrateRecordPositions(db:SQLiteDatabase){
         val rows=mutableListOf<Pair<String,String>>()
         db.rawQuery("SELECT id,COALESCE(parentId,'') FROM records ORDER BY parentId,updatedAt ASC",null).use{while(it.moveToNext())rows.add(it.getString(0) to it.getString(1))}
-        db.beginTransaction()
-        try{var lastParent:String?=null;var pos=0;rows.forEach{(id,parent)->if(parent!=lastParent){lastParent=parent;pos=0};val v=ContentValues().apply{put("position",pos++)};db.update("records",v,"id=?",arrayOf(id))};db.setTransactionSuccessful()}finally{db.endTransaction()}
+        var lastParent:String?=null;var pos=0;rows.forEach{(id,parent)->if(parent!=lastParent){lastParent=parent;pos=0};val v=ContentValues().apply{put("position",pos++)};db.update("records",v,"id=?",arrayOf(id))}
     }
     fun childrenOrdered(parentId:String):List<InkRecord> = readableDatabase.rawQuery("SELECT * FROM records WHERE parentId=? ORDER BY position ASC,createdAt ASC",arrayOf(parentId)).use{c->buildList{while(c.moveToNext())add(c.record())}}
     fun nextChildPosition(parentId:String):Int = readableDatabase.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM records WHERE parentId=?",arrayOf(parentId)).use{if(it.moveToFirst())it.getInt(0)else 0}
@@ -275,13 +293,13 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun all(query:String="",kind:String?=null):List<InkRecord>{
         val sql=StringBuilder("SELECT * FROM records WHERE kind NOT IN ('Template','Archived Template')");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
-        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ? OR EXISTS(SELECT 1 FROM record_tags rt JOIN tags t ON t.id=rt.tagId WHERE rt.recordId=records.id AND t.name LIKE ?))");val q="%$query%";args.addAll(listOf(q,q,q,q,q))}
+        if(query.isNotBlank()){sql.append(" AND (title LIKE ? OR body LIKE ? OR tags LIKE ? OR aliases LIKE ? OR EXISTS(SELECT 1 FROM record_tags rt JOIN tags t ON t.id=rt.tagId WHERE rt.recordId=records.id AND t.name LIKE ?) OR EXISTS(SELECT 1 FROM record_sheet_values rsv WHERE rsv.recordId=records.id AND rsv.value LIKE ?))");val q="%$query%";args.addAll(listOf(q,q,q,q,q,q))}
         sql.append(" ORDER BY favorite DESC,updatedAt DESC")
         return readableDatabase.rawQuery(sql.toString(),args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.record())}}
     }
     fun get(id:String)=readableDatabase.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())it.record()else null}
     fun templates()=readableDatabase.rawQuery("SELECT * FROM records WHERE kind IN ('Template','Archived Template') ORDER BY title",null).use{c->buildList{while(c.moveToNext())add(c.record())}}
-    fun restoreCustomType(id:String){writableDatabase.execSQL("UPDATE records SET kind='Template',updatedAt=? WHERE id=? AND kind='Archived Template' AND parentId<>''",arrayOf(System.currentTimeMillis(),id))}
+    fun restoreCustomType(id:String){writableDatabase.execSQL("UPDATE records SET kind='Template',updatedAt=? WHERE id=? AND kind='Archived Template' AND parentId<>''",arrayOf(System.currentTimeMillis(),id));indexRecord(writableDatabase,id)}
     fun save(r:InkRecord){
         val db=writableDatabase
         val old=get(r.id)
@@ -290,12 +308,14 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val effective=if(old==null&&r.position==0)r.copy(position=nextChildPosition(r.parentId))else r
         val v=ContentValues().apply{put("id",effective.id);put("title",effective.title);put("body",effective.body);put("kind",effective.kind);put("parentId",effective.parentId);put("scope",effective.scope);put("tags",effective.tags);put("aliases",effective.aliases);put("createdAt",effective.createdAt);put("updatedAt",System.currentTimeMillis());put("favorite",if(effective.favorite)1 else 0);put("coverUri",effective.coverUri);put("position",effective.position)}
         db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+        indexRecord(db,r.id)
     }
     fun delete(id:String){
         val existing=get(id)
         val db=writableDatabase
         if(existing?.kind=="Template"&&existing.parentId.isNotBlank()){
             db.execSQL("UPDATE records SET kind='Archived Template',updatedAt=? WHERE id=?",arrayOf(System.currentTimeMillis(),id))
+            indexRecord(db,id)
             return
         }
         val mediaIds=mutableSetOf<String>()
@@ -312,7 +332,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         try{
             db.execSQL("UPDATE records SET parentId='' WHERE parentId=?",arrayOf(id))
             listOf("links" to "sourceId=? OR targetId=?","link_suggestions" to "sourceId=? OR targetId=?","record_relationships" to "sourceId=? OR targetId=?","link_history" to "sourceId=? OR targetId=?").forEach{(table,where)->db.delete(table,where,arrayOf(id,id))}
-            listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
+            listOf("record_folders","attachments","link_exclusions","entity_snapshots","revisions","record_shares","collection_records","open_tabs","record_sheets","record_sheet_values").forEach{table->db.delete(table,"recordId=?",arrayOf(id))}
             db.delete("timeline_events","recordId=?",arrayOf(id))
             db.execSQL("UPDATE map_pins SET recordId='' WHERE recordId=?",arrayOf(id))
             removedBoardItemIds.forEach{itemId->db.delete("board_links","fromItem=? OR toItem=?",arrayOf(itemId,itemId))}
@@ -329,6 +349,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 db.delete("world_calendars","worldId=?",arrayOf(id))
             }
             db.delete("records","id=?",arrayOf(id))
+            db.delete("search_fts","recordId=?",arrayOf(id))
             db.setTransactionSuccessful()
         }finally{db.endTransaction()}
         mediaIds.forEach(::deleteImportedMediaBlob)
@@ -343,7 +364,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun undoLastLinkChange():Boolean{val db=writableDatabase;val last= db.rawQuery("SELECT id,sourceId,targetId,COALESCE(label,'mention'),COALESCE(position,0),action,COALESCE(term,''),COALESCE(endPosition,position) FROM link_history ORDER BY createdAt DESC LIMIT 1",null).use{if(it.moveToFirst())listOf(it.getString(0),it.getString(1),it.getString(2),it.getString(3),it.getInt(4).toString(),it.getString(5),it.getString(6),it.getInt(7).toString())else null}?:return false;db.beginTransaction();try{if(last[5]=="added")db.delete("links","sourceId=? AND targetId=? AND label=?",arrayOf(last[1],last[2],last[3]))else{val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",last[1]);put("targetId",last[2]);put("label",last[3]);put("position",last[4].toInt());put("term",last[6]);put("endPosition",last[7].toInt())};db.insertWithOnConflict("links",null,v,SQLiteDatabase.CONFLICT_IGNORE)};db.delete("link_history","id=?",arrayOf(last[0]));db.setTransactionSuccessful()}finally{db.endTransaction()};return true}
     fun backlinks(id:String)=readableDatabase.rawQuery("SELECT r.id,r.title,l.label,l.position FROM links l JOIN records r ON r.id=l.sourceId WHERE l.targetId=?",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(1),c.getString(2),c.getInt(3)))}}
     fun revisions(id:String)=readableDatabase.rawQuery("SELECT title,body,createdAt FROM revisions WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getLong(2)))}}
-    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","map_pins","record_shares","tags","record_tags","tag_aliases","world_calendars","calendar_entries","link_history")
+    private val backupTables=listOf("links","settings","revisions","template_fields","folders","record_folders","collections","collection_records","attachments","link_exclusions","link_suggestions","open_tabs","template_sections","template_versions","record_sheets","record_sheet_values","record_relationships","entity_snapshots","timeline_events","planning_boards","board_items","board_links","map_pins","record_shares","tags","record_tags","tag_aliases","world_calendars","calendar_entries","link_history")
     private fun exportTable(table:String):JSONArray{val arr=JSONArray();readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){val o=JSONObject();for(i in 0 until c.columnCount){val name=c.getColumnName(i);when(c.getType(i)){android.database.Cursor.FIELD_TYPE_NULL->o.put(name,JSONObject.NULL);android.database.Cursor.FIELD_TYPE_INTEGER->o.put(name,c.getLong(i));android.database.Cursor.FIELD_TYPE_FLOAT->o.put(name,c.getDouble(i));android.database.Cursor.FIELD_TYPE_BLOB->o.put(name,android.util.Base64.encodeToString(c.getBlob(i),android.util.Base64.NO_WRAP));else->o.put(name,c.getString(i))}};arr.put(o)}};return arr}
     fun exportJson():String {
         val root = JSONObject().put("format","inkandquill").put("version",4)
@@ -378,9 +399,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val allowed=when(table){
             "links"->setOf("id","sourceId","targetId","label","position","term","endPosition");"settings"->setOf("key","value");"revisions"->setOf("id","recordId","title","body","createdAt");
             "template_fields"->setOf("id","templateId","name","fieldType","required","position","section","options","hint","removed","conditionField","conditionValue","formula","repeatable");"folders"->setOf("id","name","parentId","color","position");"record_folders"->setOf("recordId","folderId");
-            "collections"->setOf("id","name","description","color","createdAt");"collection_records"->setOf("collectionId","recordId");"attachments"->setOf("id","recordId","uri","mimeType","displayName","size","createdAt");
+            "collections"->setOf("id","name","description","color","createdAt");"collection_records"->setOf("collectionId","recordId");"attachments"->setOf("id","recordId","uri","mimeType","displayName","size","createdAt","templateId","fieldId","subjectKind","caption","source");
             "link_exclusions"->setOf("id","recordId","term");"link_suggestions"->setOf("id","sourceId","targetId","term","position","status");"open_tabs"->setOf("position","recordId");
-            "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
+            "template_sections"->setOf("id","templateId","name","position");"template_versions"->setOf("id","templateId","snapshot","createdAt");"record_sheets"->setOf("recordId","templateId","updatedAt");"record_sheet_values"->setOf("recordId","fieldId","value","updatedAt");"record_relationships"->setOf("id","sourceId","targetId","label","notes","createdAt");
             "entity_snapshots"->setOf("id","recordId","label","payload","createdAt");"timeline_events"->setOf("id","worldId","title","startDate","endDate","description","recordId");
             "planning_boards"->setOf("id","worldId","name","boardType","createdAt","backgroundUri");"board_items"->setOf("id","boardId","recordId","title","content","x","y","color","imageUri");"board_links"->setOf("id","boardId","fromItem","toItem","label");"map_pins"->setOf("id","boardId","x","y","label","color","recordId","linkedBoardId","createdAt");"record_shares"->setOf("recordId","projectId","createdAt");"tags"->setOf("id","name","tagType","color");"record_tags"->setOf("recordId","tagId");"tag_aliases"->setOf("id","tagId","alias");"world_calendars"->setOf("id","worldId","name","months","weekdays","seasons","moons","notes","monthLengths","eras","leapRules");"calendar_entries"->setOf("id","calendarId","year","month","day","title","description","repeatYearly");"link_history"->setOf("id","sourceId","targetId","label","position","action","createdAt","term","endPosition");else->emptySet()}
         for(i in 0 until arr.length()){val o=arr.optJSONObject(i)?:continue;val v=ContentValues();o.keys().forEach{key->if(key in allowed){val value=o.opt(key);when(value){null,JSONObject.NULL->v.putNull(key);is Boolean->v.put(key,if(value)1 else 0);is Number->v.put(key,value.toString());else->v.put(key,value.toString())}}};if(v.size()>0)writableDatabase.insertWithOnConflict(table,null,v,SQLiteDatabase.CONFLICT_REPLACE)}
@@ -400,6 +421,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             } finally { db.endTransaction() }
             mediaBackups.values.filterNotNull().forEach{it.delete()}
             cleanupOrphanedImportedMedia()
+            rebuildSearchIndex(db)
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
@@ -417,6 +439,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
             mediaBackups.values.filterNotNull().forEach{it.delete()}
+            rebuildSearchIndex(db)
         } catch(error:Exception) {
             rollbackImportedMedia(mediaBackups,error)
             throw error
@@ -430,7 +453,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
         val dir=java.io.File(appContext.filesDir,"attachments")
         if(!dir.isDirectory)return
-        dir.listFiles()?.filter{file->file.isFile&&file.name.endsWith(".bin")&&file.name.removeSuffix(".bin") !in referenced}?.forEach{file->
+        dir.listFiles()?.filter{file->file.isFile&&!file.name.startsWith(".")&&file.name.substringBeforeLast('.') !in referenced}?.forEach{file->
             runCatching{if(file.exists()&&!file.delete())android.util.Log.w("InkDatabase","Could not remove obsolete imported media: ${file.name}")}
         }
     }
@@ -506,7 +529,90 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun removeFromCollection(collectionId:String,recordId:String){writableDatabase.delete("collection_records","collectionId=? AND recordId=?",arrayOf(collectionId,recordId))}
     fun recordCollections(recordId:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT c.id,c.name FROM collections c JOIN collection_records cr ON cr.collectionId=c.id WHERE cr.recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
     fun collections():List<Pair<String,String>> = readableDatabase.rawQuery("SELECT id,name FROM collections ORDER BY name",null).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
-    fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("uri",uri);put("mimeType",mimeType);put("displayName",displayName);put("size",size);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("attachments",null,v)}
+    fun addAttachment(recordId:String,uri:String,mimeType:String="",displayName:String="",size:Long=0L){
+        addMediaAsset(recordId=recordId,uri=uri,mimeType=mimeType,displayName=displayName,size=size)
+    }
+    fun addMediaAsset(
+        id:String=UUID.randomUUID().toString(),
+        recordId:String,
+        uri:String,
+        mimeType:String="image/jpeg",
+        displayName:String="",
+        size:Long=0L,
+        templateId:String="",
+        fieldId:String="",
+        subjectKind:String="",
+        caption:String="",
+        source:String="file"
+    ):MediaAsset{
+        val now=System.currentTimeMillis()
+        val resolvedTpl=templateId.ifBlank{ if(recordId.isNotBlank()) sheetTemplateId(recordId) else "" }
+        val resolvedKind=subjectKind.ifBlank{ if(recordId.isNotBlank()) get(recordId)?.kind.orEmpty() else "" }
+        val v=ContentValues().apply{
+            put("id",id)
+            put("recordId",recordId)
+            put("uri",uri)
+            put("mimeType",mimeType)
+            put("displayName",displayName)
+            put("size",size)
+            put("createdAt",now)
+            put("templateId",resolvedTpl)
+            put("fieldId",fieldId)
+            put("subjectKind",resolvedKind)
+            put("caption",caption)
+            put("source",source)
+        }
+        writableDatabase.insertWithOnConflict("attachments",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+        return MediaAsset(id,recordId,resolvedTpl,fieldId,resolvedKind,uri,mimeType,displayName,caption,source,size,now)
+    }
+    private fun android.database.Cursor.mediaAsset()=MediaAsset(
+        id = getString(0),
+        recordId = getString(1) ?: "",
+        uri = getString(2) ?: "",
+        mimeType = getString(3) ?: "",
+        displayName = getString(4) ?: "",
+        size = getLong(5),
+        createdAt = getLong(6),
+        templateId = getString(7) ?: "",
+        fieldId = getString(8) ?: "",
+        subjectKind = getString(9) ?: "",
+        caption = getString(10) ?: "",
+        source = getString(11) ?: "file"
+    )
+    private val mediaSelectCols="id,recordId,uri,COALESCE(mimeType,''),COALESCE(displayName,''),COALESCE(size,0),COALESCE(createdAt,0),COALESCE(templateId,''),COALESCE(fieldId,''),COALESCE(subjectKind,''),COALESCE(caption,''),COALESCE(source,'file')"
+    fun mediaForRecord(recordId:String):List<MediaAsset> = readableDatabase.rawQuery(
+        "SELECT $mediaSelectCols FROM attachments WHERE recordId=? ORDER BY createdAt DESC",
+        arrayOf(recordId)
+    ).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    fun mediaForTemplate(templateId:String):List<MediaAsset> = readableDatabase.rawQuery(
+        "SELECT $mediaSelectCols FROM attachments WHERE templateId=? OR recordId=? ORDER BY createdAt DESC",
+        arrayOf(templateId,templateId)
+    ).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    fun allMediaAssets(subjectKindFilter:String?=null,templateIdFilter:String?=null):List<MediaAsset>{
+        val where=mutableListOf<String>()
+        val args=mutableListOf<String>()
+        if(!subjectKindFilter.isNullOrBlank()&&subjectKindFilter!="All"){
+            where.add("subjectKind=?")
+            args.add(subjectKindFilter)
+        }
+        if(!templateIdFilter.isNullOrBlank()){
+            where.add("(templateId=? OR recordId=?)")
+            args.add(templateIdFilter)
+            args.add(templateIdFilter)
+        }
+        val sql="SELECT $mediaSelectCols FROM attachments"+(if(where.isEmpty())"" else " WHERE "+where.joinToString(" AND "))+" ORDER BY createdAt DESC"
+        return readableDatabase.rawQuery(sql,args.toTypedArray()).use{c->buildList{while(c.moveToNext())add(c.mediaAsset())}}
+    }
+    fun updateMediaAsset(id:String,recordId:String,templateId:String,fieldId:String,subjectKind:String,caption:String){
+        val v=ContentValues().apply{
+            put("recordId",recordId)
+            put("templateId",templateId)
+            put("fieldId",fieldId)
+            put("subjectKind",subjectKind)
+            put("caption",caption)
+        }
+        writableDatabase.update("attachments",v,"id=?",arrayOf(id))
+    }
     fun attachments(recordId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,uri,mimeType,displayName FROM attachments WHERE recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"uri" to c.getString(1),"mimeType" to (c.getString(2)?: ""),"displayName" to (c.getString(3)?: "")))}}
     fun removeAttachment(id:String){
         writableDatabase.delete("attachments","id=?",arrayOf(id))
@@ -516,8 +622,10 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val safeName=id.filter{it.isLetterOrDigit()||it=='-'||it=='_'}
         if(safeName.isBlank()||safeName!=id)return
         val dir=java.io.File(appContext.filesDir,"attachments")
-        val file=java.io.File(dir,"$safeName.bin")
-        if(file.isFile&&!file.delete())android.util.Log.w("InkDatabase","Could not remove imported media: ${file.name}")
+        listOf(".bin",".jpg",".jpeg",".png",".webp").forEach{ext->
+            val file=java.io.File(dir,"$safeName$ext")
+            if(file.isFile&&!file.delete())android.util.Log.w("InkDatabase","Could not remove imported media: ${file.name}")
+        }
     }
     fun excludeLinkTerm(recordId:String,term:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",recordId);put("term",term.trim())};writableDatabase.insertWithOnConflict("link_exclusions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun isLinkExcluded(recordId:String,term:String)=readableDatabase.rawQuery("SELECT 1 FROM link_exclusions WHERE recordId=? AND lower(term)=lower(?)",arrayOf(recordId,term)).use{it.moveToFirst()}
@@ -528,42 +636,455 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
     fun addLinkSuggestion(source:String,target:String,term:String,position:Int){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("term",term);put("position",position);put("status","pending")};writableDatabase.insertWithOnConflict("link_suggestions",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun pendingLinkSuggestions(source:String):List<Triple<String,String,Int>> = readableDatabase.rawQuery("SELECT targetId,term,position FROM link_suggestions WHERE sourceId=? AND status='pending' ORDER BY position",arrayOf(source)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getInt(2)))}}
     fun resolveLinkSuggestion(source:String,target:String,position:Int,approve:Boolean){val term=pendingLinkSuggestions(source).firstOrNull{it.first==target&&it.third==position}?.second.orEmpty();writableDatabase.execSQL("UPDATE link_suggestions SET status=? WHERE sourceId=? AND targetId=? AND position=?",arrayOf(if(approve)"approved" else "dismissed",source,target,position));if(approve)addLink(source,target,"mention",position,term,position+term.length)}
-    fun exportTemplateJson(id:String):String{val t=get(id)?:throw IllegalArgumentException("Template not found.");val fields=JSONArray();templateFields(id,true).forEach{f->fields.put(JSONObject().put("name",f.name).put("type",f.fieldType).put("required",f.required).put("position",f.position).put("section",f.section).put("options",f.options).put("hint",f.hint).put("conditionField",f.conditionField).put("conditionValue",f.conditionValue).put("formula",f.formula).put("repeatable",f.repeatable))};return JSONObject().put("format","inkandquill-template").put("version",1).put("title",t.title).put("body",t.body).put("category",t.tags).put("fields",fields).toString(2)}
-    fun importTemplateJson(raw:String):InkRecord{val o=JSONObject(raw);require(o.optString("format")=="inkandquill-template"){"Not an Ink & Quill template file."};val t=InkRecord(title=o.optString("title","Imported template"),body=o.optString("body"),kind="Template",tags=o.optString("category","Other"));save(t);val fields=o.optJSONArray("fields")?:JSONArray();for(i in 0 until fields.length()){val f=fields.optJSONObject(i)?:continue;addTemplateField(t.id,f.optString("name","Field"),f.optString("type","Long text"),f.optBoolean("required"),f.optString("section","General"),f.optString("options"),f.optString("hint"),f.optString("conditionField"),f.optString("conditionValue"),f.optString("formula"),f.optBoolean("repeatable"))};return t}
-    fun duplicateTemplate(id:String):InkRecord?{val source=get(id)?:return null;val copy=source.copy(id=UUID.randomUUID().toString(),title="Copy of "+source.title,createdAt=System.currentTimeMillis(),updatedAt=System.currentTimeMillis());save(copy);templateFields(id).forEach{f->addTemplateField(copy.id,f.name,f.fieldType,f.required,f.section,f.options,f.hint,f.conditionField,f.conditionValue,f.formula,f.repeatable)};return copy}
+    fun exportTemplateJson(id:String):String{
+        val t=get(id)?:throw IllegalArgumentException("Template not found.")
+        val fields=JSONArray()
+        templateFields(id,true).forEach{f->fields.put(JSONObject().put("name",f.name).put("type",f.fieldType).put("required",f.required).put("position",f.position).put("section",f.section).put("options",f.options).put("hint",f.hint).put("conditionField",f.conditionField).put("conditionValue",f.conditionValue).put("formula",f.formula).put("repeatable",f.repeatable))}
+        val sections=JSONArray()
+        templateSections(id).forEach{sections.put(it)}
+        return JSONObject().put("format","inkandquill-template").put("version",2).put("title",t.title).put("body",t.body).put("category",t.tags).put("defaultKind",t.scope).put("sections",sections).put("fields",fields).toString(2)
+    }
+    fun importTemplateJson(raw:String):InkRecord{
+        val o=JSONObject(raw)
+        require(o.optString("format")=="inkandquill-template"){"Not an Ink & Quill template file."}
+        val t=InkRecord(title=o.optString("title","Imported template"),body=o.optString("body"),kind="Template",scope=o.optString("defaultKind","Document"),tags=o.optString("category","Other"))
+        save(t)
+        val sections=o.optJSONArray("sections")?:JSONArray()
+        for(i in 0 until sections.length()){
+            val sec=sections.optString(i)
+            if(sec.isNotBlank())addTemplateSection(t.id,sec)
+        }
+        val fields=o.optJSONArray("fields")?:JSONArray()
+        for(i in 0 until fields.length()){
+            val f=fields.optJSONObject(i)?:continue
+            val sec=f.optString("section","General")
+            if(sec.isNotBlank()&&sec !in templateSections(t.id))addTemplateSection(t.id,sec)
+            addTemplateField(t.id,f.optString("name","Field"),f.optString("type","Long text"),f.optBoolean("required"),sec,f.optString("options"),f.optString("hint"),f.optString("conditionField"),f.optString("conditionValue"),f.optString("formula"),f.optBoolean("repeatable"))
+        }
+        return t
+    }
+    fun duplicateTemplate(id:String):InkRecord?{
+        val source=get(id)?:return null
+        val copy=source.copy(id=UUID.randomUUID().toString(),title="Copy of "+source.title,createdAt=System.currentTimeMillis(),updatedAt=System.currentTimeMillis())
+        save(copy)
+        templateSections(id).forEach{sec->addTemplateSection(copy.id,sec)}
+        templateFields(id).forEach{f->addTemplateField(copy.id,f.name,f.fieldType,f.required,f.section,f.options,f.hint,f.conditionField,f.conditionValue,f.formula,f.repeatable)}
+        return copy
+    }
     fun templateFields(templateId:String,includeRemoved:Boolean=false):List<TemplateField>{
         val sql="SELECT id,templateId,name,fieldType,required,position,COALESCE(section,'General'),COALESCE(options,''),COALESCE(hint,''),COALESCE(conditionField,''),COALESCE(conditionValue,''),COALESCE(formula,''),COALESCE(repeatable,0) FROM template_fields WHERE templateId=? "+(if(includeRemoved) "" else "AND COALESCE(removed,0)=0 ")+" ORDER BY position"
         return readableDatabase.rawQuery(sql,arrayOf(templateId)).use{c->buildList{while(c.moveToNext())add(TemplateField(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getInt(4)==1,c.getInt(5),c.getString(6),c.getString(7),c.getString(8),c.getString(9),c.getString(10),c.getString(11),c.getInt(12)==1))}}
     }
-    fun addTemplateField(templateId:String,name:String,type:String,required:Boolean,section:String="General",options:String="",hint:String="",conditionField:String="",conditionValue:String="",formula:String="",repeatable:Boolean=false){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name.trim());put("fieldType",type);put("required",if(required)1 else 0);put("position",templateFields(templateId,true).size);put("section",section);put("options",options);put("hint",hint);put("removed",0);put("conditionField",conditionField);put("conditionValue",conditionValue);put("formula",formula);put("repeatable",if(repeatable)1 else 0)};writableDatabase.insert("template_fields",null,v)}
+    fun addTemplateField(templateId:String,name:String,type:String,required:Boolean,section:String="General",options:String="",hint:String="",conditionField:String="",conditionValue:String="",formula:String="",repeatable:Boolean=false){
+        val cleanSection=section.trim().ifBlank{"General"}
+        if(cleanSection !in templateSections(templateId))addTemplateSection(templateId,cleanSection)
+        val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name.trim());put("fieldType",type);put("required",if(required)1 else 0);put("position",templateFields(templateId,true).size);put("section",cleanSection);put("options",options);put("hint",hint);put("removed",0);put("conditionField",conditionField);put("conditionValue",conditionValue);put("formula",formula);put("repeatable",if(repeatable)1 else 0)}
+        writableDatabase.insert("template_fields",null,v)
+        indexRecord(writableDatabase,templateId)
+    }
     fun moveTemplateField(templateId:String,id:String,delta:Int){val fields=templateFields(templateId,true);val index=fields.indexOfFirst{it.id==id};val target=index+delta;if(index<0||target !in fields.indices)return;val db=writableDatabase;db.beginTransaction();try{val a=ContentValues().apply{put("position",fields[target].position)};val b=ContentValues().apply{put("position",fields[index].position)};db.update("template_fields",a,"id=?",arrayOf(id));db.update("template_fields",b,"id=?",arrayOf(fields[target].id));db.setTransactionSuccessful()}finally{db.endTransaction()}}
-    fun updateTemplateField(id:String,name:String,type:String,required:Boolean,section:String,options:String,hint:String,conditionField:String="",conditionValue:String="",formula:String="",repeatable:Boolean=false){val v=ContentValues().apply{put("name",name);put("fieldType",type);put("required",if(required)1 else 0);put("section",section);put("options",options);put("hint",hint);put("conditionField",conditionField);put("conditionValue",conditionValue);put("formula",formula);put("repeatable",if(repeatable)1 else 0)};writableDatabase.update("template_fields",v,"id=?",arrayOf(id))}
-    fun removeTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=1 WHERE id=?",arrayOf(id))}
-    fun restoreTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=0 WHERE id=?",arrayOf(id))}
+    fun updateTemplateField(id:String,name:String,type:String,required:Boolean,section:String,options:String,hint:String,conditionField:String="",conditionValue:String="",formula:String="",repeatable:Boolean=false){val v=ContentValues().apply{put("name",name);put("fieldType",type);put("required",if(required)1 else 0);put("section",section.trim().ifBlank{"General"});put("options",options);put("hint",hint);put("conditionField",conditionField);put("conditionValue",conditionValue);put("formula",formula);put("repeatable",if(repeatable)1 else 0)};writableDatabase.update("template_fields",v,"id=?",arrayOf(id));writableDatabase.rawQuery("SELECT templateId FROM template_fields WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())indexRecord(writableDatabase,it.getString(0))}}
+    fun removeTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=1 WHERE id=?",arrayOf(id));writableDatabase.rawQuery("SELECT templateId FROM template_fields WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())indexRecord(writableDatabase,it.getString(0))}}
+    fun restoreTemplateField(id:String){writableDatabase.execSQL("UPDATE template_fields SET removed=0 WHERE id=?",arrayOf(id));writableDatabase.rawQuery("SELECT templateId FROM template_fields WHERE id=?",arrayOf(id)).use{if(it.moveToFirst())indexRecord(writableDatabase,it.getString(0))}}
     fun templateSections(templateId:String):List<String> = readableDatabase.rawQuery("SELECT name FROM template_sections WHERE templateId=? ORDER BY position",arrayOf(templateId)).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
-    fun addTemplateSection(templateId:String,name:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",name);put("position",templateSections(templateId).size)};writableDatabase.insert("template_sections",null,v)}
+    fun addTemplateSection(templateId:String,name:String){
+        val clean=name.trim()
+        if(clean.isBlank()||clean in templateSections(templateId))return
+        val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("name",clean);put("position",templateSections(templateId).size)}
+        writableDatabase.insert("template_sections",null,v)
+        indexRecord(writableDatabase,templateId)
+    }
+    fun renameTemplateSection(templateId:String,oldName:String,newName:String){
+        val clean=newName.trim()
+        if(clean.isBlank()||clean==oldName)return
+        val db=writableDatabase
+        db.beginTransaction()
+        try{
+            db.update("template_sections",ContentValues().apply{put("name",clean)},"templateId=? AND name=?",arrayOf(templateId,oldName))
+            db.update("template_fields",ContentValues().apply{put("section",clean)},"templateId=? AND section=?",arrayOf(templateId,oldName))
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        indexRecord(db,templateId)
+    }
+    fun deleteTemplateSection(templateId:String,name:String){
+        val remaining=templateSections(templateId).filter{it!=name}
+        val fallback=remaining.firstOrNull()?:"General"
+        val db=writableDatabase
+        db.beginTransaction()
+        try{
+            if(remaining.isEmpty())addTemplateSection(templateId,fallback)
+            db.update("template_fields",ContentValues().apply{put("section",fallback)},"templateId=? AND section=?",arrayOf(templateId,name))
+            db.delete("template_sections","templateId=? AND name=?",arrayOf(templateId,name))
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        indexRecord(db,templateId)
+    }
     fun moveTemplateSection(templateId:String,name:String,delta:Int){val db=writableDatabase;val rows=mutableListOf<Pair<String,String>>();db.rawQuery("SELECT id,name FROM template_sections WHERE templateId=? ORDER BY position",arrayOf(templateId)).use{while(it.moveToNext())rows.add(it.getString(0) to it.getString(1))};val index=rows.indexOfFirst{it.second==name};val target=index+delta;if(index<0||target !in rows.indices)return;db.beginTransaction();try{val a=ContentValues().apply{put("position",target)};val b=ContentValues().apply{put("position",index)};db.update("template_sections",a,"id=?",arrayOf(rows[index].first));db.update("template_sections",b,"id=?",arrayOf(rows[target].first));db.setTransactionSuccessful()}finally{db.endTransaction()}}
     fun templateVersion(templateId:String){val snapshot=JSONArray();templateFields(templateId,true).forEach{f->snapshot.put(JSONObject().put("id",f.id).put("name",f.name).put("type",f.fieldType).put("required",f.required).put("section",f.section).put("options",f.options).put("hint",f.hint).put("conditionField",f.conditionField).put("conditionValue",f.conditionValue).put("formula",f.formula).put("repeatable",f.repeatable).put("position",f.position))};val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("templateId",templateId);put("snapshot",snapshot.toString());put("createdAt",System.currentTimeMillis())};writableDatabase.insert("template_versions",null,v)}
     fun templateVersionCount(templateId:String)=readableDatabase.rawQuery("SELECT COUNT(*) FROM template_versions WHERE templateId=?",arrayOf(templateId)).use{it.moveToFirst();it.getInt(0)}
+    fun templateVersions(templateId:String):List<Pair<String,Long>> = readableDatabase.rawQuery("SELECT id,createdAt FROM template_versions WHERE templateId=? ORDER BY createdAt DESC",arrayOf(templateId)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getLong(1))}}
+    fun restoreTemplateVersion(templateId:String,versionId:String){
+        val raw=readableDatabase.rawQuery("SELECT snapshot FROM template_versions WHERE id=? AND templateId=?",arrayOf(versionId,templateId)).use{if(it.moveToFirst())it.getString(0)else null}?:return
+        val arr=JSONArray(raw)
+        val db=writableDatabase
+        db.beginTransaction()
+        try{
+            db.delete("template_fields","templateId=?",arrayOf(templateId))
+            for(i in 0 until arr.length()){
+                val f=arr.optJSONObject(i)?:continue
+                val sec=f.optString("section","General")
+                if(sec.isNotBlank()&&sec !in templateSections(templateId))addTemplateSection(templateId,sec)
+                val fv=ContentValues().apply{
+                    put("id",f.optString("id",UUID.randomUUID().toString()))
+                    put("templateId",templateId)
+                    put("name",f.optString("name","Field"))
+                    put("fieldType",f.optString("type","Long text"))
+                    put("required",if(f.optBoolean("required"))1 else 0)
+                    put("position",f.optInt("position",i))
+                    put("section",sec)
+                    put("options",f.optString("options"))
+                    put("hint",f.optString("hint"))
+                    put("removed",0)
+                    put("conditionField",f.optString("conditionField"))
+                    put("conditionValue",f.optString("conditionValue"))
+                    put("formula",f.optString("formula"))
+                    put("repeatable",if(f.optBoolean("repeatable"))1 else 0)
+                }
+                db.insertWithOnConflict("template_fields",null,fv,SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        indexRecord(db,templateId)
+    }
+
+    // ── Record Sheets (Live Structured Entries) ────────────────────────────
+    fun attachSheet(recordId:String,templateId:String){
+        val v=ContentValues().apply{put("recordId",recordId);put("templateId",templateId);put("updatedAt",System.currentTimeMillis())}
+        writableDatabase.insertWithOnConflict("record_sheets",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+        indexRecord(writableDatabase,recordId)
+    }
+    fun detachSheet(recordId:String){
+        writableDatabase.delete("record_sheets","recordId=?",arrayOf(recordId))
+        indexRecord(writableDatabase,recordId)
+    }
+    fun sheetTemplateId(recordId:String):String = readableDatabase.rawQuery("SELECT templateId FROM record_sheets WHERE recordId=?",arrayOf(recordId)).use{if(it.moveToFirst())it.getString(0)else ""}
+    fun sheetValues(recordId:String):Map<String,String> = readableDatabase.rawQuery("SELECT fieldId,value FROM record_sheet_values WHERE recordId=?",arrayOf(recordId)).use{c->buildMap{while(c.moveToNext())put(c.getString(0),c.getString(1))}}
+    fun saveSheetValue(recordId:String,fieldId:String,value:String){
+        val v=ContentValues().apply{put("recordId",recordId);put("fieldId",fieldId);put("value",value);put("updatedAt",System.currentTimeMillis())}
+        writableDatabase.insertWithOnConflict("record_sheet_values",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+        indexRecord(writableDatabase,recordId)
+    }
+    fun saveSheetValues(recordId:String,values:Map<String,String>){
+        val db=writableDatabase
+        val now=System.currentTimeMillis()
+        db.beginTransaction()
+        try{
+            values.forEach{(fieldId,value)->
+                if(value.isEmpty()){
+                    db.delete("record_sheet_values","recordId=? AND fieldId=?",arrayOf(recordId,fieldId))
+                }else{
+                    val v=ContentValues().apply{put("recordId",recordId);put("fieldId",fieldId);put("value",value);put("updatedAt",now)}
+                    db.insertWithOnConflict("record_sheet_values",null,v,SQLiteDatabase.CONFLICT_REPLACE)
+                }
+            }
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+        indexRecord(db,recordId)
+    }
+    fun createRecordFromTemplate(templateId:String,parentId:String="",scope:String="World",initialTitle:String=""):InkRecord{
+        val template=get(templateId)?:throw IllegalArgumentException("Template not found.")
+        val targetKind=when{
+            template.id=="template_world_overview"->"World"
+            template.scope.isNotBlank()&&template.scope!="World"->template.scope
+            template.parentId.isNotBlank()->template.title
+            else->"Document"
+        }
+        val resolvedTitle=initialTitle.ifBlank{"Untitled $targetKind"}
+        val resolvedParent=if(targetKind=="World") "" else parentId.ifBlank{template.parentId}
+        val record=InkRecord(id=UUID.randomUUID().toString(),title=resolvedTitle,body="",kind=targetKind,parentId=resolvedParent,scope=scope)
+        save(record)
+        attachSheet(record.id,templateId)
+        return record
+    }
+
+    fun createCustomTemplate(
+        title: String,
+        description: String,
+        category: String,
+        defaultKind: String,
+        sections: List<String>,
+        fields: List<FieldSpec>,
+        parentId: String = "",
+        baseTemplateId: String? = null
+    ): InkRecord {
+        val cleanTitle = title.trim().ifBlank { "Custom Template" }
+        val cleanCategory = category.trim().ifBlank { "Other" }
+        val cleanKind = defaultKind.trim().ifBlank { "Document" }
+        val template = InkRecord(
+            id = "custom_tpl_${UUID.randomUUID()}",
+            title = cleanTitle,
+            body = description.trim(),
+            kind = "Template",
+            parentId = parentId,
+            scope = cleanKind,
+            tags = cleanCategory
+        )
+        save(template)
+        if (!baseTemplateId.isNullOrBlank()) {
+            templateSections(baseTemplateId).forEach { addTemplateSection(template.id, it) }
+            templateFields(baseTemplateId).forEach { f ->
+                addTemplateField(
+                    templateId = template.id,
+                    name = f.name,
+                    type = f.fieldType,
+                    required = f.required,
+                    section = f.section,
+                    options = f.options,
+                    hint = f.hint,
+                    conditionField = f.conditionField,
+                    conditionValue = f.conditionValue,
+                    formula = f.formula,
+                    repeatable = f.repeatable
+                )
+            }
+        }
+        val effectiveSections = sections.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+            .ifEmpty { if (baseTemplateId.isNullOrBlank()) listOf("Overview") else emptyList() }
+        effectiveSections.forEach { addTemplateSection(template.id, it) }
+        fields.forEach { f ->
+            if (f.name.isNotBlank()) {
+                addTemplateField(
+                    templateId = template.id,
+                    name = f.name,
+                    type = f.type,
+                    required = f.required,
+                    section = f.section.ifBlank { effectiveSections.firstOrNull() ?: "Overview" },
+                    options = f.options,
+                    hint = f.hint,
+                    conditionField = f.conditionField,
+                    conditionValue = f.conditionValue,
+                    formula = f.formula,
+                    repeatable = f.repeatable
+                )
+            }
+        }
+        return get(template.id) ?: template
+    }
+
+    fun saveRecordAsTemplate(
+        record: InkRecord,
+        templateTitle: String,
+        templateCategory: String,
+        includeProseFields: Boolean = true
+    ): InkRecord {
+        val attachedTplId = sheetTemplateId(record.id)
+        if (attachedTplId.isNotBlank()) {
+            return createCustomTemplate(
+                title = templateTitle,
+                description = "Created from ${record.title.ifBlank { record.kind }}",
+                category = templateCategory,
+                defaultKind = record.kind.ifBlank { "Document" },
+                sections = emptyList(),
+                fields = emptyList(),
+                baseTemplateId = attachedTplId
+            )
+        }
+        val headingRegex = Regex("<h[1-4][^>]*>(.*?)</h[1-4]>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+        val extractedSections = headingRegex.findAll(record.body)
+            .map { DocumentExport.plain(it.groupValues[1]).trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .toList()
+            .ifEmpty { listOf("Overview", "Details") }
+        val starterFields = if (includeProseFields) {
+            extractedSections.map { sec ->
+                FieldSpec(
+                    name = "$sec Notes",
+                    type = "Rich text",
+                    section = sec,
+                    hint = "Structured notes for $sec"
+                )
+            }
+        } else {
+            listOf(FieldSpec(name = "Summary", type = "Long text", section = extractedSections.first()))
+        }
+        return createCustomTemplate(
+            title = templateTitle,
+            description = "Custom template created from ${record.title.ifBlank { record.kind }}",
+            category = templateCategory,
+            defaultKind = record.kind.ifBlank { "Document" },
+            sections = extractedSections,
+            fields = starterFields
+        )
+    }
+
+    fun deleteCustomTemplate(id: String): Boolean {
+        if (get(id) == null || id.startsWith("template_")) return false
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            listOf("template_fields", "template_sections", "template_versions").forEach { table ->
+                db.delete(table, "templateId=?", arrayOf(id))
+            }
+            db.delete("record_sheets", "templateId=?", arrayOf(id))
+            db.delete("records", "id=?", arrayOf(id))
+            db.delete("search_fts", "recordId=?", arrayOf(id))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return true
+    }
+
+    fun bookChapters(bookId: String): List<InkRecord> {
+        return readableDatabase.rawQuery(
+            "SELECT * FROM records WHERE parentId=? AND kind IN ('Chapter','Scene') ORDER BY createdAt ASC, title ASC",
+            arrayOf(bookId)
+        ).use { c -> buildList { while (c.moveToNext()) add(c.record()) } }
+    }
+
+    fun chapterScenes(chapterId: String): List<InkRecord> {
+        return readableDatabase.rawQuery(
+            "SELECT * FROM records WHERE parentId=? AND kind='Scene' ORDER BY createdAt ASC, title ASC",
+            arrayOf(chapterId)
+        ).use { c -> buildList { while (c.moveToNext()) add(c.record()) } }
+    }
+
+    fun siblingChapters(chapter: InkRecord): List<InkRecord> {
+        if (chapter.parentId.isBlank()) return listOf(chapter)
+        val siblings = readableDatabase.rawQuery(
+            "SELECT * FROM records WHERE parentId=? AND kind=? ORDER BY createdAt ASC, title ASC",
+            arrayOf(chapter.parentId, chapter.kind)
+        ).use { c -> buildList { while (c.moveToNext()) add(c.record()) } }
+        return if (siblings.any { it.id == chapter.id }) siblings else listOf(chapter)
+    }
+
+    // ── Global FTS4 Search Index ───────────────────────────────────────────
+    private fun ensureSearchIndexPopulated(db:SQLiteDatabase){
+        val ftsCount=db.rawQuery("SELECT COUNT(*) FROM search_fts",null).use{if(it.moveToFirst())it.getInt(0)else 0}
+        val recCount=db.rawQuery("SELECT COUNT(*) FROM records",null).use{if(it.moveToFirst())it.getInt(0)else 0}
+        if(recCount>0&&ftsCount==0) rebuildSearchIndex(db)
+    }
+    fun rebuildSearchIndex(db:SQLiteDatabase=writableDatabase){
+        val ids=mutableListOf<String>()
+        db.rawQuery("SELECT id FROM records",null).use{c->while(c.moveToNext())ids.add(c.getString(0))}
+        db.beginTransaction()
+        try{
+            db.delete("search_fts",null,null)
+            ids.forEach{id->indexRecord(db,id)}
+            db.setTransactionSuccessful()
+        }finally{db.endTransaction()}
+    }
+    private fun indexRecord(db:SQLiteDatabase,recordId:String){
+        db.delete("search_fts","recordId=?",arrayOf(recordId))
+        val rec=db.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(recordId)).use{if(it.moveToFirst())it.record()else null} ?: return
+        val isTemplate=rec.kind=="Template"||rec.kind=="Archived Template"
+        val docType=if(isTemplate)"template" else "entry"
+        val sharedTagNames=db.rawQuery("SELECT t.name FROM record_tags rt JOIN tags t ON t.id=rt.tagId WHERE rt.recordId=?",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
+        val tagsText=(listOf(rec.tags).filter{it.isNotBlank()}+sharedTagNames).distinct().joinToString(" ")
+        var templateTitle=""
+        var sheetContent=""
+        if(isTemplate){
+            templateTitle=rec.title
+            val sections=db.rawQuery("SELECT name FROM template_sections WHERE templateId=? ORDER BY position",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(c.getString(0))}}
+            val fields=db.rawQuery("SELECT name,COALESCE(options,''),COALESCE(hint,'') FROM template_fields WHERE templateId=? AND COALESCE(removed,0)=0 ORDER BY position",arrayOf(recordId)).use{c->buildList{while(c.moveToNext())add(listOf(c.getString(0),c.getString(1),c.getString(2)).filter{it.isNotBlank()}.joinToString(" "))}}
+            sheetContent=(sections+fields).joinToString("\n")
+        }else{
+            val attachedTplId=db.rawQuery("SELECT templateId FROM record_sheets WHERE recordId=?",arrayOf(recordId)).use{if(it.moveToFirst())it.getString(0)else ""}
+            if(attachedTplId.isNotBlank()){
+                templateTitle=db.rawQuery("SELECT title FROM records WHERE id=?",arrayOf(attachedTplId)).use{if(it.moveToFirst())it.getString(0)else ""}
+                val valueMap=db.rawQuery("SELECT fieldId,value FROM record_sheet_values WHERE recordId=?",arrayOf(recordId)).use{c->buildMap{while(c.moveToNext())put(c.getString(0),c.getString(1))}}
+                val fields=db.rawQuery("SELECT id,templateId,name,fieldType,required,position,COALESCE(section,'General'),COALESCE(options,''),COALESCE(hint,''),COALESCE(conditionField,''),COALESCE(conditionValue,''),COALESCE(formula,''),COALESCE(repeatable,0) FROM template_fields WHERE templateId=? AND COALESCE(removed,0)=0 ORDER BY position",arrayOf(attachedTplId)).use{c->buildList{while(c.moveToNext())add(TemplateField(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getInt(4)==1,c.getInt(5),c.getString(6),c.getString(7),c.getString(8),c.getString(9),c.getString(10),c.getString(11),c.getInt(12)==1))}}
+                sheetContent=fields.mapNotNull{f->
+                    val raw=valueMap[f.id].orEmpty()
+                    if(raw.isBlank()&&f.fieldType!="Calculated")null
+                    else if(f.fieldType=="Image"||f.fieldType=="Gallery")null
+                    else{
+                        val plain=SheetEngine.formatFieldPlainValue(f,fields,valueMap){targetId->
+                            db.rawQuery("SELECT * FROM records WHERE id=?",arrayOf(targetId)).use{if(it.moveToFirst())it.record()else null}
+                        }
+                        if(plain.isBlank())null else "${f.name}: $plain"
+                    }
+                }.joinToString("\n")
+            }
+        }
+        val plainProse=DocumentExport.plain(rec.body).replace(Regex("data:[^\\s\"']+"),"").trim()
+        val kindCol=if(isTemplate)"${rec.scope} Template".trim() else rec.kind
+        val cv=ContentValues().apply{
+            put("recordId",rec.id)
+            put("docType",docType)
+            put("kind",kindCol)
+            put("title",rec.title)
+            put("aliases",rec.aliases)
+            put("tags",tagsText)
+            put("templateTitle",templateTitle)
+            put("sheetContent",sheetContent)
+            put("proseContent",plainProse)
+        }
+        db.insert("search_fts",null,cv)
+    }
+    fun indexedSearchRows(ftsQuery:String,limit:Int=200):List<IndexedSearchRow>{
+        if(ftsQuery.isBlank())return emptyList()
+        return runCatching{
+            readableDatabase.rawQuery(
+                "SELECT recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts WHERE search_fts MATCH ? LIMIT ?",
+                arrayOf(ftsQuery,limit.toString())
+            ).use{c->
+                buildList{
+                    while(c.moveToNext()){
+                        add(IndexedSearchRow(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5),c.getString(6),c.getString(7),c.getString(8)))
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+    fun allIndexedRows(limit:Int=200):List<IndexedSearchRow>{
+        return readableDatabase.rawQuery(
+            "SELECT recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent FROM search_fts LIMIT ?",
+            arrayOf(limit.toString())
+        ).use{c->
+            buildList{
+                while(c.moveToNext()){
+                    add(IndexedSearchRow(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5),c.getString(6),c.getString(7),c.getString(8)))
+                }
+            }
+        }
+    }
     fun createWorldCalendar(worldId:String,name:String,months:String,weekdays:String,seasons:String,moons:String,notes:String="",monthLengths:String="",eras:String="",leapRules:String=""):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("worldId",worldId);put("name",name);put("months",months);put("weekdays",weekdays);put("seasons",seasons);put("moons",moons);put("notes",notes);put("monthLengths",monthLengths);put("eras",eras);put("leapRules",leapRules)};writableDatabase.insert("world_calendars",null,v);return id}
     fun worldCalendars(worldId:String):List<Map<String,String>> = readableDatabase.rawQuery("SELECT id,name,COALESCE(months,''),COALESCE(weekdays,''),COALESCE(seasons,''),COALESCE(moons,''),COALESCE(notes,''),COALESCE(monthLengths,''),COALESCE(eras,''),COALESCE(leapRules,'') FROM world_calendars WHERE worldId=? ORDER BY name",arrayOf(worldId)).use{c->buildList{while(c.moveToNext())add(mapOf("id" to c.getString(0),"name" to c.getString(1),"months" to c.getString(2),"weekdays" to c.getString(3),"seasons" to c.getString(4),"moons" to c.getString(5),"notes" to c.getString(6),"monthLengths" to c.getString(7),"eras" to c.getString(8),"leapRules" to c.getString(9)))}}
     fun addCalendarEntry(calendarId:String,year:Int,month:Int,day:Int,title:String,description:String="",repeatYearly:Boolean=false){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("calendarId",calendarId);put("year",year);put("month",month);put("day",day);put("title",title);put("description",description);put("repeatYearly",if(repeatYearly)1 else 0)};writableDatabase.insert("calendar_entries",null,v)}
     fun calendarEntries(calendarId:String):List<CalendarEntry> = readableDatabase.rawQuery("SELECT id,year,month,day,title,COALESCE(description,''),repeatYearly FROM calendar_entries WHERE calendarId=? ORDER BY year,month,day",arrayOf(calendarId)).use{c->buildList{while(c.moveToNext())add(CalendarEntry(c.getString(0),c.getInt(1),c.getInt(2),c.getInt(3),c.getString(4),c.getString(5),c.getInt(6)==1))}}
     fun allTags():List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT id,name,tagType FROM tags ORDER BY tagType,name",null).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
     fun createTag(name:String,type:String="General",color:String=""):String{val existing=readableDatabase.rawQuery("SELECT id FROM tags WHERE lower(name)=lower(?) AND tagType=?",arrayOf(name.trim(),type)).use{if(it.moveToFirst())it.getString(0)else null};if(existing!=null)return existing;val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("name",name.trim());put("tagType",type);put("color",color)};writableDatabase.insert("tags",null,v);return id}
-    fun assignTag(recordId:String,tagId:String){val v=ContentValues().apply{put("recordId",recordId);put("tagId",tagId)};writableDatabase.insertWithOnConflict("record_tags",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
-    fun removeTag(recordId:String,tagId:String){writableDatabase.delete("record_tags","recordId=? AND tagId=?",arrayOf(recordId,tagId))}
+    fun assignTag(recordId:String,tagId:String){val v=ContentValues().apply{put("recordId",recordId);put("tagId",tagId)};writableDatabase.insertWithOnConflict("record_tags",null,v,SQLiteDatabase.CONFLICT_IGNORE);indexRecord(writableDatabase,recordId)}
+    fun removeTag(recordId:String,tagId:String){writableDatabase.delete("record_tags","recordId=? AND tagId=?",arrayOf(recordId,tagId));indexRecord(writableDatabase,recordId)}
     fun tagsForRecord(recordId:String):Set<String> = readableDatabase.rawQuery("SELECT tagId FROM record_tags WHERE recordId=?",arrayOf(recordId)).use{c->buildSet{while(c.moveToNext())add(c.getString(0))}}
-    fun renameTag(id:String,name:String){val v=ContentValues().apply{put("name",name.trim())};writableDatabase.update("tags",v,"id=?",arrayOf(id))}
+    fun renameTag(id:String,name:String){val v=ContentValues().apply{put("name",name.trim())};writableDatabase.update("tags",v,"id=?",arrayOf(id));rebuildSearchIndex()}
     fun addTagAlias(tagId:String,alias:String){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("tagId",tagId);put("alias",alias.trim())};writableDatabase.insertWithOnConflict("tag_aliases",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun shareWithProject(recordId:String,projectId:String){val v=ContentValues().apply{put("recordId",recordId);put("projectId",projectId);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_shares",null,v,SQLiteDatabase.CONFLICT_IGNORE)}
     fun unshareFromProject(recordId:String,projectId:String){writableDatabase.delete("record_shares","recordId=? AND projectId=?",arrayOf(recordId,projectId))}
     fun sharedProjects(recordId:String):Set<String> = readableDatabase.rawQuery("SELECT projectId FROM record_shares WHERE recordId=?",arrayOf(recordId)).use{c->buildSet{while(c.moveToNext())add(c.getString(0))}}
     fun addRelationship(source:String,target:String,label:String,notes:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("sourceId",source);put("targetId",target);put("label",label);put("notes",notes);put("createdAt",System.currentTimeMillis())};writableDatabase.insertWithOnConflict("record_relationships",null,v,SQLiteDatabase.CONFLICT_REPLACE)}
     fun relationships(id:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT r.title,rr.label,rr.targetId FROM record_relationships rr JOIN records r ON r.id=rr.targetId WHERE rr.sourceId=? UNION ALL SELECT r.title,rr.label,rr.sourceId FROM record_relationships rr JOIN records r ON r.id=rr.sourceId WHERE rr.targetId=?",arrayOf(id,id)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
-    fun saveEntitySnapshot(record:InkRecord,label:String){val payload=JSONObject().put("title",record.title).put("body",record.body).put("kind",record.kind).put("tags",record.tags).put("aliases",record.aliases).toString();val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",record.id);put("label",label);put("payload",payload);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("entity_snapshots",null,v)}
+    fun saveEntitySnapshot(record:InkRecord,label:String){
+        val sheetObj=JSONObject()
+        sheetValues(record.id).forEach{(k,v)->sheetObj.put(k,v)}
+        val payload=JSONObject().put("title",record.title).put("body",record.body).put("kind",record.kind).put("tags",record.tags).put("aliases",record.aliases).put("templateId",sheetTemplateId(record.id)).put("sheetValues",sheetObj).toString()
+        val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",record.id);put("label",label);put("payload",payload);put("createdAt",System.currentTimeMillis())}
+        writableDatabase.insert("entity_snapshots",null,v)
+    }
     fun entitySnapshots(id:String):List<Pair<String,String>> = readableDatabase.rawQuery("SELECT label,payload FROM entity_snapshots WHERE recordId=? ORDER BY createdAt DESC",arrayOf(id)).use{c->buildList{while(c.moveToNext())add(c.getString(0) to c.getString(1))}}
-    fun restoreEntitySnapshot(id:String,payload:String){val o=JSONObject(payload);get(id)?.let{save(it.copy(title=o.optString("title",it.title),body=o.optString("body",it.body),tags=o.optString("tags",it.tags),aliases=o.optString("aliases",it.aliases)))}}
+    fun restoreEntitySnapshot(id:String,payload:String){
+        val o=JSONObject(payload)
+        get(id)?.let{save(it.copy(title=o.optString("title",it.title),body=o.optString("body",it.body),tags=o.optString("tags",it.tags),aliases=o.optString("aliases",it.aliases)))}
+        val tplId=o.optString("templateId","")
+        if(tplId.isNotBlank())attachSheet(id,tplId)
+        val sv=o.optJSONObject("sheetValues")
+        if(sv!=null){
+            val restored=buildMap{sv.keys().forEach{k->put(k,sv.optString(k,""))}}
+            saveSheetValues(id,restored)
+        }
+    }
     fun addTimelineEvent(worldId:String,title:String,start:String,end:String="",description:String="",recordId:String=""){val v=ContentValues().apply{put("id",UUID.randomUUID().toString());put("worldId",worldId);put("title",title);put("startDate",start);put("endDate",end);put("description",description);put("recordId",recordId)};writableDatabase.insert("timeline_events",null,v)}
     fun timeline(worldId:String):List<Triple<String,String,String>> = readableDatabase.rawQuery("SELECT title,startDate,COALESCE(description,'') FROM timeline_events WHERE worldId=? ORDER BY startDate",arrayOf(worldId)).use{c->buildList{while(c.moveToNext())add(Triple(c.getString(0),c.getString(1),c.getString(2)))}}
     fun createBoard(worldId:String,name:String,type:String):String{val id=UUID.randomUUID().toString();val v=ContentValues().apply{put("id",id);put("worldId",worldId);put("name",name);put("boardType",type);put("createdAt",System.currentTimeMillis())};writableDatabase.insert("planning_boards",null,v);return id}
