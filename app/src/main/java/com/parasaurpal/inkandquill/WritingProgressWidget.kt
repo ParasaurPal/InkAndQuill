@@ -42,7 +42,7 @@ class WritingProgressWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_title, universe?.second ?: "Ink & Quill")
             views.setTextViewText(R.id.widget_words, "$words words today")
             views.setTextViewText(R.id.widget_goal, if (goal > 0) "$goal word goal" else "Open your studio")
-            val intent = Intent(context, MainActivity::class.java)
+            val intent = Intent(context, MainActivity::class.java).putExtra("open_novel_studio", true)
             val pending = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             views.setOnClickPendingIntent(R.id.widget_root, pending)
             manager.updateAppWidget(id, views)
