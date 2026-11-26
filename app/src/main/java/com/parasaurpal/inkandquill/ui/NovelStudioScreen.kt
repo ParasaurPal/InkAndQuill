@@ -77,7 +77,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
-        TopAppBar(
+        if(!focus) TopAppBar(
             title={Column{Text("Novel Studio",fontWeight=FontWeight.Bold);Text(when(level){NovelLevel.WORLDS->"Universes";NovelLevel.BOOKS,NovelLevel.CHAPTERS,NovelLevel.SCENES->parentTitle;NovelLevel.EDITOR->title},style=MaterialTheme.typography.labelSmall)}},
             navigationIcon={IconButton(onClick={
                 when(level){NovelLevel.WORLDS->onClose();NovelLevel.BOOKS->level=NovelLevel.WORLDS;NovelLevel.CHAPTERS->level=NovelLevel.BOOKS;NovelLevel.SCENES->level=NovelLevel.CHAPTERS;NovelLevel.EDITOR->level=NovelLevel.SCENES}
@@ -88,7 +88,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                 if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
-        )
+        ) else if(level==NovelLevel.EDITOR){Row(Modifier.fillMaxWidth().padding(10.dp),horizontalArrangement=Arrangement.End){TextButton(onClick={focus=false}){Text("Exit focus mode")}}}
         if(toolsOpen){NovelStudioToolsScreen(worldId,store){toolsOpen=false;refresh++}} else when(level){
             NovelLevel.WORLDS->{
                 LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
