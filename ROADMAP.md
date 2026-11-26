@@ -10,7 +10,7 @@ This tracker distinguishes implemented code/UI from partial foundations and rema
 - [x] Editor appearance: system/light/dark, five palettes plus custom hex accent, custom font import, font size, line spacing, paragraph spacing, page width/margins, page-like layout mode with explicit page breaks, focus mode, background color/image texture, text color, configurable toolbar
 - [x] Customizable home section visibility and bottom navigation tab visibility
 - [x] Optional salted-PBKDF2 PIN lock with automatic relock when app leaves foreground
-- [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, separately grouped standalone Stories and Series, collapsible nested project tree, type-aware parent selection that blocks self/descendant cycles, and world-scoped resource creation
+- [x] World → Series/Story/Book/Chapter/Scene parent hierarchy, separately grouped standalone Stories and Series, collapsible nested project tree, searchable/filterable world resource library, type-aware parent selection that blocks self/descendant cycles, and world-scoped resource creation
 - [x] Selective multi-project sharing with chosen Series/Stories; explicit labeled record relationships; labeled alternate entity snapshots and restore
 - [x] World timelines; custom calendars with user-defined months, month lengths, weekdays, seasons, moons, eras, leap-rule notes, a month grid, dated entries, and yearly recurring events
 - [x] Interactive maps: Map boards render the background image as a zoomable, pannable canvas with tap-to-place pins (normalized 0..1 coordinates, so pins survive image changes), colored/labeled pins that open their linked location, character, event, or nested map, and pins included in JSON backup/restore (DB v19)
