@@ -1252,7 +1252,7 @@ class MainActivity:ComponentActivity(){
             db.relationships(record.id).forEach{link->Text("• ${link.second}: ${link.first}",fontSize=12.sp)}
 
             val blockedParentIds=remember(record.id){db.descendants(record.id).map{it.id}.toSet()+record.id}
-            val allowedParentKinds=when(record.kind){"World"->emptySet();"Series","Story"->setOf("World");"Book"->setOf("Series");"Chapter"->setOf("Book","Story");"Scene"->setOf("Chapter");else->setOf("World","Series","Story")}
+            val allowedParentKinds=when(record.kind){"World"->emptySet<String>();"Series","Story"->setOf("World");"Book"->setOf("Series");"Chapter"->setOf("Book","Story");"Scene"->setOf("Chapter");else->setOf("World","Series","Story")}
             val validParents=db.all().filter{it.id !in blockedParentIds&&it.kind in allowedParentKinds}
             Box {
                 OutlinedButton(onClick={parentMenu=true},modifier=Modifier.fillMaxWidth()){Text("Parent: "+(db.get(parent)?.title?: "None"))}
