@@ -46,13 +46,14 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var conflict by remember{mutableStateOf("")}
     var hook by remember{mutableStateOf("")}
     var focus by remember{mutableStateOf(false)}
+    var toolsOpen by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
     val worlds= remember(level,refresh){store.universes()}
     val nodes= remember(level,worldId,bookId,chapterId,refresh){
-        when(level){
+        if(toolsOpen){NovelStudioToolsScreen(worldId,store){toolsOpen=false;refresh++}} else when(level){
             NovelLevel.BOOKS->store.orderedNodes(worldId,"Book")
             NovelLevel.CHAPTERS->store.orderedNodes(bookId,"Chapter")
             NovelLevel.SCENES->store.orderedNodes(chapterId,"Scene")
@@ -83,6 +84,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }){Icon(if(level==NovelLevel.WORLDS)Icons.Default.Close else Icons.Default.ArrowBack,"Back")}},
             actions={
                 if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
+                if(level!=NovelLevel.WORLDS&&level!=NovelLevel.EDITOR){IconButton(onClick={toolsOpen=true}){Icon(Icons.Default.Explore,"Worldbuilding and planning")}}
                 if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
