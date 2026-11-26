@@ -648,32 +648,51 @@ class MainActivity:ComponentActivity(){
     if(boardDialog)AlertDialog(onDismissRequest={boardDialog=false},title={Text("Create planning board")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardName,{boardName=it},label={Text("Board name")});Text("Board type");Row(Modifier.horizontalScroll(rememberScrollState())){boardTypes.forEach{FilterChip(boardType==it,{boardType=it},label={Text(it)})}}}},confirmButton={TextButton(onClick={if(boardName.isNotBlank()){world?.let{selectedBoard=db.createBoard(it.id,boardName,boardType)};boardName="";boardDialog=false;localRefresh++}}){Text("Create")}},dismissButton={TextButton(onClick={boardDialog=false}){Text("Cancel")}})
     if(boardItemDialog)AlertDialog(onDismissRequest={boardItemDialog=false},title={Text("Add board card")},text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){OutlinedTextField(boardItemTitle,{boardItemTitle=it},label={Text("Title")});OutlinedTextField(boardItemBody,{boardItemBody=it},label={Text("Notes")});OutlinedTextField(boardItemColor,{boardItemColor=it},label={Text("Card color · hex")},singleLine=true);Box{OutlinedButton(onClick={boardRecordMenu=true}){Text("Linked record: "+(db.get(boardItemRecordId)?.title?: "None"))};DropdownMenu(expanded=boardRecordMenu,onDismissRequest={boardRecordMenu=false}){DropdownMenuItem(text={Text("No linked record")},onClick={boardItemRecordId="";boardRecordMenu=false});db.all().filter{it.kind!="Template"}.forEach{r->DropdownMenuItem(text={Text(r.title)},onClick={boardItemRecordId=r.id;boardRecordMenu=false})}}};TextButton(onClick={boardItemImagePicker.launch(arrayOf("image/*"))}){Text(if(boardItemImageUri.isBlank())"Add image" else "Image selected")}}},confirmButton={TextButton(onClick={if(boardItemTitle.isNotBlank()){db.addBoardItem(selectedBoard,boardItemTitle,boardItemBody,recordId=boardItemRecordId,color=boardItemColor,imageUri=boardItemImageUri);boardItemTitle="";boardItemBody="";boardItemRecordId="";boardItemColor="#D9C7EE";boardItemImageUri="";boardItemDialog=false;localRefresh++}}){Text("Add")}},dismissButton={TextButton(onClick={boardItemDialog=false}){Text("Cancel")}})
 }
-@Composable private fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onCreate:()->Unit){
+@Composable fun WorldResourcesScreen(db:InkDatabase,world:InkRecord,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,onCreate:()->Unit){
     var query by remember(world.id){mutableStateOf("")}
     var selectedKind by remember(world.id){mutableStateOf("All")}
+    var selectedProjectId by remember(world.id){mutableStateOf(world.id)}
     val excludedKinds=setOf("World","Series","Story","Novel","Book","Chapter","Scene")
-    val resources=remember(world.id,refresh){db.descendants(world.id).filter{it.kind !in excludedKinds}.sortedWith(compareBy<InkRecord>({it.kind},{it.title.lowercase()}))}
+    val allRecords=remember(world.id,refresh){db.all()}
+    val projects=allRecords.filter{it.parentId==world.id&&(it.kind=="Series"||it.kind=="Story")}.sortedBy{it.title.lowercase()}
+    val projectLabel=projects.firstOrNull{it.id==selectedProjectId}?.title?:world.title
+    val resources=remember(world.id,refresh,selectedProjectId,projects){
+        val contained=if(selectedProjectId==world.id)db.descendants(world.id)else db.descendants(selectedProjectId)
+        val explicitlyShared=if(selectedProjectId==world.id)emptyList()else allRecords.filter{selectedProjectId in db.sharedProjects(it.id)}
+        (contained+explicitlyShared).distinctBy{it.id}.filter{it.kind !in excludedKinds}
+            .sortedWith(compareBy<InkRecord>({it.kind},{it.title.lowercase()}))
+    }
     val kinds=resources.map{it.kind}.distinct().sorted()
-    val filtered=resources.filter{(selectedKind=="All"||it.kind==selectedKind)&&(query.isBlank()||it.title.contains(query,true)||it.kind.contains(query,true)||it.tags.contains(query,true))}
+    val filtered=resources.filter{(selectedKind=="All"||it.kind==selectedKind)&&(query.isBlank()||it.title.contains(query,true)||it.kind.contains(query,true)||it.tags.contains(query,true)||it.aliases.contains(query,true))}
     Column(Modifier.fillMaxSize().padding(4.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             Column(Modifier.weight(1f)){
-                Text("World resource library",fontWeight=FontWeight.SemiBold)
-                Text(resources.size.toString()+" linked resources across this world",fontSize=11.sp,color=Plum)
+                Text(if(selectedProjectId==world.id)"World resource library" else "$projectLabel resources",fontWeight=FontWeight.SemiBold)
+                Text(resources.size.toString()+" linked resources in this project",fontSize=11.sp,color=Plum)
             }
             Button(onClick=onCreate){Icon(Icons.Default.Add,null);Text("Add resource")}
+        }
+        if(projects.isNotEmpty()){
+            Text("Project view",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){
+                FilterChip(selectedProjectId==world.id,{selectedProjectId=world.id;selectedKind="All"},label={Text("Whole world")})
+                projects.forEach{project->FilterChip(selectedProjectId==project.id,{selectedProjectId=project.id;selectedKind="All"},label={Text(project.title,maxLines=1)})}
+            }
         }
         OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),label={Text("Search resources")},singleLine=true,leadingIcon={Icon(Icons.Default.Search,null)})
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){
             FilterChip(selectedKind=="All",{selectedKind="All"},label={Text("All")})
             kinds.forEach{kind->FilterChip(selectedKind==kind,{selectedKind=kind},label={Text(kind)})}
         }
-        if(filtered.isEmpty())Box(Modifier.fillMaxWidth().weight(1f),contentAlignment=Alignment.Center){Text(if(resources.isEmpty())"No world resources yet. Add characters, locations, cultures, factions, and other reference records." else "No resources match this search.",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.7f))}
-        else LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
+        if(filtered.isEmpty())Box(Modifier.fillMaxWidth().weight(1f),contentAlignment=Alignment.Center){
+            Text(if(resources.isEmpty())"No resources in this project yet. Add characters, locations, cultures, factions, and other reference records, or share existing records with this project." else "No resources match this search.",color=MaterialTheme.colorScheme.onSurface.copy(alpha=.7f))
+        }else LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
             items(filtered,key={it.id}){resource->
+                val shared=selectedProjectId!=world.id&&selectedProjectId in db.sharedProjects(resource.id)
                 Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
                     Row(verticalAlignment=Alignment.CenterVertically){
                         Text(resource.kind,fontSize=11.sp,color=Plum,fontWeight=FontWeight.SemiBold)
+                        if(shared){Spacer(Modifier.width(6.dp));Text("Shared",fontSize=10.sp,color=MaterialTheme.colorScheme.tertiary)}
                         Spacer(Modifier.weight(1f))
                         val parentTitle=db.get(resource.parentId)?.title?:world.title
                         Text("In "+parentTitle,fontSize=10.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.65f),maxLines=1)
