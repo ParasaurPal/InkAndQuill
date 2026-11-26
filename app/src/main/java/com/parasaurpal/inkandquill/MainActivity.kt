@@ -704,7 +704,7 @@ class MainActivity:ComponentActivity(){
     var expanded by remember(parentId){mutableStateOf(true)}
     Column(Modifier.padding(start=(depth*10).dp),verticalArrangement=Arrangement.spacedBy(3.dp)){
         if(nextKind.isNotBlank())TextButton(onClick={val child=InkRecord(title="Untitled $nextKind",kind=nextKind,parentId=parentId,scope=parent?.scope?: "World");db.save(child);open(child)},contentPadding=PaddingValues(horizontal=8.dp,vertical=2.dp)){Icon(Icons.Default.Add,null,modifier=Modifier.size(16.dp));Text(" Add $nextKind")}
-        if(children.isNotEmpty())Row(verticalAlignment=Alignment.CenterVertically){Text("\u0024{children.size} \u0024{if(children.size==1)"item" else "items"}",Modifier.weight(1f),fontSize=11.sp,color=Plum);TextButton(onClick={expanded=!expanded},contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp)){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null,modifier=Modifier.size(16.dp));Text(if(expanded)"Collapse" else "Expand",fontSize=11.sp)}}
+        if(children.isNotEmpty())Row(verticalAlignment=Alignment.CenterVertically){Text(children.size.toString()+" "+(if(children.size==1)"item" else "items"),Modifier.weight(1f),fontSize=11.sp,color=Plum);TextButton(onClick={expanded=!expanded},contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp)){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null,modifier=Modifier.size(16.dp));Text(if(expanded)"Collapse" else "Expand",fontSize=11.sp)}}
         if(expanded)children.forEach{child->Column(Modifier.padding(start=8.dp)){RecordCard(db,child,open,onRead);WorldTreeChildren(db,child.id,depth+1,open,onRead,records)}}
     }
 }
