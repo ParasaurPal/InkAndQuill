@@ -44,4 +44,12 @@ jobs:
               --notes "Latest automatically built Ink & Quill debug APK for testing." \
               --prerelease
           fi
-          gh release upload debug-latest InkAndQuill.apk --clobber
+          if ! gh release upload debug-latest InkAndQuill.apk --clobber; then
+            echo "Upload command returned an error; checking whether GitHub completed the asset upload."
+            if gh release view debug-latest --json assets --jq '.assets[].name' | grep -Fxq "InkAndQuill.apk"; then
+              echo "InkAndQuill.apk is present on the release; treating the publish step as successful."
+            else
+              echo "APK is not present on the release after upload attempt."
+              exit 1
+            fi
+          fi
