@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.testTag
 import com.parasaurpal.inkandquill.data.*
 import com.parasaurpal.inkandquill.ui.RichTextEditor
 import com.parasaurpal.inkandquill.ui.MapScreen
+import com.parasaurpal.inkandquill.ui.OutlineScreen
 import com.parasaurpal.inkandquill.ui.SheetEditorTab
 import com.parasaurpal.inkandquill.ui.BlueprintDesignerScreen
 import com.parasaurpal.inkandquill.ui.TemplatePickerDialog
@@ -105,6 +106,7 @@ class MainActivity:ComponentActivity(){
     var screen by remember{mutableStateOf("Worlds")}
     var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
+    var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
     var activeBlueprint by remember{mutableStateOf<InkRecord?>(null)}
     var showCreateSheetPicker by remember{mutableStateOf(false)}
     var showGlobalSearch by remember{mutableStateOf(false)}
@@ -166,19 +168,20 @@ class MainActivity:ComponentActivity(){
     }
     BackHandler(enabled = novelStudio) { novelStudio = false }
     BackHandler(enabled = readingRecord != null) { readingRecord = null }
-    BackHandler(enabled = selected != null && activeBlueprint == null && readingRecord == null) { selected = null; refresh++ }
+    BackHandler(enabled = selected != null && activeBlueprint == null && readingRecord == null && outlineFor == null) { selected = null; refresh++ }
+    BackHandler(enabled = outlineFor != null) { outlineFor = null; refresh++ }
     MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=accent,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=accent,background=Color(0xFFF5F0E8),surface=Color.White)){
         if(!unlocked){LockScreen(onUnlock={pin->if(AppLock.verify(context,pin))unlocked=true})}else{
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
-            topBar={if(activeBlueprint==null&&readingRecord==null&&!novelStudio)TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={IconButton(onClick={novelStudio=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.AutoStories,"Novel Studio")};IconButton(onClick={showGlobalSearch=true},modifier=Modifier.size(48.dp).testTag("global_search_button")){Icon(Icons.Default.Search,"Global search")};if(selected==null){IconButton(onClick={showGoogleDriveBackup=true},modifier=Modifier.size(48.dp).testTag("google_drive_top_button")){Icon(Icons.Default.CloudUpload,"Back up to Google Drive")};IconButton(onClick={settings=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings")}}})},
-            bottomBar={if(selected==null&&activeBlueprint==null&&readingRecord==null&&!novelStudio)NavigationBar{navTabs.forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
+            topBar={if(activeBlueprint==null&&readingRecord==null&&!novelStudio)TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(outlineFor!=null)IconButton(onClick={outlineFor=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}else if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={IconButton(onClick={novelStudio=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.AutoStories,"Novel Studio")};IconButton(onClick={showGlobalSearch=true},modifier=Modifier.size(48.dp).testTag("global_search_button")){Icon(Icons.Default.Search,"Global search")};if(selected==null){IconButton(onClick={showGoogleDriveBackup=true},modifier=Modifier.size(48.dp).testTag("google_drive_top_button")){Icon(Icons.Default.CloudUpload,"Back up to Google Drive")};IconButton(onClick={settings=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings")}}})},
+            bottomBar={if(selected==null&&activeBlueprint==null&&readingRecord==null&&!novelStudio&&outlineFor==null)NavigationBar{navTabs.forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
         ){padding->
             Column(Modifier.fillMaxSize().padding(padding)){
                 if(novelStudio){NovelStudioScreen(onClose={novelStudio=false})} else {
-                if(activeBlueprint==null&&readingRecord==null&&openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id)selected=null}){Text("×")}}}
+                if(activeBlueprint==null&&readingRecord==null&&openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab;outlineFor=null},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id){selected=null;outlineFor=null}}){Text("×")}}}
                 Box(Modifier.weight(1f).fillMaxWidth()){
-                    if(readingRecord!=null){
+                    if(outlineFor!=null)OutlineScreen(db=db,root=outlineFor!!,onOpen={record->selected=record;outlineFor=null;refresh++},onBack={outlineFor=null;refresh++}) else if(readingRecord!=null){
                         ReadingModeScreen(
                             db = db,
                             record = readingRecord!!,
@@ -251,6 +254,7 @@ class MainActivity:ComponentActivity(){
                         jumpOccurrence = pendingFindOccurrence,
                         onJumpHandled = { pendingFindTerm = ""; pendingFindOccurrence = 0 },
                         onOpen = { record, term, occurrence -> selected = record; pendingFindTerm = term; pendingFindOccurrence = occurrence },
+                        onOutline = { record -> outlineFor = record; refresh++ },
                         onOpenBlueprint = { tplId -> db.get(tplId)?.let { activeBlueprint = it } },
                         onReadMode = { target -> readingRecord = target },
                         onTemplateCreated = { tpl -> activeBlueprint = tpl; refresh++ },
@@ -1159,7 +1163,8 @@ class MainActivity:ComponentActivity(){
     onReadMode:(InkRecord)->Unit={},
     onTemplateCreated:(InkRecord)->Unit={},
     onUpdateEntryDraft:(ActiveEntryDraft)->Unit={},
-    onClearEntryDraft:(String)->Unit={}
+    onClearEntryDraft:(String)->Unit={},
+    onOutline:(InkRecord)->Unit={}
 ){
     val appContext=LocalContext.current.applicationContext
     var title by remember(record.id){mutableStateOf(record.title)}
@@ -1315,6 +1320,7 @@ class MainActivity:ComponentActivity(){
                 }
             }
             if(record.kind=="Novel"||record.kind=="Book")TextButton(onClick={coverPicker.launch(arrayOf("image/*"))}){Text(if(coverUri.isBlank())"Add cover" else "Change cover")}
+            if(record.kind in listOf("Novel","Book","Story","Series"))IconButton(onClick={onOutline(record)}){Icon(Icons.Default.FormatListBulleted,"Outline")}
             TextButton(onClick={db.saveSheetValues(record.id,sheetValues);onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,coverUri=coverUri))}){Text("Save")}
             IconButton(onClick={onSaved(record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope,favorite=!record.favorite))}){Icon(if(record.favorite)Icons.Default.Star else Icons.Default.StarBorder,"Favorite")}
             IconButton(onClick={details=!details}){Icon(Icons.Default.Tune,"Details")}
