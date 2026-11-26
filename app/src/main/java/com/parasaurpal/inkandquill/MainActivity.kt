@@ -47,6 +47,8 @@ import com.parasaurpal.inkandquill.data.*
 import com.parasaurpal.inkandquill.ui.RichTextEditor
 import com.parasaurpal.inkandquill.ui.MapScreen
 import com.parasaurpal.inkandquill.ui.OutlineScreen
+import com.parasaurpal.inkandquill.ui.WorldModulesScreen
+import com.parasaurpal.inkandquill.ui.WorldModuleListScreen
 import com.parasaurpal.inkandquill.ui.SheetEditorTab
 import com.parasaurpal.inkandquill.ui.BlueprintDesignerScreen
 import com.parasaurpal.inkandquill.ui.TemplatePickerDialog
@@ -581,7 +583,11 @@ class MainActivity:ComponentActivity(){
     var world by remember{mutableStateOf<InkRecord?>(null)}
     var createChild by remember{mutableStateOf(false)}
     var createParentId by remember{mutableStateOf("")}
-    var mode by remember{mutableStateOf("Hierarchy")}
+    var mode by remember{mutableStateOf("Modules")}
+    var moduleTitle by remember{mutableStateOf("")}
+    var moduleKinds by remember{mutableStateOf<List<String>>(emptyList())}
+    var modulePrimaryKind by remember{mutableStateOf("")}
+    var showWorldMenu by remember{mutableStateOf(false)}
     var eventDialog by remember{mutableStateOf(false)}
     var eventTitle by remember{mutableStateOf("")}
     var eventDate by remember{mutableStateOf("")}
@@ -628,7 +634,7 @@ class MainActivity:ComponentActivity(){
     val boardTypes=listOf("Corkboard","Moodboard","Map","Flowchart","Relationship graph","Family tree","Floor plan","Reference board")
     var showWorldSheetPicker by remember{mutableStateOf(false)}
     var showWorldCustomTemplate by remember{mutableStateOf(false)}
-    BackHandler(enabled = world != null) { world = null; selectedBoard = "" }
+    BackHandler(enabled = world != null) { if(moduleKinds.isNotEmpty())moduleKinds=emptyList() else if(mode!="Modules")mode="Modules" else {world=null;selectedBoard=""} }
     if(world==null){
         Column(Modifier.fillMaxSize().padding(16.dp)){ 
             Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
@@ -648,22 +654,37 @@ class MainActivity:ComponentActivity(){
         }
     }else{
         val w=world!!
+        LaunchedEffect(w.id){moduleKinds=emptyList()}
         val worldTotalWords=remember(w.id,wordSnapshot){wordSnapshot.subtreeWords(w.id)}
         Column(Modifier.fillMaxSize().padding(12.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
-                IconButton(onClick={world=null;selectedBoard=""}){Icon(Icons.Default.ArrowBack,"Worlds")}
+                IconButton(onClick={if(moduleKinds.isNotEmpty())moduleKinds=emptyList() else if(mode!="Modules")mode="Modules" else {world=null;selectedBoard=""}}){Icon(Icons.Default.ArrowBack,"Back")}
                 Column(Modifier.weight(1f)){
                     Text(w.title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
-                    Text("%,d total words in world".format(worldTotalWords),fontSize=11.sp,color=Plum)
+                    Text("Worldbuilding",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))
                 }
-                TextButton(onClick={showWorldWordStats=true},modifier=Modifier.testTag("world_word_counts_button")){
-                    Icon(Icons.Default.Analytics,null,modifier=Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Words")
+                IconButton(onClick={moduleKinds=emptyList();mode="Resources"}){Icon(Icons.Default.Search,"Search resources")}
+                Box{
+                    IconButton(onClick={showWorldMenu=true}){Icon(Icons.Default.MoreVert,"World options")}
+                    DropdownMenu(expanded=showWorldMenu,onDismissRequest={showWorldMenu=false}){
+                        DropdownMenuItem(text={Text("Word counts")},onClick={showWorldMenu=false;showWorldWordStats=true},modifier=Modifier.testTag("world_word_counts_button"))
+                        DropdownMenuItem(text={Text("Files & media")},onClick={showWorldMenu=false;onOpenMediaManager()})
+                        DropdownMenuItem(text={Text("Edit world")},onClick={showWorldMenu=false;open(w)})
+                    }
                 }
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Hierarchy","Resources","Timeline","Calendar","Boards","Connections").forEach{FilterChip(mode==it,{mode=it},label={Text(it)})}}
+            Row(Modifier.fillMaxWidth()){
+                Column(Modifier.weight(1f).clickable{moduleKinds=emptyList();mode="Modules"},horizontalAlignment=Alignment.CenterHorizontally){
+                    Icon(Icons.Default.Extension,"Worldbuilding modules",Modifier.padding(vertical=8.dp),tint=if(mode!="Hierarchy")MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha=.45f))
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(if(mode!="Hierarchy")MaterialTheme.colorScheme.primary else Color.Transparent))
+                }
+                Column(Modifier.weight(1f).clickable{moduleKinds=emptyList();mode="Hierarchy"},horizontalAlignment=Alignment.CenterHorizontally){
+                    Icon(Icons.Default.MenuBook,"Manuscript hierarchy",Modifier.padding(vertical=8.dp),tint=if(mode=="Hierarchy")MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha=.45f))
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(if(mode=="Hierarchy")MaterialTheme.colorScheme.primary else Color.Transparent))
+                }
+            }
             when(mode){
+                "Modules"->{if(moduleKinds.isNotEmpty())WorldModuleListScreen(db,w,moduleTitle,moduleKinds,modulePrimaryKind,refresh+localRefresh,open){moduleKinds=emptyList()} else WorldModulesScreen(db,w,refresh+localRefresh,{title,kinds,primary->moduleTitle=title;moduleKinds=kinds;modulePrimaryKind=primary},{mode=it},onOpenMediaManager)}
                 "Hierarchy"->{Row(Modifier.fillMaxWidth().padding(vertical=4.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={createParentId=w.id;createChild=true}){Text("Add to world")};FilledTonalButton(onClick={showWorldSheetPicker=true},modifier=Modifier.testTag("world_new_from_sheet")){Icon(Icons.Default.DashboardCustomize,null,modifier=Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text("New from Sheet")}};val allWorldRecords=remember(w.id,localRefresh,refresh){db.all()};val direct=allWorldRecords.filter{it.parentId==w.id};val series=direct.filter{it.kind=="Series"};val stories=direct.filter{it.kind=="Story"||it.kind=="Novel"};val resources=direct.filter{it.kind!="Series"&&it.kind!="Story"};LazyColumn(verticalArrangement=Arrangement.spacedBy(7.dp)){if(series.isNotEmpty())item{Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)};items(series){seriesRecord->var expanded by remember(w.id,seriesRecord.id){mutableStateOf(true)};val seriesWords=wordSnapshot.subtreeWords(seriesRecord.id);Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(seriesRecord.title,fontWeight=FontWeight.SemiBold);Text("%,d words".format(seriesWords),fontSize=11.sp,color=Plum)};TextButton(onClick={open(seriesRecord)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand series")}};if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allWorldRecords,wordSnapshot)}}};if(stories.isNotEmpty())item{Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)};items(stories){story->var expanded by remember(w.id,story.id){mutableStateOf(true)};val storyWords=wordSnapshot.subtreeWords(story.id);Card(Modifier.fillMaxWidth()){Column(Modifier.padding(8.dp)){Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(story.title,fontWeight=FontWeight.SemiBold);Text("%,d words".format(storyWords),fontSize=11.sp,color=Plum)};TextButton(onClick={open(story)}){Text("Open")};IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Expand story")}};if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allWorldRecords,wordSnapshot)}}};if(resources.isNotEmpty())item{Text("World resources",fontWeight=FontWeight.SemiBold,color=Plum)};items(resources){resource->Column{RecordCard(db,resource,open,onRead);WorldTreeChildren(db,resource.id,1,open,onRead,allWorldRecords,wordSnapshot)}}}}
                 "Resources"->{WorldResourcesScreen(db,w,refresh+localRefresh,open,onRead,onOpenMediaManager){parentId->createParentId=parentId;createChild=true}}
                 "Timeline"->{val events=db.timeline(w.id);Row(verticalAlignment=Alignment.CenterVertically){Text("World chronology",Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Button(onClick={eventDialog=true}){Text("Add event")}};LazyColumn{itemsIndexed(events){index,e->Row(Modifier.fillMaxWidth().padding(vertical=3.dp)){Column(horizontalAlignment=Alignment.CenterHorizontally,modifier=Modifier.width(24.dp)){Box(Modifier.size(12.dp).background(Plum,CircleShape));if(index<events.lastIndex)Box(Modifier.width(2.dp).height(70.dp).background(Plum.copy(alpha=.5f))) };Card(Modifier.weight(1f)){Column(Modifier.padding(12.dp)){Text(e.second,color=Plum,fontSize=12.sp);Text(e.first,fontWeight=FontWeight.SemiBold);Text(e.third,fontSize=12.sp)}}}}}}
