@@ -1,0 +1,58 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "flora_arcane_botanical",
+  "archetypeGroup": "Flora",
+  "title": "Alchemical & Sacred Flora",
+  "body": "Botanical sheet for fantasy plants, magical fungi, and sacred trees covering habitat, bloom cycles, alchemy, and folklore.",
+  "category": "Flora & Ecology",
+  "defaultKind": "Flora",
+  "tags": ["Flora", "Alchemy", "Herb", "Ecology"],
+  "sections": [
+    "Botanical Profile",
+    "Habitat & Bloom Cycle",
+    "Alchemical & Culinary Uses",
+    "Hazards & Folklore"
+  ],
+  "fields": [
+    {
+      "name": "Common & Scholarly Names",
+      "type": "Short text",
+      "section": "Botanical Profile",
+      "required": true
+    },
+    {
+      "name": "Appearance, Scent & Glow",
+      "type": "Long text",
+      "section": "Botanical Profile"
+    },
+    {
+      "name": "Soil, Elevation & Symbionts",
+      "type": "Short text",
+      "section": "Habitat & Bloom Cycle"
+    },
+    {
+      "name": "Harvest Window & Preservation",
+      "type": "Long text",
+      "section": "Habitat & Bloom Cycle"
+    },
+    {
+      "name": "Medicinal, Poison or Arcane Effects",
+      "type": "Long text",
+      "section": "Alchemical & Culinary Uses"
+    },
+    {
+      "name": "Superstitions & Gathering Taboos",
+      "type": "Long text",
+      "section": "Hazards & Folklore"
+    }
+  ],
+  "sampleValues": {
+    "Common & Scholarly Names": "Moon-Bells (Silene noctiluca)",
+    "Appearance, Scent & Glow": "Hanging silver-white blossoms shaped like tiny lanterns that smell faintly of frost and crushed mint.",
+    "Soil, Elevation & Symbionts": "Slate scree slopes above 4,000 feet, rooted near lightning-struck pines.",
+    "Harvest Window & Preservation": "Must be snipped with bone shears before dawn; iron blades blacken the nectar within minutes.",
+    "Medicinal, Poison or Arcane Effects": "Brewed into fever-soothing draughts or distilled into ink that reveals invisible writing under moonlight.",
+    "Superstitions & Gathering Taboos": "Highland shepherds never pick the tallest stem, leaving it as a lantern for lost travelers' spirits."
+  }
+}

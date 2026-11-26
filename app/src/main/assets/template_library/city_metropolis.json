@@ -1,0 +1,110 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "city_metropolis",
+  "archetypeGroup": "Cities",
+  "title": "Grand Fantasy City",
+  "body": "Deep metropolitan archetype covering districts, civic leadership, trade guilds, architecture, defenses, and hidden urban currents.",
+  "category": "Locations & Realms",
+  "defaultKind": "Settlement",
+  "tags": ["City", "Metropolis", "Trade", "Politics"],
+  "sections": [
+    "Identity & Skyline",
+    "Districts & Landmarks",
+    "Governance & Law",
+    "Economy & Guilds",
+    "Defense & Underbelly"
+  ],
+  "fields": [
+    {
+      "name": "City Name & Epithet",
+      "type": "Short text",
+      "section": "Identity & Skyline",
+      "required": true,
+      "hint": "e.g., Aurelion, City of Brass Spires"
+    },
+    {
+      "name": "Estimated Population",
+      "type": "Short text",
+      "section": "Identity & Skyline",
+      "required": false,
+      "hint": "Approximate residents, transient pilgrims, and garrison"
+    },
+    {
+      "name": "Setting Type",
+      "type": "Dropdown",
+      "section": "Identity & Skyline",
+      "options": "River Delta|Coastal Cliff|Mountain Citadel|Floating Bastion|Desert Oasis|Subterranean Cavern|Forest Canopy",
+      "hint": "Dominant geography shaping the city"
+    },
+    {
+      "name": "Signature Skyline & Atmosphere",
+      "type": "Long text",
+      "section": "Identity & Skyline",
+      "hint": "Silhouettes, scents, ambient sounds, and lighting at dusk"
+    },
+    {
+      "name": "Major Districts",
+      "type": "Table",
+      "section": "Districts & Landmarks",
+      "options": "District|Character|Notable Landmark",
+      "hint": "Wards, tiers, or quarters of the metropolis"
+    },
+    {
+      "name": "Wonders & Sacred Sites",
+      "type": "Long text",
+      "section": "Districts & Landmarks",
+      "hint": "Bridges, citadels, libraries, temples, or arcane monuments"
+    },
+    {
+      "name": "Ruling Authority",
+      "type": "Short text",
+      "section": "Governance & Law",
+      "hint": "Merchant council, archduke, theocracy, or guild oligarchy"
+    },
+    {
+      "name": "Unusual Civic Laws",
+      "type": "Long text",
+      "section": "Governance & Law",
+      "hint": "Weapon bans, curfews, magic licensing, or hospitality customs"
+    },
+    {
+      "name": "Primary Exports & Guilds",
+      "type": "Multi-select",
+      "section": "Economy & Guilds",
+      "options": "Alchemy|Shipbuilding|Silk & Dyes|Mithril Forging|Arcane Cartography|Banking|Spice Trade|Relic Auction"
+    },
+    {
+      "name": "Currency & Tax Customs",
+      "type": "Short text",
+      "section": "Economy & Guilds",
+      "hint": "Coinage, gate tolls, or tithes"
+    },
+    {
+      "name": "Walls, Wards & Garrison",
+      "type": "Long text",
+      "section": "Defense & Underbelly",
+      "hint": "Fortifications, siege readiness, and magical wards"
+    },
+    {
+      "name": "Black Market & Secrets",
+      "type": "Long text",
+      "section": "Defense & Underbelly",
+      "hint": "Sewer networks, thieves' syndicates, and buried ruins beneath the streets"
+    }
+  ],
+  "sampleValues": {
+    "City Name & Epithet": "Vaelor's Reach, the Lantern Crown",
+    "Estimated Population": "185,000 permanent citizens; 30,000 seasonal sailors",
+    "Setting Type": "Coastal Cliff",
+    "Signature Skyline & Atmosphere": "Terraced limestone towers linked by copper cableways, smelling of sea-salt, roasted cardamom, and ozone from the storm-spires.",
+    "Major Districts": "High Astrolabe | Scholarly spires | Observatory of Tides\nSunken Wharf | Bustling & briny | The Barnacle Exchange\nAshen Kilns | Industrial | Glassblower Commons",
+    "Wonders & Sacred Sites": "The Tidegate Bridge—an ancient basalt arch that seals itself with runes during winter gales.",
+    "Ruling Authority": "Council of Seven Harbormasters",
+    "Unusual Civic Laws": "Open flame is forbidden on the lower timber docks after the third bell; dueling is legal only on the Salt Flats at low tide.",
+    "Primary Exports & Guilds": "Shipbuilding, Arcane Cartography, Spice Trade",
+    "Currency & Tax Customs": "Silver Tide-Marks; 4% anchor levy on foreign hulls",
+    "Walls, Wards & Garrison": "Three-tiered sea bastions manned by the Stormwatch Marines and lightning-rod ward pylons.",
+    "Black Market & Secrets": "Flooded smugglers' cisterns beneath Sunken Wharf connect directly to the vaults of the Glassblower Commons."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "item_sentient_relic",
+  "archetypeGroup": "Items",
+  "title": "Sentient Mythic Artifact",
+  "body": "Legendary item sheet covering forging materials, active enchantments, awakened personality, curses, and historical owners.",
+  "category": "Items & Artifacts",
+  "defaultKind": "Artifact",
+  "tags": ["Artifact", "Relic", "Weapon", "Enchanted"],
+  "sections": [
+    "Craftsmanship & Form",
+    "Enchantments & Powers",
+    "Sentience, Will & Curse",
+    "Lineage of Bearers"
+  ],
+  "fields": [
+    {
+      "name": "Artifact Name",
+      "type": "Short text",
+      "section": "Craftsmanship & Form",
+      "required": true
+    },
+    {
+      "name": "Form & Rare Materials",
+      "type": "Short text",
+      "section": "Craftsmanship & Form",
+      "hint": "Star-iron blade, phoenix-ash glass, or carved leviathan ivory"
+    },
+    {
+      "name": "Rarity Tier",
+      "type": "Dropdown",
+      "section": "Craftsmanship & Form",
+      "options": "Heirloom|Rare Relic|Mythic Wonder|World-Shaping Artifact|Cursed Doom-Relic"
+    },
+    {
+      "name": "Passive & Awakened Powers",
+      "type": "Long text",
+      "section": "Enchantments & Powers"
+    },
+    {
+      "name": "Personality & Demands (If Sentient)",
+      "type": "Long text",
+      "section": "Sentience, Will & Curse"
+    },
+    {
+      "name": "Drawback, Cost or Curse",
+      "type": "Long text",
+      "section": "Sentience, Will & Curse"
+    },
+    {
+      "name": "Famous Former Bearers",
+      "type": "Table",
+      "section": "Lineage of Bearers",
+      "options": "Bearer|Era|Fate"
+    }
+  ],
+  "sampleValues": {
+    "Artifact Name": "Whisperglass, Edge of the First Oath",
+    "Form & Rare Materials": "Translucent smoky-quartz rapier hilted in blackened sea-gold",
+    "Rarity Tier": "Mythic Wonder",
+    "Passive & Awakened Powers": "Rings audibly whenever a spoken lie is uttered within twenty paces; cuts cleanly through summoned ward barriers.",
+    "Personality & Demands (If Sentient)": "Speaks only in concise legal riddles; refuses to draw blood unless a formal challenge has been declared.",
+    "Drawback, Cost or Curse": "Forces its wielder to keep every promise they speak aloud, even jesting vows.",
+    "Famous Former Bearers": "Lady Seraphina | Age of Crowns | Vanished into the Mirror Trench\nJudge Haldor | 312 AC | Executed for refusing to lie under torture"
+  }
+}

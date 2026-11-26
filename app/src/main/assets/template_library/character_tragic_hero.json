@@ -1,0 +1,79 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "character_tragic_hero",
+  "archetypeGroup": "Characters",
+  "title": "Arcane Protagonist & Hero",
+  "body": "Character sheet emphasizing internal arc, moral flaws, combat/magic mastery, loyalties, and story stakes.",
+  "category": "Characters & Lineage",
+  "defaultKind": "Character",
+  "tags": ["Character", "Protagonist", "Hero", "Arc"],
+  "sections": [
+    "Identity & Presence",
+    "Psychological Arc & Motivation",
+    "Skills, Magic & Gear",
+    "Bonds, Enemies & Secrets"
+  ],
+  "fields": [
+    {
+      "name": "Full Name & Alias",
+      "type": "Short text",
+      "section": "Identity & Presence",
+      "required": true
+    },
+    {
+      "name": "Origin / Lineage",
+      "type": "Short text",
+      "section": "Identity & Presence"
+    },
+    {
+      "name": "Appearance & Mannerisms",
+      "type": "Long text",
+      "section": "Identity & Presence",
+      "hint": "Scars, posture, voice cadence, and signature attire"
+    },
+    {
+      "name": "Core Desire vs. Hidden Fear",
+      "type": "Long text",
+      "section": "Psychological Arc & Motivation",
+      "required": true
+    },
+    {
+      "name": "Fatal Flaw & Moral Line",
+      "type": "Long text",
+      "section": "Psychological Arc & Motivation"
+    },
+    {
+      "name": "Archetype Role",
+      "type": "Dropdown",
+      "section": "Psychological Arc & Motivation",
+      "options": "Reluctant Heir|Exiled Knight|Runaway Mage|Oathbound Ranger|Shadow Thief|Scholar-Explorer"
+    },
+    {
+      "name": "Combat & Arcane Capabilities",
+      "type": "Long text",
+      "section": "Skills, Magic & Gear"
+    },
+    {
+      "name": "Signature Weapon or Focus",
+      "type": "Short text",
+      "section": "Skills, Magic & Gear"
+    },
+    {
+      "name": "Allies, Rivals & Unspoken Secret",
+      "type": "Long text",
+      "section": "Bonds, Enemies & Secrets"
+    }
+  ],
+  "sampleValues": {
+    "Full Name & Alias": "Corin Ashvale ('The Cinder-Scribe')",
+    "Origin / Lineage": "Disgraced apprentice of the Obsidian Foundry",
+    "Appearance & Mannerisms": "Soot-stained knuckles, mismatched amber and grey eyes, habitually taps a brass caliper when thinking.",
+    "Core Desire vs. Hidden Fear": "Wants to restore his sister's stolen name; terrifies himself by resembling the master he swore to overthrow.",
+    "Fatal Flaw & Moral Line": "Refuses to ask allies for help until crisis strikes; will never harm an unarmed messenger.",
+    "Archetype Role": "Runaway Mage",
+    "Combat & Arcane Capabilities": "Runic ward-breaking, short-blade fencing, and heat-siphoning sigils.",
+    "Signature Weapon or Focus": "A cracked silver astrolabe etched with embers",
+    "Allies, Rivals & Unspoken Secret": "Allied with Captain Mara Vance; secretly holds the only copy of the Foundry's true ledger."
+  }
+}

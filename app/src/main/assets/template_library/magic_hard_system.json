@@ -1,0 +1,69 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "magic_hard_system",
+  "archetypeGroup": "Magic & Systems",
+  "title": "Rule-Bound Magic System",
+  "body": "Structured arcane system defining energy sources, hard rules, physical costs, training tiers, and forbidden paradoxes.",
+  "category": "Magic & Systems",
+  "defaultKind": "Magic System",
+  "tags": ["Magic", "Arcane", "Rules", "Costs"],
+  "sections": [
+    "Source & Conduits",
+    "Strict Laws & Costs",
+    "Disciplines & Mastery",
+    "Taboos & Cultural Impact"
+  ],
+  "fields": [
+    {
+      "name": "System Name",
+      "type": "Short text",
+      "section": "Source & Conduits",
+      "required": true
+    },
+    {
+      "name": "Energy Source",
+      "type": "Dropdown",
+      "section": "Source & Conduits",
+      "options": "Ambient Aether|Starlight & Moons|Vocal True-Names|Blood & Vital Heat|Crystal Resonance|Borrowed Spirit Pacts"
+    },
+    {
+      "name": "Required Focus or Catalyst",
+      "type": "Short text",
+      "section": "Source & Conduits",
+      "hint": "Tuning forks, chalk sigils, silver ink, or breath control"
+    },
+    {
+      "name": "Hard Limitations (What It Cannot Do)",
+      "type": "Long text",
+      "section": "Strict Laws & Costs",
+      "required": true
+    },
+    {
+      "name": "Physical or Moral Toll",
+      "type": "Long text",
+      "section": "Strict Laws & Costs",
+      "hint": "Frostbite, temporary blindness, accelerated aging, or metal fatigue"
+    },
+    {
+      "name": "Schools & Mastery Tiers",
+      "type": "Table",
+      "section": "Disciplines & Mastery",
+      "options": "Tier or School|Capabilities|Failure Risk"
+    },
+    {
+      "name": "Forbidden Magic & Paradoxes",
+      "type": "Long text",
+      "section": "Taboos & Cultural Impact"
+    }
+  ],
+  "sampleValues": {
+    "System Name": "Resonant Bellcraft",
+    "Energy Source": "Crystal Resonance",
+    "Required Focus or Catalyst": "Cast bronze or star-quartz tuning chimes",
+    "Hard Limitations (What It Cannot Do)": "Cannot alter living minds, raise the dead, or function inside vacuum chambers where sound cannot travel.",
+    "Physical or Moral Toll": "Over-channeling shatters bones along acoustic fault lines and leaves permanent tinnitus.",
+    "Schools & Mastery Tiers": "Apprentice | Sustain single-note shields | Cracked chime\nMaestro | Weave harmonic bridges across chasms | Deafness & bone fracture",
+    "Forbidden Magic & Paradoxes": "Singing the Seventh Dissonance collapses local gravity into a ringing sinkhole."
+  }
+}

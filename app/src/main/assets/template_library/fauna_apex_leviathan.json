@@ -1,0 +1,64 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "fauna_apex_leviathan",
+  "archetypeGroup": "Creatures",
+  "title": "Apex Mythic Beast & Dragon",
+  "body": "Bestiary profile for dragons, leviathans, and apex predators including anatomy, breath/magic traits, lair ecology, and weaknesses.",
+  "category": "Fauna & Monsters",
+  "defaultKind": "Dragon",
+  "tags": ["Creature", "Dragon", "Monster", "Bestiary"],
+  "sections": [
+    "Taxonomy & Anatomy",
+    "Ecology, Territory & Lair",
+    "Abilities & Temperament",
+    "Weaknesses & Harvestable Lore"
+  ],
+  "fields": [
+    {
+      "name": "Creature Name / Species",
+      "type": "Short text",
+      "section": "Taxonomy & Anatomy",
+      "required": true
+    },
+    {
+      "name": "Size & Silhouette",
+      "type": "Short text",
+      "section": "Taxonomy & Anatomy"
+    },
+    {
+      "name": "Armor, Scales & Sensory Organs",
+      "type": "Long text",
+      "section": "Taxonomy & Anatomy"
+    },
+    {
+      "name": "Preferred Biome & Lair Style",
+      "type": "Long text",
+      "section": "Ecology, Territory & Lair"
+    },
+    {
+      "name": "Diet, Life Cycle & Hoard Behavior",
+      "type": "Long text",
+      "section": "Ecology, Territory & Lair"
+    },
+    {
+      "name": "Breath Weapon or Signature Power",
+      "type": "Long text",
+      "section": "Abilities & Temperament"
+    },
+    {
+      "name": "Fatal Weaknesses & Hunter Tactics",
+      "type": "Long text",
+      "section": "Weaknesses & Harvestable Lore"
+    }
+  ],
+  "sampleValues": {
+    "Creature Name / Species": "Tideglass Wyrm",
+    "Size & Silhouette": "65-foot serpentine sea-dragon with translucent sail-fins and bioluminescent cheek plates",
+    "Armor, Scales & Sensory Organs": "Hexagonal silica scales refract sunlight underwater, rendering it nearly invisible until it strikes.",
+    "Preferred Biome & Lair Style": "Sunken volcanic vents and drowned shipwrecks along continental shelves.",
+    "Diet, Life Cycle & Hoard Behavior": "Feeds on giant squid and ironclad hulls; nests inside copper-rich wrecks to strengthen newborn scale plating.",
+    "Breath Weapon or Signature Power": "Expels superheated steam-jets that boil sea-water into blinding scalding fog.",
+    "Fatal Weaknesses & Hunter Tactics": "Acoustic bells shatter its inner ear equilibrium; vulnerable beneath the throat-gill hinge when inhaling."
+  }
+}

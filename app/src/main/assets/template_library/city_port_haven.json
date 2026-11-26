@@ -1,0 +1,71 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "city_port_haven",
+  "archetypeGroup": "Cities",
+  "title": "Free Port & Smuggler Haven",
+  "body": "Maritime city-state built on shifting alliances, corsair fleets, black-market docks, and perilous reef approaches.",
+  "category": "Locations & Realms",
+  "defaultKind": "Settlement",
+  "tags": ["City", "Port", "Maritime", "Smugglers"],
+  "sections": [
+    "Harbor & Approach",
+    "Power Brokers & Crews",
+    "Taverns & Black Market",
+    "Perils & Tides"
+  ],
+  "fields": [
+    {
+      "name": "Haven Name",
+      "type": "Short text",
+      "section": "Harbor & Approach",
+      "required": true,
+      "hint": "e.g., Shattercove or The Barnacle Freeholds"
+    },
+    {
+      "name": "Harbor Defenses & Reefs",
+      "type": "Long text",
+      "section": "Harbor & Approach",
+      "hint": "Pilot channels, sea chains, and sunken wrecks"
+    },
+    {
+      "name": "Port Authority / Pirate Lords",
+      "type": "Table",
+      "section": "Power Brokers & Crews",
+      "options": "Broker|Fleet or Crew|Turf"
+    },
+    {
+      "name": "Port Code & Parley Rules",
+      "type": "Long text",
+      "section": "Power Brokers & Crews",
+      "hint": "Neutrality accords inside the lantern buoys"
+    },
+    {
+      "name": "Contraband Specialties",
+      "type": "Multi-select",
+      "section": "Taverns & Black Market",
+      "options": "Forbidden Tomes|Aether Dust|Stolen Relics|Monster Eggs|Forged Letters of Marque|Exotic Poisons"
+    },
+    {
+      "name": "Famous Taverns & Safehouses",
+      "type": "Long text",
+      "section": "Taverns & Black Market",
+      "hint": "Where captains broker deals and crews vanish"
+    },
+    {
+      "name": "Tidal & Seasonal Hazards",
+      "type": "Long text",
+      "section": "Perils & Tides",
+      "hint": "Maelstroms, fog banks, or leviathan migrations"
+    }
+  ],
+  "sampleValues": {
+    "Haven Name": "Brinehollow Free Port",
+    "Harbor Defenses & Reefs": "Accessible only through the Knife-Tooth Channel at half-flood tide; brass sea-chains rise from two twin lighthouses.",
+    "Port Authority / Pirate Lords": "Captain Mara Vance | The Iron Albatross | Drydocks & Rope-Walk\nOld Kess | Lantern Syndicate | Floating Bazaar",
+    "Port Code & Parley Rules": "No cannon fire inside the red mooring buoys; debts drawn in salt-ink are enforceable by any captain present.",
+    "Contraband Specialties": "Forbidden Tomes, Forged Letters of Marque, Exotic Poisons",
+    "Famous Taverns & Safehouses": "The Drowned Compass—built inside the upturned hull of an elven galleon.",
+    "Tidal & Seasonal Hazards": "Autumn Ghost-Fogs swallow ships whose bells aren't wrapped in kelp-cloth."
+  }
+}

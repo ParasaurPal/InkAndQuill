@@ -1,0 +1,60 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "language_conlang_primer",
+  "archetypeGroup": "Languages",
+  "title": "Constructed Fantasy Language",
+  "body": "Conlang dossier for phonology, writing script, grammar mechanics, naming roots, and everyday idioms.",
+  "category": "Languages & Scripts",
+  "defaultKind": "Language",
+  "tags": ["Language", "Conlang", "Script", "Linguistics"],
+  "sections": [
+    "Origin & Speakers",
+    "Phonology & Writing System",
+    "Grammar & Naming Roots",
+    "Phrasebook & Idioms"
+  ],
+  "fields": [
+    {
+      "name": "Language Name",
+      "type": "Short text",
+      "section": "Origin & Speakers",
+      "required": true
+    },
+    {
+      "name": "Language Family & Speakers",
+      "type": "Short text",
+      "section": "Origin & Speakers"
+    },
+    {
+      "name": "Sound Inventory & Cadence",
+      "type": "Long text",
+      "section": "Phonology & Writing System",
+      "hint": "Consonant clusters, vowel harmony, tonal pitch, or trill rules"
+    },
+    {
+      "name": "Script Medium & Direction",
+      "type": "Short text",
+      "section": "Phonology & Writing System"
+    },
+    {
+      "name": "Word Order & Inflection Rules",
+      "type": "Long text",
+      "section": "Grammar & Naming Roots"
+    },
+    {
+      "name": "Core Lexicon & Idioms",
+      "type": "Table",
+      "section": "Phrasebook & Idioms",
+      "options": "Phrase|Literal Gloss|Meaning & Context"
+    }
+  ],
+  "sampleValues": {
+    "Language Name": "Old Kaelaric",
+    "Language Family & Speakers": "Highland Liturgical Family; spoken across the Terraced Valleys and scholar-courts",
+    "Sound Inventory & Cadence": "Melodic VSO cadence rich in liquid 'l' and 'r' consonants, soft 'th' fricatives, and long open vowels.",
+    "Script Medium & Direction": "Vertical knotted-brush calligraphy written top-to-bottom on oiled cedar bark",
+    "Word Order & Inflection Rules": "Verb-Subject-Object; nouns decline for animate vs. stone/elemental classes.",
+    "Core Lexicon & Idioms": "Sola-var | Lantern-walk | Safe journey after dusk\nKael-mor | Hearth-silence | Formal truce between feuding clans"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "culture_high_civilization",
+  "archetypeGroup": "Cultures",
+  "title": "Civilization & Cultural Portrait",
+  "body": "Full anthropological sheet for a fantasy people: values, etiquette, clothing, cuisine, art, architecture, and rites of passage.",
+  "category": "Cultures & Societies",
+  "defaultKind": "Culture",
+  "tags": ["Culture", "Society", "Customs", "Etiquette"],
+  "sections": [
+    "Origins & Homeland",
+    "Values, Honor & Social Order",
+    "Daily Life, Attire & Cuisine",
+    "Arts, Architecture & Rites"
+  ],
+  "fields": [
+    {
+      "name": "Culture / People Name",
+      "type": "Short text",
+      "section": "Origins & Homeland",
+      "required": true,
+      "hint": "Endonym and common exonyms"
+    },
+    {
+      "name": "Ancestral Homeland & Climate",
+      "type": "Short text",
+      "section": "Origins & Homeland"
+    },
+    {
+      "name": "Core Cultural Values",
+      "type": "Multi-select",
+      "section": "Values, Honor & Social Order",
+      "options": "Hospitality|Ancestor Veneration|Scholarly Mastery|Martial Honor|Artisanship|Harmony with Nature|Mercantile Cunning|Collective Duty"
+    },
+    {
+      "name": "Social Structure & Naming Customs",
+      "type": "Long text",
+      "section": "Values, Honor & Social Order",
+      "hint": "Lineage, guilds, castes, and how names are earned or changed"
+    },
+    {
+      "name": "Taboos & Unforgivable Insults",
+      "type": "Long text",
+      "section": "Values, Honor & Social Order",
+      "hint": "Gestures, words, or breaches of etiquette that provoke feuds"
+    },
+    {
+      "name": "Fashion, Textiles & Adornment",
+      "type": "Long text",
+      "section": "Daily Life, Attire & Cuisine",
+      "hint": "Silhouettes, seasonal fabrics, tattoos, or rank jewelry"
+    },
+    {
+      "name": "Staple Cuisine & Feast Dishes",
+      "type": "Long text",
+      "section": "Daily Life, Attire & Cuisine",
+      "hint": "Grains, fermented drinks, spices, and ceremonial meals"
+    },
+    {
+      "name": "Architectural Style & Craft",
+      "type": "Long text",
+      "section": "Arts, Architecture & Rites",
+      "hint": "Materials, roof shapes, murals, music, and instruments"
+    },
+    {
+      "name": "Rites of Passage & Mourning",
+      "type": "Long text",
+      "section": "Arts, Architecture & Rites",
+      "hint": "Coming-of-age trials, marriage knots, and funeral traditions"
+    }
+  ],
+  "sampleValues": {
+    "Culture / People Name": "The Kaelari of the Terraced Valleys",
+    "Ancestral Homeland & Climate": "Misty highland cloud-forests and terraced slate valleys",
+    "Core Cultural Values": "Hospitality, Artisanship, Ancestor Veneration",
+    "Social Structure & Naming Customs": "Citizens carry a birth-name until age sixteen, when they weave a personal craft-name into their cloak belt.",
+    "Taboos & Unforgivable Insults": "Pointing a bare blade at a hearth fire or refusing a guest's first cup of cedar tea.",
+    "Fashion, Textiles & Adornment": "Indigo-dyed wool tunics layered under rain-waxed linen mantles trimmed with brass bells.",
+    "Staple Cuisine & Feast Dishes": "Smoked mountain trout, chestnut flatbread, and spiced plum wine served in carved horn cups.",
+    "Architectural Style & Craft": "Stepped dry-stone lodges topped with living moss roofs and wind-chime eaves.",
+    "Rites of Passage & Mourning": "When an elder passes, their finest handcrafted tool is hung from the village memory-oak."
+  }
+}

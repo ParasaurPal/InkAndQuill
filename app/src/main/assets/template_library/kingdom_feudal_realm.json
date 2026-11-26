@@ -1,0 +1,59 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "kingdom_feudal_realm",
+  "archetypeGroup": "Realms",
+  "title": "Sovereign Kingdom & Empire",
+  "body": "Macro-political realm sheet covering crown succession, noble houses, provinces, standing armies, treaties, and internal crises.",
+  "category": "Locations & Realms",
+  "defaultKind": "Kingdom",
+  "tags": ["Kingdom", "Empire", "Politics", "War"],
+  "sections": [
+    "Crown & Constitution",
+    "Provinces & Vassal Houses",
+    "Military & Diplomacy",
+    "Flashpoints & Succession Crisis"
+  ],
+  "fields": [
+    {
+      "name": "Realm Name & Heraldry",
+      "type": "Short text",
+      "section": "Crown & Constitution",
+      "required": true
+    },
+    {
+      "name": "Current Monarch & Succession Law",
+      "type": "Long text",
+      "section": "Crown & Constitution"
+    },
+    {
+      "name": "Capital & Crown Lands",
+      "type": "Short text",
+      "section": "Crown & Constitution"
+    },
+    {
+      "name": "Major Provinces & Noble Houses",
+      "type": "Table",
+      "section": "Provinces & Vassal Houses",
+      "options": "Province|Ruling House|Loyalty & Resource"
+    },
+    {
+      "name": "Armed Forces, Fleet & Alliances",
+      "type": "Long text",
+      "section": "Military & Diplomacy"
+    },
+    {
+      "name": "Impending Crises & Pretenders",
+      "type": "Long text",
+      "section": "Flashpoints & Succession Crisis"
+    }
+  ],
+  "sampleValues": {
+    "Realm Name & Heraldry": "The Marches of Valenmere (Silver Stag on Deep Plum)",
+    "Current Monarch & Succession Law": "Queen Isolde IV; crown passes to whichever royal heir survives the Winter Crossing pilgrimage.",
+    "Capital & Crown Lands": "Vaelor's Reach and the Salt Terraces",
+    "Major Provinces & Noble Houses": "High Pine | House Corvus | Timber & bowyers (wavering)\nAshen Coast | House Haldor | Salt mines & galleys (loyal)",
+    "Armed Forces, Fleet & Alliances": "Three Stormwatch naval squadrons and 6,000 pike-levies; bound by grain treaty with the Ash-Wind Riders.",
+    "Impending Crises & Pretenders": "Prince Alaric claims the last Winter Crossing was rigged and is rallying debt-ridden border barons."
+  }
+}

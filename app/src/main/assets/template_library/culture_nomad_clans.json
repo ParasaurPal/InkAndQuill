@@ -1,0 +1,62 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "culture_nomad_clans",
+  "archetypeGroup": "Cultures",
+  "title": "Nomadic Clans & Riders",
+  "body": "Archetype for migratory steppe clans, desert caravans, sky-sailors, or sea-gypsy fleets shaped by movement and kinship.",
+  "category": "Cultures & Societies",
+  "defaultKind": "Culture",
+  "tags": ["Culture", "Nomads", "Clans", "Migration"],
+  "sections": [
+    "Migration & Mounts",
+    "Clan Kinship & Leadership",
+    "Oral Tradition & Warfare",
+    "Trade & Seasonal Gatherings"
+  ],
+  "fields": [
+    {
+      "name": "Confederation / Clan Name",
+      "type": "Short text",
+      "section": "Migration & Mounts",
+      "required": true
+    },
+    {
+      "name": "Seasonal Route & Camps",
+      "type": "Long text",
+      "section": "Migration & Mounts",
+      "hint": "Summer pastures, winter canyons, or monsoon anchorages"
+    },
+    {
+      "name": "Mounts or Vessels",
+      "type": "Short text",
+      "section": "Migration & Mounts",
+      "hint": "War-steeds, sand-striders, airships, or outrigger fleets"
+    },
+    {
+      "name": "Leadership & Clan Council",
+      "type": "Long text",
+      "section": "Clan Kinship & Leadership",
+      "hint": "How chieftains, elders, or navigators hold authority"
+    },
+    {
+      "name": "Oral Songs, Myths & Battle Tactics",
+      "type": "Long text",
+      "section": "Oral Tradition & Warfare"
+    },
+    {
+      "name": "Annual Great Gathering",
+      "type": "Long text",
+      "section": "Trade & Seasonal Gatherings",
+      "hint": "Tournaments, marriage fairs, and truce councils"
+    }
+  ],
+  "sampleValues": {
+    "Confederation / Clan Name": "The Ash-Wind Riders",
+    "Seasonal Route & Camps": "Follow volcanic thermal valleys north in spring and shelter in sunken basalt craters during the frost-gales.",
+    "Mounts or Vessels": "Long-legged obsidian-hoofed steppe drakes",
+    "Leadership & Clan Council": "Each tent-ring elects a Voice-Bearer; major war decisions require unanimous stone-casting by the Seven Mothers.",
+    "Oral Songs, Myths & Battle Tactics": "Star-maps are memorized as sung ballads; riders use whistling arrows to coordinate flanking maneuvers in dust storms.",
+    "Annual Great Gathering": "The Red Eclipse Market at Oakhaven Sink, where settled kingdoms trade grain and iron for rare sky-silk."
+  }
+}

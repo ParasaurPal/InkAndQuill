@@ -1,0 +1,61 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "character_guildmaster_villain",
+  "archetypeGroup": "Characters",
+  "title": "Mastermind Antagonist",
+  "body": "Villain blueprint tracking public reputation, grand schemes, contingency plans, lieutenants, and the hubris that will undo them.",
+  "category": "Characters & Lineage",
+  "defaultKind": "NPC",
+  "tags": ["Antagonist", "Villain", "NPC", "Intrigue"],
+  "sections": [
+    "Public Mask & Presence",
+    "Grand Design & Philosophy",
+    "Resources & Lieutenants",
+    "Weaknesses & Blindspots"
+  ],
+  "fields": [
+    {
+      "name": "Name & Public Title",
+      "type": "Short text",
+      "section": "Public Mask & Presence",
+      "required": true
+    },
+    {
+      "name": "Public Reputation",
+      "type": "Long text",
+      "section": "Public Mask & Presence",
+      "hint": "Why ordinary citizens or nobles trust or fear them"
+    },
+    {
+      "name": "Why They Believe They Are Right",
+      "type": "Long text",
+      "section": "Grand Design & Philosophy",
+      "required": true
+    },
+    {
+      "name": "Master Plan & Escalation Milestones",
+      "type": "Table",
+      "section": "Grand Design & Philosophy",
+      "options": "Phase|Objective|If Unstopped"
+    },
+    {
+      "name": "Lieutenants & Leverage",
+      "type": "Long text",
+      "section": "Resources & Lieutenants"
+    },
+    {
+      "name": "Fatal Blindspot / Achilles Heel",
+      "type": "Long text",
+      "section": "Weaknesses & Blindspots"
+    }
+  ],
+  "sampleValues": {
+    "Name & Public Title": "Arch-Chancellor Veridian Thorne",
+    "Public Reputation": "Celebrated as the generous architect of the city's floodgates and public granaries.",
+    "Why They Believe They Are Right": "Convinced the approaching astral winter will wipe out half the realm unless all magic is rationed under one iron crown.",
+    "Master Plan & Escalation Milestones": "Phase 1 | Monopolize star-silver mines | Guilds go bankrupt\nPhase 2 | Silence the Observatory | No warning before eclipse",
+    "Lieutenants & Leverage": "Commands the Silenced Choir (debt-bound assassins) and holds blackmail over two Harbormasters.",
+    "Fatal Blindspot / Achilles Heel": "Assumes sentimental loyalty is always weaker than coin, underestimating ordinary friendships."
+  }
+}

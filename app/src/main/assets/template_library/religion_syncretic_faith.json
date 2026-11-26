@@ -1,0 +1,59 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "religion_syncretic_faith",
+  "archetypeGroup": "Religions",
+  "title": "Organized Faith & Heresies",
+  "body": "Institutional religion sheet detailing sacred texts, clerical orders, liturgy, relics, calendar feasts, and splinter sects.",
+  "category": "Belief & Myth",
+  "defaultKind": "Religion",
+  "tags": ["Religion", "Faith", "Clergy", "Heresy"],
+  "sections": [
+    "Creed & Sacred Scripture",
+    "Hierarchy & Monastic Orders",
+    "Liturgy, Relics & Pilgrimage",
+    "Schisms & Heresies"
+  ],
+  "fields": [
+    {
+      "name": "Faith Name",
+      "type": "Short text",
+      "section": "Creed & Sacred Scripture",
+      "required": true
+    },
+    {
+      "name": "Central Creation & Afterlife Belief",
+      "type": "Long text",
+      "section": "Creed & Sacred Scripture"
+    },
+    {
+      "name": "Sacred Texts & Language",
+      "type": "Short text",
+      "section": "Creed & Sacred Scripture"
+    },
+    {
+      "name": "Clerical Ranks & Authority",
+      "type": "Table",
+      "section": "Hierarchy & Monastic Orders",
+      "options": "Title|Duties|Vestments"
+    },
+    {
+      "name": "Pilgrimage Sites & Relics",
+      "type": "Long text",
+      "section": "Liturgy, Relics & Pilgrimage"
+    },
+    {
+      "name": "Rival Sects & Branded Heresies",
+      "type": "Long text",
+      "section": "Schisms & Heresies"
+    }
+  ],
+  "sampleValues": {
+    "Faith Name": "The Lantern Concordat",
+    "Central Creation & Afterlife Belief": "Mortal souls are embers lent by the First Sun; honorable lives return as guiding stars while oathbreakers wander as cold mist.",
+    "Sacred Texts & Language": "The Seven Vigils, chanted in High Solaric",
+    "Clerical Ranks & Authority": "Wick-Novice | Tends village lamps | Grey linen\nArch-Precentor | Guards cathedral flame | Gold-hemmed mantle",
+    "Pilgrimage Sites & Relics": "The Glass Abbey of Suncrest, housing a shard of meteoric amber that never cools.",
+    "Rival Sects & Branded Heresies": "The Ash-Keepers argue that darkness is sacred rest and extinguish shrines on new moons."
+  }
+}

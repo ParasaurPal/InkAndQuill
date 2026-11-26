@@ -1,0 +1,85 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "god_high_deity",
+  "archetypeGroup": "Gods",
+  "title": "Sovereign Deity & Pantheon God",
+  "body": "Mythic profile for a god or goddess covering sacred domains, cosmic nature, iconography, worship, miracles, and divine rivalries.",
+  "category": "Belief & Myth",
+  "defaultKind": "Deity",
+  "tags": ["God", "Deity", "Pantheon", "Myth"],
+  "sections": [
+    "Domains & Epithets",
+    "Form & Manifestation",
+    "Worship, Tenets & Sacrifices",
+    "Mythology & Divine Politics"
+  ],
+  "fields": [
+    {
+      "name": "Divine Name & Sacred Titles",
+      "type": "Short text",
+      "section": "Domains & Epithets",
+      "required": true,
+      "hint": "Primary name and poetic titles invoked in prayer"
+    },
+    {
+      "name": "Portfolio / Domains",
+      "type": "Multi-select",
+      "section": "Domains & Epithets",
+      "options": "Sun & Dawn|Storms & Sea|Death & Passage|Forge & Craft|Harvest & Wilds|Wisdom & Stars|War & Oaths|Trickery & Shadows|Healing & Mercy"
+    },
+    {
+      "name": "Sacred Symbols, Colors & Beasts",
+      "type": "Short text",
+      "section": "Domains & Epithets",
+      "hint": "Crest, metal, flower, and herald animal"
+    },
+    {
+      "name": "True Cosmic Nature",
+      "type": "Dropdown",
+      "section": "Form & Manifestation",
+      "options": "Ascended Mortal|Primordial Titan|Star-Born Architect|Embodied Concept|Shattered World-Soul"
+    },
+    {
+      "name": "Avatars & Omens",
+      "type": "Long text",
+      "section": "Form & Manifestation",
+      "hint": "How the deity appears to mortals and signs of divine favor or wrath"
+    },
+    {
+      "name": "Core Commandments & Taboos",
+      "type": "Long text",
+      "section": "Worship, Tenets & Sacrifices",
+      "hint": "Moral codes, oaths, and acts considered sacrilege"
+    },
+    {
+      "name": "Offerings, Holidays & Priesthood",
+      "type": "Long text",
+      "section": "Worship, Tenets & Sacrifices",
+      "hint": "Ritual gifts, clerical vestments, and high holy days"
+    },
+    {
+      "name": "Miracles & Divine Blessings",
+      "type": "Long text",
+      "section": "Worship, Tenets & Sacrifices",
+      "hint": "Powers granted to faithful clerics or paladins"
+    },
+    {
+      "name": "Allies, Rivals & Mythic Deeds",
+      "type": "Table",
+      "section": "Mythology & Divine Politics",
+      "options": "Deity or Myth|Relationship|Key Legend"
+    }
+  ],
+  "sampleValues": {
+    "Divine Name & Sacred Titles": "Solenne, Keeper of the Unbroken Lantern",
+    "Portfolio / Domains": "Sun & Dawn, Wisdom & Stars, Healing & Mercy",
+    "Sacred Symbols, Colors & Beasts": "Seven-rayed amber lantern, gold & ivory, white crane",
+    "True Cosmic Nature": "Star-Born Architect",
+    "Avatars & Omens": "Appears as a blindfold-wearing traveler carrying a glowing brazier; sudden warm wind in winter signals blessing.",
+    "Core Commandments & Taboos": "Never turn a freezing stranger from your threshold; extinguishing a shrine lamp out of spite incurs seven years of starless nights.",
+    "Offerings, Holidays & Priesthood": "Beeswax candles, first-pressed olive oil, and written confessions burned at the Solstice Vigil.",
+    "Miracles & Divine Blessings": "Can purge plague miasma within temple walls and illuminate hidden illusions.",
+    "Allies, Rivals & Mythic Deeds": "Vaelen the Storm-Forger | Twin Rival | Divided the sky into day and tempest\nMorrow-Child | Adopted Herald | Found the first ember beneath the sea"
+  }
+}

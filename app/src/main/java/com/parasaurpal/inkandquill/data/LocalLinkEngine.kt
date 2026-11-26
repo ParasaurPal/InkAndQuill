@@ -12,5 +12,27 @@ class LocalLinkEngine(private val db:InkDatabase){
         unique.sortedByDescending{it.first.length}.forEach{(name,r)->val flags=if(db.setting("caseSensitive","false")=="true")emptySet() else setOf(RegexOption.IGNORE_CASE);val regex=Regex("(?<![\\p{L}\\p{N}_])"+Regex.escape(name)+"(?![\\p{L}\\p{N}_])",flags);regex.findAll(text).forEach{m->if(used.none{it.first<=m.range.last&&m.range.first<=it.last}){used.add(m.range);found.add(Found(r,m.range.first,m.range.last+1,text.substring(m.range.first,m.range.last+1)))}}}
         return found.sortedBy{it.start}
     }
-    fun scan(source:InkRecord):List<Found>{val matches=findMentions(source.body,source.id);when(db.setting("autoLink","suggest")){"auto"->matches.forEach{db.addLink(source.id,it.record.id,"mention",it.start,it.term,it.end)};"suggest"->matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.term,it.start)}};return matches}
+    fun scan(source:InkRecord):List<Found>{
+        val bodyMatches=findMentions(source.body,source.id)
+        val templateId=db.sheetTemplateId(source.id)
+        val sheetMatches=if(templateId.isNotBlank()){
+            val fields=db.templateFields(templateId)
+            val sections=db.templateSections(templateId)
+            val values=db.sheetValues(source.id)
+            val sheetPlain=SheetEngine.compileToPlainText(fields,sections,values){db.get(it)}
+            if(sheetPlain.isNotBlank()){
+                val seen=bodyMatches.map{it.record.id to it.term.lowercase()}.toSet()
+                val offset=source.body.length+1
+                findMentions(sheetPlain,source.id)
+                    .filterNot{(it.record.id to it.term.lowercase()) in seen}
+                    .map{it.copy(start=offset+it.start,end=offset+it.end)}
+            }else emptyList()
+        }else emptyList()
+        val matches=bodyMatches+sheetMatches
+        when(db.setting("autoLink","suggest")){
+            "auto"->matches.forEach{db.addLink(source.id,it.record.id,"mention",it.start,it.term,it.end)}
+            "suggest"->matches.forEach{db.addLinkSuggestion(source.id,it.record.id,it.term,it.start)}
+        }
+        return matches
+    }
 }

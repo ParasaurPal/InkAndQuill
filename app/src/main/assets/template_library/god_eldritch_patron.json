@@ -1,0 +1,64 @@
+{
+  "format": "inkandquill-template",
+  "version": 2,
+  "archetypeId": "god_eldritch_patron",
+  "archetypeGroup": "Gods",
+  "title": "Eldritch Patron & Outer Entity",
+  "body": "Archetype for cosmic horrors, forgotten sleeping gods, abyssal leviathans, and warlock patrons bound by perilous pacts.",
+  "category": "Belief & Myth",
+  "defaultKind": "Deity",
+  "tags": ["God", "Eldritch", "Patron", "Cult"],
+  "sections": [
+    "Entity & Cosmic Sphere",
+    "Manifestation & Madness",
+    "Pacts, Boons & Price",
+    "Cults & Anchors"
+  ],
+  "fields": [
+    {
+      "name": "Whispered Name / Cipher",
+      "type": "Short text",
+      "section": "Entity & Cosmic Sphere",
+      "required": true,
+      "hint": "True name or euphemism used by mortals"
+    },
+    {
+      "name": "Realm or Slumbering Prison",
+      "type": "Short text",
+      "section": "Entity & Cosmic Sphere",
+      "hint": "Void between moons, drowned trench, or shattered dream"
+    },
+    {
+      "name": "Sensory Distortion & Omens",
+      "type": "Long text",
+      "section": "Manifestation & Madness",
+      "hint": "How reality warps near its influence"
+    },
+    {
+      "name": "Boons Granted to Servants",
+      "type": "Long text",
+      "section": "Pacts, Boons & Price",
+      "hint": "Eldritch gifts, visions, and unnatural longevity"
+    },
+    {
+      "name": "Pact Cost & Corruption",
+      "type": "Long text",
+      "section": "Pacts, Boons & Price",
+      "hint": "Memories consumed, physical mutations, or ominous errands"
+    },
+    {
+      "name": "Hidden Cults & Binding Seals",
+      "type": "Long text",
+      "section": "Cults & Anchors",
+      "hint": "Secret cells seeking to wake or keep it chained"
+    }
+  ],
+  "sampleValues": {
+    "Whispered Name / Cipher": "The Choir Beneath the Glass",
+    "Realm or Slumbering Prison": "Suspended inside a mirror-sea three miles beneath the Salt Wastes",
+    "Sensory Distortion & Omens": "Reflections lag half a heartbeat behind; bells ring underwater when no bells exist.",
+    "Boons Granted to Servants": "Speak all dead tongues and step between still reflections at midnight.",
+    "Pact Cost & Corruption": "Warlocks slowly lose the ability to recognize their own faces in mirrors.",
+    "Hidden Cults & Binding Seals": "The Order of Silvered Eyes maintains mercury seals that must be polished every eclipse."
+  }
+}
