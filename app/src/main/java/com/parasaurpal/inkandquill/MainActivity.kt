@@ -70,7 +70,15 @@ private val Night=Color(0xFF17141E)
 private val Paper=Color(0xFFF2EAF8)
 
 class MainActivity:ComponentActivity(){
-    override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);enableEdgeToEdge();setContent{InkAndQuillApp(InkDatabase(this))}}
+    // Keep one database helper for the Activity lifetime. Constructing it inside
+    // the Compose content lambda recreated SQLiteOpenHelper during recomposition.
+    private val database:InkDatabase by lazy(LazyThreadSafetyMode.NONE){InkDatabase(applicationContext)}
+
+    override fun onCreate(savedInstanceState:Bundle?){
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent{InkAndQuillApp(database)}
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
