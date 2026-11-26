@@ -12,6 +12,14 @@ import java.util.Date
 import java.util.Locale
 
 class WritingProgressWidget : AppWidgetProvider() {
+    companion object {
+        fun refresh(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(android.content.ComponentName(context, WritingProgressWidget::class.java))
+            if (ids.isNotEmpty()) WritingProgressWidget().onUpdate(context, manager, ids)
+        }
+    }
+
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val store = NovelStudioStore(context)
         val db = store.readableDatabase
