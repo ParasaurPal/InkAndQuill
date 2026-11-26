@@ -67,3 +67,14 @@ The web client is a PWA and can be installed from a supported browser. It stores
 The web client now includes responsive workspaces for the manuscript editor, Story Bible, multiple timelines and events, visual boards with draggable cards/connectors/freehand drawing, family relationship records, custom entity schemas, inline relational tables, writing sprints, word goals and daily logs, editable writing prompts, sharing/role manifests, static read-only wiki export, DOCX/TXT import, DOCX/EPUB/TXT publishing, theme and type-size controls, and portable JSON/ZIP project exports. It remains browser-local and does not transmit manuscript content.
 
 The web CI workflow also runs on pushes to the active Novel Studio feature branch so that the client can be validated while development continues.
+
+
+#### Native Android planning tools
+
+The Android Novel Studio now opens a native planning workspace from the selected Universe. It exposes the shared Story Bible entity store, timeline and moment records, board cards, and writing-goal records alongside the manuscript hierarchy. The same relational store backs portable project export/import.
+
+#### Portable privacy and publishing
+
+The browser client supports AES-256-GCM encrypted backup files using a password-derived key (PBKDF2-SHA-256), conflict-preserving imports, JSON and ZIP project archives, DOCX text/paragraph formatting import, DOCX/EPUB/TXT export, browser print-to-PDF, board PNG export, and selected-entry static wiki HTML export. The web service worker precaches the compiled PWA shell and assets for offline startup after installation.
+
+**Infrastructure boundary:** live multi-user presence/chat, remote permission enforcement, remote cloud sync, and hosted public wiki deployment require a backend and a user-selected provider/account. This build does not silently upload manuscripts or claim those network services are live. The local role/invitation manifest, local chat log, and static wiki export work without a server.
