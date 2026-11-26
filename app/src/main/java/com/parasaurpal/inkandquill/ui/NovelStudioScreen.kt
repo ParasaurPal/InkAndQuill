@@ -1,5 +1,8 @@
 package com.parasaurpal.inkandquill.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,6 +30,8 @@ private enum class NovelLevel { WORLDS, BOOKS, CHAPTERS, SCENES, EDITOR }
 fun NovelStudioScreen(onClose: () -> Unit) {
     val context=LocalContext.current
     val store= remember(context){NovelStudioStore(context)}
+    val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
+    val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     var level by remember{mutableStateOf(NovelLevel.WORLDS)}
     var worldId by remember{mutableStateOf("")}
     var bookId by remember{mutableStateOf("")}
@@ -68,6 +73,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                 when(level){NovelLevel.WORLDS->onClose();NovelLevel.BOOKS->level=NovelLevel.WORLDS;NovelLevel.CHAPTERS->level=NovelLevel.BOOKS;NovelLevel.SCENES->level=NovelLevel.CHAPTERS;NovelLevel.EDITOR->level=NovelLevel.SCENES}
             }){Icon(if(level==NovelLevel.WORLDS)Icons.Default.Close else Icons.Default.ArrowBack,"Back")}},
             actions={
+                if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
                 if(level==NovelLevel.EDITOR) IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
