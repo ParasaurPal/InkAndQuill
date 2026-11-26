@@ -17,19 +17,8 @@ android {
     }
 
     buildFeatures { compose = true }
-    signingConfigs {
-        create("debugConfig") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-    buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("debugConfig")
-        }
-    }
+    // Use Gradle's generated default debug keystore in CI and local builds.
+    // Do not depend on a machine-specific debug.keystore being committed.
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
