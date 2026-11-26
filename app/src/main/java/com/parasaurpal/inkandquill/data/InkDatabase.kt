@@ -28,7 +28,8 @@ data class InkRecord(
     val createdAt:Long=System.currentTimeMillis(),
     val updatedAt:Long=System.currentTimeMillis(),
     val favorite:Boolean=false,
-    val coverUri:String=""
+    val coverUri:String="",
+    val position:Int=0
 )
 
 data class IndexedSearchRow(
@@ -58,7 +59,7 @@ data class MediaAsset(
     val createdAt: Long
 )
 
-class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,23){
+class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"inkandquill.db",null,24){
     private val appContext=context.applicationContext
     init {
         seed(writableDatabase, overwriteUnmodified = false)
@@ -74,7 +75,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         }
     }
     override fun onCreate(db:SQLiteDatabase){
-        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0,coverUri TEXT DEFAULT '')")
+        db.execSQL("CREATE TABLE records(id TEXT PRIMARY KEY,title TEXT NOT NULL,body TEXT NOT NULL,kind TEXT NOT NULL,parentId TEXT,scope TEXT,tags TEXT,aliases TEXT,createdAt INTEGER,updatedAt INTEGER,favorite INTEGER DEFAULT 0,coverUri TEXT DEFAULT '',position INTEGER DEFAULT 0)")
         db.execSQL("CREATE TABLE links(id TEXT PRIMARY KEY,sourceId TEXT NOT NULL,targetId TEXT NOT NULL,label TEXT NOT NULL,position INTEGER DEFAULT 0,term TEXT,endPosition INTEGER,UNIQUE(sourceId,targetId,label,position))")
         db.execSQL("CREATE TABLE settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         db.execSQL("CREATE TABLE revisions(id TEXT PRIMARY KEY,recordId TEXT NOT NULL,title TEXT,body TEXT,createdAt INTEGER)")
@@ -184,6 +185,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts4(recordId,docType,kind,title,aliases,tags,templateTitle,sheetContent,proseContent)")
             rebuildSearchIndex(db)
         }
+        if(oldVersion<24){runCatching{db.execSQL("ALTER TABLE records ADD COLUMN position INTEGER DEFAULT 0")};migrateRecordPositions(db)}
     }
     private fun seed(db:SQLiteDatabase, overwriteUnmodified:Boolean=false){
         FantasyTemplateCatalog.allSpecs.forEach{spec->
@@ -274,8 +276,20 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         seed(db, overwriteUnmodified = true)
         rebuildSearchIndex(db)
     }
-    private fun android.database.Cursor.record()=InkRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("title")),getString(getColumnIndexOrThrow("body")),getString(getColumnIndexOrThrow("kind")),getString(getColumnIndexOrThrow("parentId"))?:"",getString(getColumnIndexOrThrow("scope"))?:"World",getString(getColumnIndexOrThrow("tags"))?:"",getString(getColumnIndexOrThrow("aliases"))?:"",getLong(getColumnIndexOrThrow("createdAt")),getLong(getColumnIndexOrThrow("updatedAt")),getInt(getColumnIndexOrThrow("favorite"))==1,getString(getColumnIndex("coverUri").takeIf{it>=0}?:-1)?.let{it}?:"")
+    private fun android.database.Cursor.record():InkRecord{val posIdx=getColumnIndex("position");return InkRecord(getString(getColumnIndexOrThrow("id")),getString(getColumnIndexOrThrow("title")),getString(getColumnIndexOrThrow("body")),getString(getColumnIndexOrThrow("kind")),getString(getColumnIndexOrThrow("parentId"))?:"",getString(getColumnIndexOrThrow("scope"))?:"World",getString(getColumnIndexOrThrow("tags"))?:"",getString(getColumnIndexOrThrow("aliases"))?:"",getLong(getColumnIndexOrThrow("createdAt")),getLong(getColumnIndexOrThrow("updatedAt")),getInt(getColumnIndexOrThrow("favorite"))==1,getString(getColumnIndex("coverUri").takeIf{it>=0}?:-1)?.let{it}?:"",position=if(posIdx>=0)getInt(posIdx) else 0)}
     fun descendants(parentId:String):List<InkRecord>{val childrenByParent=all().groupBy{it.parentId};val result=mutableListOf<InkRecord>();val visited=mutableSetOf(parentId);fun visit(id:String){childrenByParent[id].orEmpty().forEach{record->if(visited.add(record.id)){result.add(record);visit(record.id)}}};visit(parentId);return result}
+    // Manuscript outline ordering: position orders siblings within a parent (chapters in a
+    // book, scenes in a chapter). The v24 migration numbers each parent's children from
+    // least-recently-edited to most-recently-edited, which matches creation order for
+    // manuscripts written in sequence. onUpgrade already runs inside a transaction.
+    private fun migrateRecordPositions(db:SQLiteDatabase){
+        val rows=mutableListOf<Pair<String,String>>()
+        db.rawQuery("SELECT id,COALESCE(parentId,'') FROM records ORDER BY parentId,updatedAt ASC",null).use{while(it.moveToNext())rows.add(it.getString(0) to it.getString(1))}
+        var lastParent:String?=null;var pos=0;rows.forEach{(id,parent)->if(parent!=lastParent){lastParent=parent;pos=0};val v=ContentValues().apply{put("position",pos++)};db.update("records",v,"id=?",arrayOf(id))}
+    }
+    fun childrenOrdered(parentId:String):List<InkRecord> = readableDatabase.rawQuery("SELECT * FROM records WHERE parentId=? ORDER BY position ASC,createdAt ASC",arrayOf(parentId)).use{c->buildList{while(c.moveToNext())add(c.record())}}
+    fun nextChildPosition(parentId:String):Int = readableDatabase.rawQuery("SELECT COALESCE(MAX(position),-1)+1 FROM records WHERE parentId=?",arrayOf(parentId)).use{if(it.moveToFirst())it.getInt(0)else 0}
+    fun moveRecord(id:String,delta:Int){val record=get(id)?:return;val siblings=childrenOrdered(record.parentId);val index=siblings.indexOfFirst{it.id==id};val target=index+delta;if(index<0||target !in siblings.indices)return;val db=writableDatabase;db.beginTransaction();try{val a=ContentValues().apply{put("position",siblings[target].position)};val b=ContentValues().apply{put("position",siblings[index].position)};db.update("records",a,"id=?",arrayOf(id));db.update("records",b,"id=?",arrayOf(siblings[target].id));db.setTransactionSuccessful()}finally{db.endTransaction()}}
     fun all(query:String="",kind:String?=null):List<InkRecord>{
         val sql=StringBuilder("SELECT * FROM records WHERE kind NOT IN ('Template','Archived Template')");val args=mutableListOf<String>()
         if(!kind.isNullOrBlank()&&kind!="All"){sql.append(" AND kind=?");args.add(kind)}
@@ -290,7 +304,9 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val db=writableDatabase
         val old=get(r.id)
         if(old!=null && old.body!=r.body){val rev=ContentValues().apply{put("id",UUID.randomUUID().toString());put("recordId",old.id);put("title",old.title);put("body",old.body);put("createdAt",System.currentTimeMillis())};db.insert("revisions",null,rev)}
-        val v=ContentValues().apply{put("id",r.id);put("title",r.title);put("body",r.body);put("kind",r.kind);put("parentId",r.parentId);put("scope",r.scope);put("tags",r.tags);put("aliases",r.aliases);put("createdAt",r.createdAt);put("updatedAt",System.currentTimeMillis());put("favorite",if(r.favorite)1 else 0);put("coverUri",r.coverUri)}
+        // A new record with no explicit position joins the end of its parent's outline order.
+        val effective=if(old==null&&r.position==0)r.copy(position=nextChildPosition(r.parentId))else r
+        val v=ContentValues().apply{put("id",effective.id);put("title",effective.title);put("body",effective.body);put("kind",effective.kind);put("parentId",effective.parentId);put("scope",effective.scope);put("tags",effective.tags);put("aliases",effective.aliases);put("createdAt",effective.createdAt);put("updatedAt",System.currentTimeMillis());put("favorite",if(effective.favorite)1 else 0);put("coverUri",effective.coverUri);put("position",effective.position)}
         db.insertWithOnConflict("records",null,v,SQLiteDatabase.CONFLICT_REPLACE)
         indexRecord(db,r.id)
     }
@@ -459,7 +475,7 @@ class InkDatabase(context:Context):SQLiteOpenHelper(context.applicationContext,"
         val arr=root.optJSONArray("records")?:root.optJSONArray("items")?:JSONArray()
         for(i in 0 until arr.length()){
             val o=arr.getJSONObject(i)
-            save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite"),coverUri=o.optString("coverUri")))
+            save(InkRecord(o.optString("id",UUID.randomUUID().toString()),o.optString("title","Untitled"),o.optString("body"),o.optString("kind",o.optString("type","Document")),o.optString("parentId"),o.optString("scope","World"),o.optString("tags"),o.optString("aliases"),o.optLong("createdAt",System.currentTimeMillis()),favorite=o.optBoolean("favorite"),coverUri=o.optString("coverUri"),position=o.optInt("position",0)))
         }
         backupTables.forEach{table->root.optJSONArray(table)?.let{importTable(table,it)}}
         val blobs=root.optJSONArray("attachment_blobs")?:JSONArray()
