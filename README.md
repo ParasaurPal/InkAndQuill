@@ -78,3 +78,6 @@ The Android Novel Studio now opens a native planning workspace from the selected
 The browser client supports AES-256-GCM encrypted backup files using a password-derived key (PBKDF2-SHA-256), conflict-preserving imports, JSON and ZIP project archives, DOCX text/paragraph formatting import, DOCX/EPUB/TXT export, browser print-to-PDF, board PNG export, and selected-entry static wiki HTML export. The web service worker precaches the compiled PWA shell and assets for offline startup after installation.
 
 **Infrastructure boundary:** live multi-user presence/chat, remote permission enforcement, remote cloud sync, and hosted public wiki deployment require a backend and a user-selected provider/account. This build does not silently upload manuscripts or claim those network services are live. The local role/invitation manifest, local chat log, and static wiki export work without a server.
+
+
+The web client also offers an optional user-configured WebDAV sync target. It encrypts the full project with AES-GCM before upload, uses credentials only for the current session, merges records by stable IDs, and retains conflicting versions as recovery snapshots. The WebDAV server must allow browser CORS requests; no provider is preselected and sync is never enabled without the user entering an endpoint and key.
