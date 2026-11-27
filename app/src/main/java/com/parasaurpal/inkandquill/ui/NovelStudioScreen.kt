@@ -49,6 +49,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var hook by remember{mutableStateOf("")}
     var focus by remember{mutableStateOf(false)}
     var toolsOpen by remember{mutableStateOf(false)}
+    var planningOpen by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
@@ -130,13 +131,29 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }
             NovelLevel.EDITOR->{
                 Column(Modifier.weight(1f).fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    OutlinedTextField(
+                        title,
+                        {title=it;saved=false},
+                        label={Text("Scene title")},
+                        modifier=Modifier.fillMaxWidth(),
+                        singleLine=true
+                    )
                     if(!focus){
-                        OutlinedTextField(title,{title=it;saved=false},label={Text("Scene title")},modifier=Modifier.fillMaxWidth(),singleLine=true)
-                        OutlinedTextField(summary,{summary=it;saved=false},label={Text("Summary")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(goal,{goal=it;saved=false},label={Text("Goal")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(conflict,{conflict=it;saved=false},label={Text("Conflict")},modifier=Modifier.fillMaxWidth())
-                        OutlinedTextField(hook,{hook=it;saved=false},label={Text("Hook")},modifier=Modifier.fillMaxWidth())
-                        Text("MANUSCRIPT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary)
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                            Text("MANUSCRIPT",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary,modifier=Modifier.weight(1f))
+                            TextButton(onClick={planningOpen=!planningOpen}){
+                                Icon(if(planningOpen)Icons.Default.ExpandLess else Icons.Default.ExpandMore,null,modifier=Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(if(planningOpen)"Hide planning" else "Planning notes")
+                            }
+                        }
+                        if(planningOpen)Column(verticalArrangement=Arrangement.spacedBy(7.dp)){
+                            Text("Optional scene planning",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            OutlinedTextField(summary,{summary=it;saved=false},label={Text("Summary")},modifier=Modifier.fillMaxWidth(),minLines=2)
+                            OutlinedTextField(goal,{goal=it;saved=false},label={Text("Scene goal")},modifier=Modifier.fillMaxWidth(),minLines=2)
+                            OutlinedTextField(conflict,{conflict=it;saved=false},label={Text("Conflict")},modifier=Modifier.fillMaxWidth(),minLines=2)
+                            OutlinedTextField(hook,{hook=it;saved=false},label={Text("Hook / turning point")},modifier=Modifier.fillMaxWidth(),minLines=2)
+                        }
                     }
                     RichTextEditor(
                         value=editorHtml,
