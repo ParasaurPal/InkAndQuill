@@ -149,7 +149,7 @@ class MainActivity:ComponentActivity(){
     var customAccent by remember{mutableStateOf(db.setting("customAccent","#9B83B5"))}
     val accent=when(palette){"Custom"->runCatching{Color(android.graphics.Color.parseColor(customAccent))}.getOrDefault(Plum);"Ocean"->Color(0xFF8DB9D8);"Forest"->Color(0xFF9DBD9A);"Rose"->Color(0xFFE0A8B8);"Amber"->Color(0xFFD9B66F);else->Plum}
     val dark=when(appearance){"light"->false;"dark"->true;else->isSystemInDarkTheme()}
-    val navDefault="Home,Library,Worlds,Templates";val visibleTabs=db.setting("navTabs",navDefault).split(",").toSet();val navTabs=(listOf("Worlds")+db.setting("navOrder",navDefault).split(",").filter{it!="Worlds"}).distinct().filter{it=="Worlds"||it in visibleTabs}
+    val navDefault="Home,Library,Worlds,Templates";val visibleTabs=db.setting("navTabs",navDefault).split(",").toSet();val navTabs=(listOf("Home")+db.setting("navOrder",navDefault).split(",").filter{it!="Home"}).distinct().filter{it=="Home"||it in visibleTabs}
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(db.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
     val cloudExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri:Uri?->uri?.let{
