@@ -489,10 +489,10 @@ class MainActivity:ComponentActivity(){
                             Text(latest.kind.uppercase(),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=.8.sp,color=Plum)
                             Spacer(Modifier.weight(1f))
                             val words=WordCountEngine.analyzeDocument(latest.body,emptyList(),emptyMap()).totalWords
-                            Text("\${WordCountEngine.formatCompact(words)} words",fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${WordCountEngine.formatCompact(words)} words",fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text(latest.title.ifBlank{"Untitled"},fontSize=18.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
-                        val preview=android.text.Html.fromHtml(latest.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().replace(Regex("\\\\s+")," ").take(120)
+                        val preview=android.text.Html.fromHtml(latest.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim().replace(Regex("\\s+")," ").take(120)
                         Text(preview.ifBlank{"Your page is ready for the next sentence."},fontSize=12.sp,lineHeight=17.sp,maxLines=2,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.68f))
                         Text("CONTINUE WRITING  →",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=.8.sp,color=Plum)
                     }
@@ -505,7 +505,7 @@ class MainActivity:ComponentActivity(){
                     Text("Recent work",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
                     Text("Your latest drafts and projects",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))
                 }
-                if(recent.isNotEmpty())Text("\${recent.size} ITEMS",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
+                if(recent.isNotEmpty())Text("${recent.size} ITEMS",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
             }
         }
         if(recent.isEmpty())item{
@@ -525,7 +525,7 @@ class MainActivity:ComponentActivity(){
                         Text("Your studio",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
                         Text("Planning and organizing spaces",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))
                     }
-                    Text("\${sections.size} SPACES",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
+                    Text("${sections.size} SPACES",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
                 }
                 sections.chunked(2).forEach{pair->
                     Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
