@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
@@ -106,7 +107,7 @@ class MainActivity:ComponentActivity(){
         ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
         onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}
     }
-    var screen by remember{mutableStateOf("Home")}
+    var screen by remember{mutableStateOf("Library")}
     var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
@@ -623,6 +624,28 @@ class MainActivity:ComponentActivity(){
     }
 }
 
+@Composable private fun LibraryVisualRecordCard(record:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit){
+    val context=LocalContext.current
+    val count=remember(record.id,record.body,record.updatedAt){WordCountEngine.analyzeDocument(record.body,emptyList(),emptyMap()).totalWords}
+    val preview=remember(record.id,record.body,record.updatedAt){android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().replace(Regex("\\s+")," ").trim().take(150)}
+    Card(Modifier.fillMaxWidth().clickable{open(record)},shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+        Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
+            RecordCoverArt(record,Modifier.width(100.dp).height(140.dp),record.title+" cover")
+            Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                Text(record.kind.uppercase(),fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=Plum)
+                Text(record.title.ifBlank{"Untitled"},fontSize=16.sp,fontWeight=FontWeight.Bold,maxLines=2)
+                if(preview.isNotBlank())Text(preview,fontSize=11.sp,lineHeight=15.sp,maxLines=3,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.68f))
+                if(record.tags.isNotBlank())Text(record.tags,fontSize=10.sp,color=Plum,maxLines=1)
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    if(count>0)Text(WordCountEngine.formatCompact(count)+" words",fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.weight(1f))else Spacer(Modifier.weight(1f))
+                    if(record.kind in listOf("Book","Chapter","Novel","Story","Scene"))IconButton(onClick={onRead(record)}){Icon(Icons.Default.MenuBook,"Read "+record.title)}
+                    IconButton(onClick={open(record)}){Icon(Icons.Default.Edit,"Edit "+record.title)}
+                }
+            }
+        }
+    }
+}
+
 @Composable private fun LibraryScreen(db:InkDatabase,query:String,setQuery:(String)->Unit,filter:String,setFilter:(String)->Unit,refresh:Int,onRead:(InkRecord)->Unit={},open:(InkRecord)->Unit){
     var folderFilter by remember{mutableStateOf("")}
     var folderMenu by remember{mutableStateOf(false)}
@@ -644,14 +667,92 @@ class MainActivity:ComponentActivity(){
     var addCollectionMenu by remember{mutableStateOf(false)}
     val folders=db.folders()
     val collections=db.collections()
-    val records=remember(query,filter,refresh,folderFilter,collectionFilter,favoritesOnly){db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id) in db.folderTreeIds(folderFilter))&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}}
+    val records=remember(query,filter,refresh,folderFilter,collectionFilter,favoritesOnly){
+        db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id) in db.folderTreeIds(folderFilter))&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}
+    }
     val availableKinds=remember(refresh){(FantasyTemplateCatalog.starterRecordKinds+db.all().map{it.kind}).distinct()}
-    Column(Modifier.fillMaxSize().padding(14.dp)){
-        OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your writing")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
-        Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={folderMenu=true}){Text("Folder: "+(folders.firstOrNull{it.first==folderFilter}?.second?: "All"))};DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){DropdownMenuItem(text={Text("All folders")},onClick={folderFilter="";folderMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(if(f.third.isBlank())f.second else "↳ "+f.second)},onClick={folderFilter=f.first;folderMenu=false})}}};Spacer(Modifier.weight(1f));TextButton(onClick={createFolder=true}){Text("+ New folder")}}
-        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){availableKinds.forEach{FilterChip(filter==it,{setFilter(it)},label={Text(it)})}}
-        Row(verticalAlignment=Alignment.CenterVertically){Box{OutlinedButton(onClick={collectionMenu=true}){Text("Collection: "+(collections.firstOrNull{it.first==collectionFilter}?.second?: "All"))};DropdownMenu(expanded=collectionMenu,onDismissRequest={collectionMenu=false}){DropdownMenuItem(text={Text("All collections")},onClick={collectionFilter="";collectionMenu=false});collections.forEach{col->DropdownMenuItem(text={Text(col.second)},onClick={collectionFilter=col.first;collectionMenu=false})}}};TextButton(onClick={createCollection=true}){Text("+ Collection")};TextButton(onClick={manageLibrary=true}){Text("Manage")};Spacer(Modifier.weight(1f));Row(verticalAlignment=Alignment.CenterVertically){Checkbox(favoritesOnly,{favoritesOnly=it});Text("Favorites",fontSize=12.sp)}}
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)){items(records){record->Column{RecordCard(db,record,open,onRead);if(collectionFilter.isNotBlank())TextButton(onClick={db.removeFromCollection(collectionFilter,record.id)}){Text("Remove from collection")}else if(collections.isNotEmpty())Box{TextButton(onClick={addCollectionRecord=record.id;addCollectionMenu=true}){Text("Add to collection")};DropdownMenu(expanded=addCollectionMenu&&addCollectionRecord==record.id,onDismissRequest={addCollectionMenu=false}){collections.forEach{col->DropdownMenuItem(text={Text(col.second)},onClick={db.addToCollection(col.first,record.id);addCollectionMenu=false})}}}}}}
+    val series=records.filter{it.kind=="Series"}
+    val seriesIds=series.map{it.id}.toSet()
+    val seriesChildren=records.filter{it.parentId in seriesIds}.groupBy{it.parentId}
+    val hiddenBySeries=remember(records,seriesIds){
+        records.filter{record->
+            var parent=record.parentId
+            var found=false
+            var depth=0
+            while(parent.isNotBlank()&&depth<12&&!found){
+                if(parent in seriesIds)found=true else parent=db.get(parent)?.parentId.orEmpty()
+                depth++
+            }
+            found
+        }.map{it.id}.toSet()
+    }
+    val standalone=records.filter{it.kind!="Series"&&it.id !in hiddenBySeries}
+    Column(Modifier.fillMaxSize().padding(horizontal=14.dp)){
+        OutlinedTextField(query,setQuery,Modifier.fillMaxWidth(),label={Text("Search your library")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true)
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            Box{
+                OutlinedButton(onClick={folderMenu=true}){Text("Folder: "+(folders.firstOrNull{it.first==folderFilter}?.second?: "All"))}
+                DropdownMenu(expanded=folderMenu,onDismissRequest={folderMenu=false}){
+                    DropdownMenuItem(text={Text("All folders")},onClick={folderFilter="";folderMenu=false})
+                    folders.forEach{f->DropdownMenuItem(text={Text(if(f.third.isBlank())f.second else "↳ "+f.second)},onClick={folderFilter=f.first;folderMenu=false})}
+                }
+            }
+            TextButton(onClick={createFolder=true}){Text("+ Folder")}
+        }
+        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(5.dp)){
+            FilterChip(filter=="All",{setFilter("All")},label={Text("All")})
+            availableKinds.forEach{kind->FilterChip(filter==kind,{setFilter(kind)},label={Text(kind)})}
+        }
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){
+            Box{
+                OutlinedButton(onClick={collectionMenu=true}){Text("Collection: "+(collections.firstOrNull{it.first==collectionFilter}?.second?: "All"))}
+                DropdownMenu(expanded=collectionMenu,onDismissRequest={collectionMenu=false}){
+                    DropdownMenuItem(text={Text("All collections")},onClick={collectionFilter="";collectionMenu=false})
+                    collections.forEach{col->DropdownMenuItem(text={Text(col.second)},onClick={collectionFilter=col.first;collectionMenu=false})}
+                }
+            }
+            TextButton(onClick={createCollection=true}){Text("+")}
+            TextButton(onClick={manageLibrary=true}){Text("Manage")}
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment=Alignment.CenterVertically){Checkbox(favoritesOnly,{favoritesOnly=it});Text("★",fontSize=13.sp)}
+        }
+        LazyColumn(verticalArrangement=Arrangement.spacedBy(12.dp),contentPadding=PaddingValues(bottom=22.dp)){
+            if(series.isNotEmpty()){
+                item{
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Text("Series collections",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                        Text(series.size.toString(),fontSize=11.sp,fontWeight=FontWeight.Bold,color=Plum)
+                    }
+                }
+                items(series,key={it.id}){seriesRecord->
+                    SeriesCollectionCard(db,seriesRecord,seriesChildren[seriesRecord.id].orEmpty().sortedBy{it.position},open,onRead,WordCountEngine.buildSnapshot(db))
+                }
+            }
+            if(standalone.isNotEmpty()){
+                item{
+                    Text(if(series.isEmpty())"Your library" else "Other books & entries",style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                }
+                items(standalone,key={it.id}){record->
+                    Column(verticalArrangement=Arrangement.spacedBy(3.dp)){
+                        LibraryVisualRecordCard(record,open,onRead)
+                        if(collectionFilter.isNotBlank())TextButton(onClick={db.removeFromCollection(collectionFilter,record.id)}){Text("Remove from collection")}
+                        else if(collections.isNotEmpty())Box{
+                            TextButton(onClick={addCollectionRecord=record.id;addCollectionMenu=true}){Text("Add to collection")}
+                            DropdownMenu(expanded=addCollectionMenu&&addCollectionRecord==record.id,onDismissRequest={addCollectionMenu=false}){
+                                collections.forEach{col->DropdownMenuItem(text={Text(col.second)},onClick={db.addToCollection(col.first,record.id);addCollectionMenu=false})}
+                            }
+                        }
+                    }
+                }
+            }
+            if(series.isEmpty()&&standalone.isEmpty())item{
+                Column(Modifier.fillMaxWidth().padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    Icon(Icons.Default.CollectionsBookmark,null,tint=Plum,modifier=Modifier.size(38.dp))
+                    Text("Your library is waiting",fontWeight=FontWeight.SemiBold)
+                    Text("Create books, stories, and series to build your visual bookshelf.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)
+                }
+            }
+        }
     }
     if(manageLibrary)AlertDialog(onDismissRequest={manageLibrary=false},title={Text("Manage folders and collections")},text={Column(Modifier.heightIn(max=500.dp).verticalScroll(rememberScrollState())){Text("Folders",fontWeight=FontWeight.SemiBold);folders.forEach{f->Row(verticalAlignment=Alignment.CenterVertically){Text(f.second,Modifier.weight(1f));TextButton(onClick={renameItemId=f.first;renameItemType="folder";renameItemName=f.second;renameDialog=true}){Text("Rename")};TextButton(onClick={db.deleteFolder(f.first);if(folderFilter==f.first)folderFilter="";manageLibrary=false}){Text("Delete")}}};Text("Collections",fontWeight=FontWeight.SemiBold);collections.forEach{col->Row(verticalAlignment=Alignment.CenterVertically){Text(col.second,Modifier.weight(1f));TextButton(onClick={renameItemId=col.first;renameItemType="collection";renameItemName=col.second;renameDialog=true}){Text("Rename")};TextButton(onClick={db.deleteCollection(col.first);if(collectionFilter==col.first)collectionFilter="";manageLibrary=false}){Text("Delete")}}}}},confirmButton={TextButton(onClick={manageLibrary=false}){Text("Done")}})
     if(renameDialog)AlertDialog(onDismissRequest={renameDialog=false},title={Text("Rename")},text={OutlinedTextField(renameItemName,{renameItemName=it},label={Text("New name")},singleLine=true)},confirmButton={TextButton(onClick={if(renameItemName.isNotBlank()){if(renameItemType=="folder")db.renameFolder(renameItemId,renameItemName)else db.renameCollection(renameItemId,renameItemName);renameDialog=false}}){Text("Save")}},dismissButton={TextButton(onClick={renameDialog=false}){Text("Cancel")}})
