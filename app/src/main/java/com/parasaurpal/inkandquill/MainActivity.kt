@@ -106,7 +106,7 @@ class MainActivity:ComponentActivity(){
         ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
         onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}
     }
-    var screen by remember{mutableStateOf("Worlds")}
+    var screen by remember{mutableStateOf("Home")}
     var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
@@ -885,58 +885,123 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)},onOpenWorld:(InkRecord)->Unit={}){
-    var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
-    var expandedStories by remember(world.id){mutableStateOf(setOf<String>())}
-    val allRecords=wordSnapshot.allRecords
-    val direct=allRecords.filter{it.parentId==world.id}
-    val series=direct.filter{it.kind=="Series"}
-    val stories=direct.filter{it.kind=="Story"}
-    val worldTotalWords=wordSnapshot.subtreeWords(world.id)
-    Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
-        Card(Modifier.fillMaxWidth().clickable{onOpenWorld(world)}){
-            Column(Modifier.padding(12.dp)){
-                Text(world.title,fontWeight=FontWeight.SemiBold)
-                Text("${db.descendants(world.id).size} linked records · %,d words".format(worldTotalWords),fontSize=12.sp,color=Plum)
-            }
+@Composable private fun RecordCoverArt(record:InkRecord,modifier:Modifier=Modifier,description:String="Cover artwork"){
+    val context=LocalContext.current
+    val bitmap=remember(record.coverUri){
+        if(record.coverUri.isNotBlank())runCatching{
+            context.contentResolver.openInputStream(Uri.parse(record.coverUri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}
+        }.getOrNull()else null
+    }
+    Box(modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).background(Plum.copy(alpha=.16f)),contentAlignment=Alignment.Center){
+        if(bitmap!=null)Image(bitmap,description,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+        else Column(Modifier.fillMaxSize().padding(6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+            Icon(when(record.kind){
+                "World","Realm","Celestial"->Icons.Default.Public
+                "Series","Book","Novel","Story","Chapter"->Icons.Default.AutoStories
+                "Poem"->Icons.Default.FormatQuote
+                "Character","NPC"->Icons.Default.Person
+                else->Icons.Default.MenuBook
+            },null,tint=Plum,modifier=Modifier.size(25.dp))
+            Text(record.kind.uppercase(),fontSize=8.sp,fontWeight=FontWeight.Bold,color=Plum,maxLines=1)
         }
-        if(series.isNotEmpty())Text("Series",fontWeight=FontWeight.SemiBold,color=Plum)
-        series.forEach{seriesRecord->
-            val expanded=seriesRecord.id in expandedSeries
-            val seriesWords=wordSnapshot.subtreeWords(seriesRecord.id)
-            Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
-                Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
-                    Row(verticalAlignment=Alignment.CenterVertically){
-                        Column(Modifier.weight(1f)){
-                            Text(seriesRecord.title,fontWeight=FontWeight.Medium)
-                            Text("%,d words".format(seriesWords),fontSize=11.sp,color=Plum)
-                        }
-                        IconButton(onClick={expandedSeries=if(expanded)expandedSeries-seriesRecord.id else expandedSeries+seriesRecord.id}){
-                            Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse series" else "Expand series")
-                        }
-                        TextButton(onClick={open(seriesRecord)}){Text("Open")}
+    }
+}
+
+@Composable private fun SeriesCollectionCard(db:InkDatabase,series:InkRecord,books:List<InkRecord>,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit,wordSnapshot:WorldWordSnapshot){
+    var expanded by remember(series.id){mutableStateOf(true)}
+    val seriesWords=wordSnapshot.subtreeWords(series.id)
+    Card(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                RecordCoverArt(series,Modifier.width(76.dp).height(108.dp),series.title+" series cover")
+                Column(Modifier.weight(1f).padding(start=12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                    Text("SERIES COLLECTION",fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=1.1.sp,color=Plum)
+                    Text(series.title.ifBlank{"Untitled series"},fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=2)
+                    Text(books.size.toString()+" "+(if(books.size==1)"book" else "books")+" · "+WordCountEngine.formatCompact(seriesWords)+" words",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick={open(series)},contentPadding=PaddingValues(horizontal=0.dp,vertical=0.dp)){
+                        Text("Open series")
+                        Icon(Icons.Default.ArrowForward,null,Modifier.padding(start=4.dp).size(15.dp))
                     }
-                    if(expanded)WorldTreeChildren(db,seriesRecord.id,1,open,onRead,allRecords,wordSnapshot)
+                }
+                IconButton(onClick={expanded=!expanded}){Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse books" else "Show books")}
+            }
+            if(expanded){
+                if(books.isNotEmpty()){
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                        books.forEachIndexed{index,book->
+                            Column(Modifier.width(88.dp).clickable{open(book)},verticalArrangement=Arrangement.spacedBy(5.dp)){
+                                Box{
+                                    RecordCoverArt(book,Modifier.fillMaxWidth().height(124.dp),book.title+" cover")
+                                    Box(Modifier.align(Alignment.TopStart).padding(5.dp).background(Color.Black.copy(alpha=.72f),androidx.compose.foundation.shape.RoundedCornerShape(6.dp)).padding(horizontal=6.dp,vertical=3.dp)){
+                                        Text((index+1).toString(),fontSize=9.sp,fontWeight=FontWeight.Bold,color=Color.White)
+                                    }
+                                }
+                                Text(book.title.ifBlank{"Untitled"},fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=2,lineHeight=14.sp)
+                                Text(book.kind,fontSize=9.sp,color=Plum,maxLines=1)
+                                if(book.kind in listOf("Book","Novel","Story","Chapter"))TextButton(onClick={onRead(book)},contentPadding=PaddingValues(0.dp)){Text("Read",fontSize=10.sp)}
+                            }
+                        }
+                    }
+                }else Text("No books in this series yet.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick={
+                    val next=InkRecord(title="Untitled Book",kind="Book",parentId=series.id,scope=series.scope)
+                    db.save(next)
+                    open(next)
+                },contentPadding=PaddingValues(horizontal=0.dp,vertical=0.dp)){
+                    Icon(Icons.Default.Add,null,Modifier.size(16.dp))
+                    Text(" Add a book")
                 }
             }
         }
-        if(stories.isNotEmpty())Text("Standalone stories",fontWeight=FontWeight.SemiBold,color=Plum)
-        stories.forEach{story->
-            val expanded=story.id in expandedStories
-            val storyWords=wordSnapshot.subtreeWords(story.id)
-            Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant.copy(alpha=.45f))){
-                Column(Modifier.padding(start=12.dp,end=8.dp,top=5.dp,bottom=5.dp)){
-                    Row(verticalAlignment=Alignment.CenterVertically){
-                        Column(Modifier.weight(1f)){
-                            Text(story.title,fontWeight=FontWeight.Medium)
-                            Text("%,d words".format(storyWords),fontSize=11.sp,color=Plum)
+    }
+}
+
+@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)},onOpenWorld:(InkRecord)->Unit={}){
+    var expandedStories by remember(world.id){mutableStateOf(true)}
+    val allRecords=wordSnapshot.allRecords
+    val direct=allRecords.filter{it.parentId==world.id}
+    val series=direct.filter{it.kind=="Series"}
+    val stories=direct.filter{it.kind=="Story"||it.kind=="Novel"}
+    val worldTotalWords=wordSnapshot.subtreeWords(world.id)
+    Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Card(Modifier.fillMaxWidth().clickable{onOpenWorld(world)},shape=androidx.compose.foundation.shape.RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+            Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
+                RecordCoverArt(world,Modifier.width(84.dp).height(112.dp),world.title+" world artwork")
+                Column(Modifier.weight(1f).padding(start=13.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                    Text("FICTIONAL UNIVERSE",fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=1.1.sp,color=Plum)
+                    Text(world.title.ifBlank{"Untitled world"},fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=2)
+                    Text(db.descendants(world.id).size.toString()+" connected entries",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(WordCountEngine.formatCompact(worldTotalWords)+" words",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Plum)
+                    Text("Open world  →",fontSize=11.sp,fontWeight=FontWeight.Bold,color=Plum)
+                }
+            }
+        }
+        if(series.isNotEmpty()){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Text("Series",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                Text(series.size.toString()+" COLLECTIONS",fontSize=9.sp,fontWeight=FontWeight.Bold,letterSpacing=.8.sp,color=Plum)
+            }
+            series.forEach{seriesRecord->
+                val books=allRecords.filter{it.parentId==seriesRecord.id}.sortedBy{it.position}
+                SeriesCollectionCard(db,seriesRecord,books,open,onRead,wordSnapshot)
+            }
+        }
+        if(stories.isNotEmpty()){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Text("Standalone stories",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                IconButton(onClick={expandedStories=!expandedStories}){Icon(if(expandedStories)Icons.Default.ExpandLess else Icons.Default.ExpandMore,"Toggle standalone stories")}
+            }
+            if(expandedStories)stories.forEach{story->
+                Card(Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+                    Row(Modifier.fillMaxWidth().clickable{open(story)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
+                        RecordCoverArt(story,Modifier.width(64.dp).height(88.dp),story.title+" cover")
+                        Column(Modifier.weight(1f).padding(start=11.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            Text(story.title,fontWeight=FontWeight.SemiBold,maxLines=2)
+                            Text(story.kind,fontSize=10.sp,color=Plum)
+                            Text(WordCountEngine.formatCompact(wordSnapshot.subtreeWords(story.id))+" words",fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick={expandedStories=if(expanded)expandedStories-story.id else expandedStories+story.id}){
-                            Icon(if(expanded)Icons.Default.ExpandLess else Icons.Default.ExpandMore,if(expanded)"Collapse story" else "Expand story")
-                        }
-                        TextButton(onClick={open(story)}){Text("Open")}
+                        IconButton(onClick={onRead(story)}){Icon(Icons.Default.MenuBook,"Read "+story.title)}
                     }
-                    if(expanded)WorldTreeChildren(db,story.id,1,open,onRead,allRecords,wordSnapshot)
                 }
             }
         }
