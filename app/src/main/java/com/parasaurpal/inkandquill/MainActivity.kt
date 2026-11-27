@@ -108,7 +108,7 @@ class MainActivity:ComponentActivity(){
         ProcessLifecycleOwner.get().lifecycle.addObserver(observer)
         onDispose{ProcessLifecycleOwner.get().lifecycle.removeObserver(observer)}
     }
-    var screen by remember{mutableStateOf("Library")}
+    var screen by remember{mutableStateOf("Home")}
     var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
@@ -149,7 +149,7 @@ class MainActivity:ComponentActivity(){
     var customAccent by remember{mutableStateOf(db.setting("customAccent","#9B83B5"))}
     val accent=when(palette){"Custom"->runCatching{Color(android.graphics.Color.parseColor(customAccent))}.getOrDefault(Plum);"Ocean"->Color(0xFF8DB9D8);"Forest"->Color(0xFF9DBD9A);"Rose"->Color(0xFFE0A8B8);"Amber"->Color(0xFFD9B66F);else->Plum}
     val dark=when(appearance){"light"->false;"dark"->true;else->isSystemInDarkTheme()}
-    val navDefault="Worlds,Home,Library,Templates";val visibleTabs=db.setting("navTabs",navDefault).split(",").toSet();val navTabs=(listOf("Worlds")+db.setting("navOrder",navDefault).split(",").filter{it!="Worlds"}).distinct().filter{it=="Worlds"||it in visibleTabs}
+    val navDefault="Home,Library,Worlds,Templates";val visibleTabs=db.setting("navTabs",navDefault).split(",").toSet();val navTabs=(listOf("Worlds")+db.setting("navOrder",navDefault).split(",").filter{it!="Worlds"}).distinct().filter{it=="Worlds"||it in visibleTabs}
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri:Uri?->uri?.let{context.contentResolver.openOutputStream(it)?.use{o->o.write(db.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{r->db.importJson(r.readText())};refresh++}}}
     val cloudExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri:Uri?->uri?.let{
@@ -179,7 +179,26 @@ class MainActivity:ComponentActivity(){
     val closeOutline:()->Unit={if(outlineReturn!=null){outlineFor=outlineReturn;outlineReturn=null;outlineAboveEditor=false}else{outlineFor=null;outlineAboveEditor=false};refresh++}
     BackHandler(enabled = selected != null && activeBlueprint == null && readingRecord == null && !outlineAboveEditor) { closeEditor() }
     BackHandler(enabled = outlineFor != null && (selected == null || outlineAboveEditor)) { closeOutline() }
-    MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=accent,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=accent,background=Color(0xFFF5F0E8),surface=Color.White)){
+    MaterialTheme(
+        colorScheme=if(dark) darkColorScheme(
+            primary=accent,onPrimary=Color(0xFF211A2A),secondary=Color(0xFFB7A1D2),
+            background=Color(0xFF121018),surface=Color(0xFF211D2A),surfaceVariant=Color(0xFF302A3A),
+            onBackground=Color(0xFFF4EFF8),onSurface=Color(0xFFF4EFF8),onSurfaceVariant=Color(0xFFB7ADBF),
+            outline=Color(0xFF51465D),outlineVariant=Color(0xFF3B3346),surfaceTint=accent
+        ) else lightColorScheme(
+            primary=accent,onPrimary=Color.White,secondary=Color(0xFF76618F),
+            background=Color(0xFFF5F1F8),surface=Color(0xFFFFFCFF),surfaceVariant=Color(0xFFECE5F2),
+            onBackground=Color(0xFF211B29),onSurface=Color(0xFF211B29),onSurfaceVariant=Color(0xFF655B6D),
+            outline=Color(0xFFB9AEC2),outlineVariant=Color(0xFFD9D0E0)
+        ),
+        shapes=androidx.compose.material3.Shapes(
+            extraSmall=androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            small=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            medium=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+            large=androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            extraLarge=androidx.compose.foundation.shape.RoundedCornerShape(30.dp)
+        )
+    ){
         if(!unlocked){LockScreen(onUnlock={pin->if(AppLock.verify(context,pin))unlocked=true})}else{
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
