@@ -481,7 +481,7 @@ class MainActivity:ComponentActivity(){
                     Text("PICK UP WHERE YOU LEFT OFF",fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.2.sp,color=Plum,modifier=Modifier.weight(1f))
                     TextButton(onClick={open(latest)}){Text("Continue")}
                 }
-                Card(onClick={ { open(latest) } },modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
+                Card(onClick={open(latest)},modifier=Modifier.fillMaxWidth(),shape=androidx.compose.foundation.shape.RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                     Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
                         Row(verticalAlignment=Alignment.CenterVertically){
                             Icon(Icons.Default.MenuBook,null,tint=Plum,modifier=Modifier.size(19.dp))
@@ -1401,8 +1401,8 @@ class MainActivity:ComponentActivity(){
     val documentImport=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{val mime=appContext.contentResolver.getType(it).orEmpty();html=when{mime=="application/pdf"||mime.contains("pdf")->DocumentExport.plainToHtml(PortableExport.extractPdf(appContext,it));mime.contains("wordprocessingml")->DocumentExport.plainToHtml(PortableExport.extractDocx(appContext.contentResolver,it));mime.contains("epub")->DocumentExport.plainToHtml(PortableExport.extractEpub(appContext.contentResolver,it));else->{val raw=appContext.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->reader.readText()}?:return@let;when{mime.contains("markdown")->DocumentExport.markdownToHtml(raw);mime.contains("html")->raw;else->DocumentExport.plainToHtml(raw)}}};editorMode="Prose"}}}
     LaunchedEffect(record.id,title,html,tags,aliases,parent,scope){delay(700);val updated=record.copy(title=title,body=html,tags=tags,aliases=aliases,parentId=parent,scope=scope);onSaved(updated);if(db.setting("autoLink","suggest")=="auto")LocalLinkEngine(db).scan(updated)}
     LaunchedEffect(record.id,attachedTemplateId,sheetValues){if(attachedTemplateId.isNotBlank()){delay(500);db.saveSheetValues(record.id,sheetValues)}}
-    Column(Modifier.fillMaxSize().padding(horizontal=14.dp)){
-        if(!focusMode)Row(verticalAlignment=Alignment.CenterVertically){
+    Column(Modifier.fillMaxSize().padding(horizontal=12.dp)){
+        if(!focusMode)Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically){
             Text(record.kind,color=Plum,modifier=Modifier.weight(1f))
             if(record.kind in listOf("Book","Chapter","Novel","Story","Scene")){
                 FilledTonalButton(
