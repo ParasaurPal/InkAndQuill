@@ -109,3 +109,9 @@ button,input,select,textarea{transition:border-color .18s ease,background .18s e
  .template-dialog-foot{align-items:flex-start;flex-direction:column}
  .template-dialog-foot button{width:100%}
 }
+
+/* Persistent page-level save action */
+.global-save{border:1px solid #8f79aa!important;background:linear-gradient(135deg,#d8c3f1,#b99bdc)!important;color:#241b2d!important;font-weight:800!important;box-shadow:0 5px 18px #0003!important}
+.global-save:disabled{opacity:.72;cursor:wait}
+.global-save-status{font-size:11px;color:var(--muted);white-space:nowrap}
+@media(max-width:720px){.top-actions{flex-wrap:wrap}.global-save{order:-1;flex:1}.global-save-status{display:none}}
