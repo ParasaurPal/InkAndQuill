@@ -52,10 +52,11 @@ private fun childKindFor(parentKind: String): String? = when (parentKind) {
 }
 
 @Composable
-fun OutlineScreen(db: InkDatabase, root: InkRecord, onOpen: (InkRecord) -> Unit, onBack: () -> Unit) {
-    var refresh by remember { mutableIntStateOf(0) }
-    val children = remember(root.id, refresh) { db.childrenOrdered(root.id) }
-    val descendants = remember(root.id, refresh) { db.descendants(root.id) }
+fun OutlineScreen(db: InkDatabase, root: InkRecord, refresh: Int = 0, onOpen: (InkRecord) -> Unit, onBack: () -> Unit) {
+    var localRefresh by remember { mutableIntStateOf(0) }
+    val effectiveRefresh = refresh + localRefresh
+    val children = remember(root.id, effectiveRefresh) { db.childrenOrdered(root.id) }
+    val descendants = remember(root.id, effectiveRefresh) { db.descendants(root.id) }
     val totalWords = plainWords(root.body) + descendants.sumOf { plainWords(it.body) }
     val sceneCount = descendants.count { it.kind == "Scene" }
     val childLabel = if (root.kind == "Series") "books" else "chapters"
@@ -75,7 +76,7 @@ fun OutlineScreen(db: InkDatabase, root: InkRecord, onOpen: (InkRecord) -> Unit,
             }
         }
         children.forEachIndexed { index, child ->
-            OutlineNode(db, child, 0, children.size, index, refresh, onOpen, { refresh++ })
+            OutlineNode(db, child, 0, children.size, index, effectiveRefresh, onOpen, { localRefresh++ })
         }
         val addKind = childKindFor(root.kind)
         if (addKind != null) {

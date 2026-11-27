@@ -14,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -109,6 +110,8 @@ class MainActivity:ComponentActivity(){
     var novelStudio by remember{mutableStateOf(startNovelStudio)}
     var selected by remember{mutableStateOf<InkRecord?>(null)}
     var outlineFor by remember{mutableStateOf<InkRecord?>(null)}
+    var outlineAboveEditor by remember{mutableStateOf(false)}
+    var outlineReturn by remember{mutableStateOf<InkRecord?>(null)}
     var activeBlueprint by remember{mutableStateOf<InkRecord?>(null)}
     var showCreateSheetPicker by remember{mutableStateOf(false)}
     var showGlobalSearch by remember{mutableStateOf(false)}
@@ -170,21 +173,85 @@ class MainActivity:ComponentActivity(){
     }
     BackHandler(enabled = novelStudio) { novelStudio = false }
     BackHandler(enabled = readingRecord != null) { readingRecord = null }
-    BackHandler(enabled = selected != null && activeBlueprint == null && readingRecord == null && outlineFor == null) { selected = null; refresh++ }
-    BackHandler(enabled = outlineFor != null) { outlineFor = null; refresh++ }
+    val closeEditor:()->Unit={selected=null;refresh++}
+    val closeOutline:()->Unit={if(outlineReturn!=null){outlineFor=outlineReturn;outlineReturn=null;outlineAboveEditor=false}else{outlineFor=null;outlineAboveEditor=false};refresh++}
+    BackHandler(enabled = selected != null && activeBlueprint == null && readingRecord == null && !outlineAboveEditor) { closeEditor() }
+    BackHandler(enabled = outlineFor != null && (selected == null || outlineAboveEditor)) { closeOutline() }
     MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=accent,background=Night,surface=Color(0xFF25212F),onBackground=Paper,onSurface=Paper)else lightColorScheme(primary=accent,background=Color(0xFFF5F0E8),surface=Color.White)){
         if(!unlocked){LockScreen(onUnlock={pin->if(AppLock.verify(context,pin))unlocked=true})}else{
         Scaffold(
             containerColor=MaterialTheme.colorScheme.background,
-            topBar={if(activeBlueprint==null&&readingRecord==null&&!novelStudio)TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(outlineFor!=null)IconButton(onClick={outlineFor=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}else if(selected!=null)IconButton(onClick={selected=null;refresh++}){Icon(Icons.Default.ArrowBack,"Back")}},actions={IconButton(onClick={novelStudio=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.AutoStories,"Novel Studio")};IconButton(onClick={showGlobalSearch=true},modifier=Modifier.size(48.dp).testTag("global_search_button")){Icon(Icons.Default.Search,"Global search")};if(selected==null){IconButton(onClick={showGoogleDriveBackup=true},modifier=Modifier.size(48.dp).testTag("google_drive_top_button")){Icon(Icons.Default.CloudUpload,"Back up to Google Drive")};IconButton(onClick={settings=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings")}}})},
+            topBar={if(activeBlueprint==null&&readingRecord==null&&!novelStudio)TopAppBar(title={Text(if(selected!=null)selected!!.title.ifBlank{"Writing"} else "Ink & Quill",fontWeight=FontWeight.SemiBold)},navigationIcon={if(outlineFor!=null&&(selected==null||outlineAboveEditor))IconButton(onClick=closeOutline){Icon(Icons.Default.ArrowBack,"Back")}else if(selected!=null)IconButton(onClick=closeEditor){Icon(Icons.Default.ArrowBack,"Back")}},actions={IconButton(onClick={novelStudio=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.AutoStories,"Novel Studio")};IconButton(onClick={showGlobalSearch=true},modifier=Modifier.size(48.dp).testTag("global_search_button")){Icon(Icons.Default.Search,"Global search")};if(selected==null){IconButton(onClick={showGoogleDriveBackup=true},modifier=Modifier.size(48.dp).testTag("google_drive_top_button")){Icon(Icons.Default.CloudUpload,"Back up to Google Drive")};IconButton(onClick={settings=true},modifier=Modifier.size(48.dp)){Icon(Icons.Default.Settings,"Settings")}}})},
             bottomBar={if(selected==null&&activeBlueprint==null&&readingRecord==null&&!novelStudio&&outlineFor==null)NavigationBar{navTabs.forEach{tab->NavigationBarItem(selected=screen==tab,onClick={if(tab=="Settings")settings=true else screen=tab},icon={Icon(when(tab){"Home"->Icons.Default.Home;"Library"->Icons.Default.MenuBook;"Worlds"->Icons.Default.Public;"Templates"->Icons.Default.Dashboard;else->Icons.Default.Settings},tab)},label={Text(tab)})}}}
         ){padding->
             Column(Modifier.fillMaxSize().padding(padding)){
                 if(novelStudio){NovelStudioScreen(onClose={novelStudio=false})} else {
-                if(activeBlueprint==null&&readingRecord==null&&openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab;outlineFor=null},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id){selected=null;outlineFor=null}}){Text("×")}}}
+                if(activeBlueprint==null&&readingRecord==null&&openTabs.isNotEmpty())Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=6.dp),verticalAlignment=Alignment.CenterVertically){openTabs.mapNotNull{db.get(it)}.forEach{tab->FilterChip(selected?.id==tab.id,{selected=tab;outlineFor=null;outlineAboveEditor=false;outlineReturn=null},label={Text(tab.title.ifBlank{"Untitled"},maxLines=1)});TextButton(onClick={openTabs=openTabs.filterNot{id->id==tab.id};db.saveOpenTabs(openTabs);if(selected?.id==tab.id){selected=null;outlineFor=null;outlineAboveEditor=false;outlineReturn=null}}){Text("×")}}}
                 Box(Modifier.weight(1f).fillMaxWidth()){
-                    if(outlineFor!=null)OutlineScreen(db=db,root=outlineFor!!,onOpen={record->selected=record;outlineFor=null;refresh++},onBack={outlineFor=null;refresh++}) else if(readingRecord!=null){
-                        ReadingModeScreen(
+                    when(screen){
+                        "Home"->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
+                        "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh,{readingRecord=it}){selected=it}
+                        "Worlds"->WorldScreen(db,refresh,{selected=it},onRead={readingRecord=it},onOpenMediaManager={showGlobalMediaManager=true},backEnabled=selected==null&&outlineFor==null&&readingRecord==null&&activeBlueprint==null)
+                        "Templates"->TemplateScreen(
+                            db = db,
+                            refresh = refresh,
+                            autoSaveStatus = autoSaveStatus,
+                            onAutoSaveNow = {
+                                scope.launch {
+                                    val ok = autoSaveManager.saveSnapshot(db, "Manual auto-save")
+                                    Toast.makeText(context, if (ok) "Template data saved to DataStore." else "Auto-save failed.", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            onOpenTemplateLibrary = { showTemplateLibrary = true },
+                            onOpenMediaManager = { showGlobalMediaManager = true },
+                            edit = { selected = it },
+                            designBlueprint = { activeBlueprint = it },
+                            use = { created -> selected = created; refresh++ }
+                        )
+                        else->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
+                    }
+                    val editorLayer:@Composable ()->Unit={
+                        if(selected!=null){
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).clickable(interactionSource=remember{MutableInteractionSource()},indication=null){}){
+                                EditorScreen(
+                        db = db,
+                        record = selected!!,
+                        fontSize = fontSize,
+                        onSaved = { record -> db.save(record); selected = db.get(record.id); refresh++ },
+                        onDelete = { id ->
+                            autoSaveManager.clearEntryDraft(id)
+                            db.delete(id)
+                            openTabs = openTabs.filterNot { it == id }
+                            db.saveOpenTabs(openTabs)
+                            selected = null
+                            refresh++
+                        },
+                        onLinkScan = { record -> val hits = LocalLinkEngine(db).scan(record); refresh++; hits.size },
+                        jumpTerm = pendingFindTerm,
+                        jumpOccurrence = pendingFindOccurrence,
+                        onJumpHandled = { pendingFindTerm = ""; pendingFindOccurrence = 0 },
+                        onOpen = { record, term, occurrence -> selected = record; pendingFindTerm = term; pendingFindOccurrence = occurrence },
+                        onOutline = { record -> if(outlineFor!=null&&!outlineAboveEditor)outlineReturn=outlineFor; outlineFor = record; outlineAboveEditor = true; refresh++ },
+                        onOpenBlueprint = { tplId -> db.get(tplId)?.let { activeBlueprint = it } },
+                        onReadMode = { target -> readingRecord = target },
+                        onTemplateCreated = { tpl -> activeBlueprint = tpl; refresh++ },
+                        onUpdateEntryDraft = { draft -> autoSaveManager.updateEntryDraft(draft) },
+                        onClearEntryDraft = { recordId -> autoSaveManager.clearEntryDraft(recordId) }
+                    )
+                            }
+                        }
+                    }
+                    val outlineLayer:@Composable ()->Unit={
+                        if(outlineFor!=null){
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).clickable(interactionSource=remember{MutableInteractionSource()},indication=null){}){
+                                OutlineScreen(db=db,root=outlineFor!!,refresh=refresh,onOpen={record->selected=record;outlineAboveEditor=false;refresh++},onBack=closeOutline)
+                            }
+                        }
+                    }
+                    if(outlineAboveEditor){editorLayer();outlineLayer()}else{outlineLayer();editorLayer()}
+                    if(readingRecord!=null){
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).clickable(interactionSource=remember{MutableInteractionSource()},indication=null){}){
+                            ReadingModeScreen(
                             db = db,
                             record = readingRecord!!,
                             onEditRecord = { target ->
@@ -199,8 +266,11 @@ class MainActivity:ComponentActivity(){
                                 refresh++
                             }
                         )
-                    } else if(activeBlueprint!=null){
-                        BlueprintDesignerScreen(
+                        }
+                    }
+                    if(activeBlueprint!=null){
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).clickable(interactionSource=remember{MutableInteractionSource()},indication=null){}){
+                            BlueprintDesignerScreen(
                             db = db,
                             template = activeBlueprint!!,
                             onTemplateUpdated = { tpl ->
@@ -238,51 +308,7 @@ class MainActivity:ComponentActivity(){
                                 refresh++
                             }
                         )
-                    } else if(selected!=null)EditorScreen(
-                        db = db,
-                        record = selected!!,
-                        fontSize = fontSize,
-                        onSaved = { record -> db.save(record); selected = db.get(record.id); refresh++ },
-                        onDelete = { id ->
-                            autoSaveManager.clearEntryDraft(id)
-                            db.delete(id)
-                            openTabs = openTabs.filterNot { it == id }
-                            db.saveOpenTabs(openTabs)
-                            selected = null
-                            refresh++
-                        },
-                        onLinkScan = { record -> val hits = LocalLinkEngine(db).scan(record); refresh++; hits.size },
-                        jumpTerm = pendingFindTerm,
-                        jumpOccurrence = pendingFindOccurrence,
-                        onJumpHandled = { pendingFindTerm = ""; pendingFindOccurrence = 0 },
-                        onOpen = { record, term, occurrence -> selected = record; pendingFindTerm = term; pendingFindOccurrence = occurrence },
-                        onOutline = { record -> outlineFor = record; refresh++ },
-                        onOpenBlueprint = { tplId -> db.get(tplId)?.let { activeBlueprint = it } },
-                        onReadMode = { target -> readingRecord = target },
-                        onTemplateCreated = { tpl -> activeBlueprint = tpl; refresh++ },
-                        onUpdateEntryDraft = { draft -> autoSaveManager.updateEntryDraft(draft) },
-                        onClearEntryDraft = { recordId -> autoSaveManager.clearEntryDraft(recordId) }
-                    ) else when(screen){
-                        "Home"->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
-                        "Library"->LibraryScreen(db,query,{query=it},filter,{filter=it},refresh,{readingRecord=it}){selected=it}
-                        "Worlds"->WorldScreen(db,refresh,{selected=it},{create=true},{readingRecord=it},{showGlobalMediaManager=true})
-                        "Templates"->TemplateScreen(
-                            db = db,
-                            refresh = refresh,
-                            autoSaveStatus = autoSaveStatus,
-                            onAutoSaveNow = {
-                                scope.launch {
-                                    val ok = autoSaveManager.saveSnapshot(db, "Manual auto-save")
-                                    Toast.makeText(context, if (ok) "Template data saved to DataStore." else "Auto-save failed.", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            onOpenTemplateLibrary = { showTemplateLibrary = true },
-                            onOpenMediaManager = { showGlobalMediaManager = true },
-                            edit = { selected = it },
-                            designBlueprint = { activeBlueprint = it },
-                            use = { created -> selected = created; refresh++ }
-                        )
-                        else->HomeScreen(db,refresh,{selected=it},{create=true},{readingRecord=it})
+                        }
                     }
                 }
                 }
@@ -578,8 +604,9 @@ class MainActivity:ComponentActivity(){
     if(createCollection)AlertDialog(onDismissRequest={createCollection=false},title={Text("New collection")},text={OutlinedTextField(collectionName,{collectionName=it},label={Text("Collection name")})},confirmButton={TextButton(onClick={if(collectionName.isNotBlank()){db.createCollection(collectionName);collectionName="";createCollection=false}}){Text("Create")}},dismissButton={TextButton(onClick={createCollection=false}){Text("Cancel")}})
     if(createFolder)AlertDialog(onDismissRequest={createFolder=false},title={Text("New folder")},text={Column{OutlinedTextField(newFolderName,{newFolderName=it},label={Text("Folder name")},singleLine=true);Box{OutlinedButton(onClick={folderParentMenu=true}){Text("Parent: "+(folders.firstOrNull{it.first==newFolderParent}?.second?: "None"))};DropdownMenu(expanded=folderParentMenu,onDismissRequest={folderParentMenu=false}){DropdownMenuItem(text={Text("No parent")},onClick={newFolderParent="";folderParentMenu=false});folders.forEach{f->DropdownMenuItem(text={Text(f.second)},onClick={newFolderParent=f.first;folderParentMenu=false})}}}}},confirmButton={TextButton(onClick={if(newFolderName.isNotBlank()){db.createFolder(newFolderName,newFolderParent);newFolderName="";newFolderParent="";createFolder=false}}){Text("Create")}},dismissButton={TextButton(onClick={createFolder=false}){Text("Cancel")}})
 }
-@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,create:()->Unit,onRead:(InkRecord)->Unit={},onOpenMediaManager:()->Unit={}){
-    val worlds=remember(refresh){db.all().filter{it.kind=="World"}}
+@Composable private fun WorldScreen(db:InkDatabase,refresh:Int,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},onOpenMediaManager:()->Unit={},backEnabled:Boolean=true){
+    var localRefresh by remember{mutableIntStateOf(0)}
+    val worlds=remember(refresh,localRefresh){db.all().filter{it.kind=="World"}}
     var world by remember{mutableStateOf<InkRecord?>(null)}
     var createChild by remember{mutableStateOf(false)}
     var createParentId by remember{mutableStateOf("")}
@@ -622,7 +649,6 @@ class MainActivity:ComponentActivity(){
     var calendarRepeat by remember{mutableStateOf(false)}
     var calendarMonthIndex by remember{mutableIntStateOf(0)}
     var calendarYear by remember{mutableIntStateOf(1)}
-    var localRefresh by remember{mutableIntStateOf(0)}
     var showWorldWordStats by remember{mutableStateOf(false)}
     val wordSnapshot=remember(refresh,localRefresh){WordCountEngine.buildSnapshot(db)}
     var linkMode by remember{mutableStateOf(false)}
@@ -634,13 +660,13 @@ class MainActivity:ComponentActivity(){
     val boardTypes=listOf("Corkboard","Moodboard","Map","Flowchart","Relationship graph","Family tree","Floor plan","Reference board")
     var showWorldSheetPicker by remember{mutableStateOf(false)}
     var showWorldCustomTemplate by remember{mutableStateOf(false)}
-    BackHandler(enabled = world != null) { if(moduleKinds.isNotEmpty())moduleKinds=emptyList() else if(mode!="Modules")mode="Modules" else {world=null;selectedBoard=""} }
+    BackHandler(enabled = world != null && backEnabled) { if(moduleKinds.isNotEmpty())moduleKinds=emptyList() else if(mode!="Modules")mode="Modules" else {world=null;selectedBoard=""} }
     if(world==null){
         Column(Modifier.fillMaxSize().padding(16.dp)){ 
             Text("Worlds",style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)
             Text("Worlds are the top-level home for each fictional universe. Expand a Series to see its books, chapters, and scenes.")
             Row(Modifier.fillMaxWidth().padding(vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                Button(onClick=create){Icon(Icons.Default.Add,null);Text(" Create a world")}
+                Button(onClick={val created=InkRecord(title="Untitled World",kind="World");db.save(created);world=created;mode="Modules";moduleKinds=emptyList();localRefresh++}){Icon(Icons.Default.Add,null);Text(" Create a world")}
                 FilledTonalButton(onClick=onOpenMediaManager,modifier=Modifier.testTag("worlds_media_manager_button")){
                     Icon(Icons.Default.PhotoCamera,null,modifier=Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
@@ -648,7 +674,7 @@ class MainActivity:ComponentActivity(){
                 }
             }
             LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){
-                items(worlds){ w -> WorldListCard(db,w,open,onRead,wordSnapshot) }
+                items(worlds){ w -> WorldListCard(db,w,open,onRead,wordSnapshot){world=it;mode="Modules";moduleKinds=emptyList()} }
                 if(worlds.isEmpty()) item { Text("No worlds yet. Create a World to begin your story universe.",Modifier.padding(12.dp)) }
             }
         }
@@ -805,7 +831,7 @@ class MainActivity:ComponentActivity(){
     }
 }
 
-@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)}){
+@Composable private fun WorldListCard(db:InkDatabase,world:InkRecord,open:(InkRecord)->Unit,onRead:(InkRecord)->Unit={},wordSnapshot:WorldWordSnapshot=remember(world.id){WordCountEngine.buildSnapshot(db)},onOpenWorld:(InkRecord)->Unit={}){
     var expandedSeries by remember(world.id){mutableStateOf(setOf<String>())}
     var expandedStories by remember(world.id){mutableStateOf(setOf<String>())}
     val allRecords=wordSnapshot.allRecords
@@ -814,7 +840,7 @@ class MainActivity:ComponentActivity(){
     val stories=direct.filter{it.kind=="Story"}
     val worldTotalWords=wordSnapshot.subtreeWords(world.id)
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
-        Card(Modifier.fillMaxWidth().clickable{open(world)}){
+        Card(Modifier.fillMaxWidth().clickable{onOpenWorld(world)}){
             Column(Modifier.padding(12.dp)){
                 Text(world.title,fontWeight=FontWeight.SemiBold)
                 Text("${db.descendants(world.id).size} linked records · %,d words".format(worldTotalWords),fontSize=12.sp,color=Plum)
