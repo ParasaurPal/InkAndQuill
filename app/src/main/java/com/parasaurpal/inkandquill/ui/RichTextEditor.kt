@@ -688,17 +688,17 @@ private fun buildRichEditorHtml(
     val borderCss = if (pageMode) "box-shadow:0 4px 22px rgba(0,0,0,.25);border:1px solid #8b8495;" else ""
     return """<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
 @font-face{font-family:Custom;src:url(data:$customFontMime;base64,$customFontData)}
-body{font-family:$fontFamily;font-size:${fontSize}px;line-height:$lineSpacing;padding:${pageMargin}px;margin:0 auto;max-width:${if (pageMode) "${pageWidth}px" else "none"};min-height:${if (pageMode) "1056px" else "95vh"};box-sizing:border-box;${borderCss}background:$backgroundColor;background-image:$bgImg;background-size:cover;background-attachment:fixed;color:$textColor}
+body{font-family:$fontFamily;font-size:${fontSize}px;line-height:$lineSpacing;padding:${pageMargin}px;margin:0 auto;width:100%;max-width:${if (pageMode) "min(${pageWidth}px,100%)" else "100%"};min-height:${if (pageMode) "1056px" else "95vh"};box-sizing:border-box;overflow-x:hidden;${borderCss}background:$backgroundColor;background-image:$bgImg;background-size:cover;background-attachment:fixed;color:$textColor}
 p{margin-bottom:${paragraphSpacing}px}
-#editor{min-height:95vh;outline:none;overflow-wrap:anywhere}
+#editor{width:100%;min-height:95vh;outline:none;overflow-wrap:anywhere;word-break:normal}
 blockquote{border-left:3px solid #bfa7df;padding:6px 12px;margin:10px 0;background:rgba(191,167,223,0.08);border-radius:0 8px 8px 0;font-style:italic}
 pre, code{font-family:monospace;background:rgba(128,128,128,0.18);border-radius:6px;padding:2px 5px}
-pre{padding:10px 12px;overflow-x:auto}
+pre{padding:10px 12px;overflow-x:auto;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
 .ink-callout{border-left:4px solid #c9b6e4;background:rgba(201,182,228,0.14);padding:10px 14px;border-radius:0 12px 12px 0;margin:12px 0}
 .ink-dropcap::first-letter{float:left;font-size:3.1em;line-height:0.85;padding-right:8px;font-weight:bold;color:#c9b6e4}
 ul.ink-checklist{list-style:none;padding-left:4px}
 ul.ink-checklist li{display:flex;align-items:flex-start;gap:8px;margin:4px 0}
-table{border-collapse:collapse;width:100%;margin:10px 0}
+table{border-collapse:collapse;width:100%;max-width:100%;margin:10px 0;table-layout:fixed;overflow-wrap:anywhere}
 th,td{border:1px solid #8b8495;padding:8px}
 img{max-width:100%;height:auto;border-radius:8px}
 h1,h2,h3,h4{line-height:1.25;margin-top:0.9em;margin-bottom:0.4em}
