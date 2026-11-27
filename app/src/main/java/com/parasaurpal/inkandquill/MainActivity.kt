@@ -671,6 +671,7 @@ class MainActivity:ComponentActivity(){
         db.all(query,filter).filter{(folderFilter.isBlank()||db.folderFor(it.id) in db.folderTreeIds(folderFilter))&&(!favoritesOnly||it.favorite)&&(collectionFilter.isBlank()||db.collectionRecords(collectionFilter).any{r->r.id==it.id})}
     }
     val availableKinds=remember(refresh){(FantasyTemplateCatalog.starterRecordKinds+db.all().map{it.kind}).distinct()}
+    val wordSnapshot=remember(refresh){WordCountEngine.buildSnapshot(db)}
     val series=records.filter{it.kind=="Series"}
     val seriesIds=series.map{it.id}.toSet()
     val seriesChildren=records.filter{it.parentId in seriesIds}.groupBy{it.parentId}
@@ -725,7 +726,7 @@ class MainActivity:ComponentActivity(){
                     }
                 }
                 items(series,key={it.id}){seriesRecord->
-                    SeriesCollectionCard(db,seriesRecord,seriesChildren[seriesRecord.id].orEmpty().sortedBy{it.position},open,onRead,WordCountEngine.buildSnapshot(db))
+                    SeriesCollectionCard(db,seriesRecord,seriesChildren[seriesRecord.id].orEmpty().sortedBy{it.position},open,onRead,wordSnapshot)
                 }
             }
             if(standalone.isNotEmpty()){
@@ -747,7 +748,7 @@ class MainActivity:ComponentActivity(){
             }
             if(series.isEmpty()&&standalone.isEmpty())item{
                 Column(Modifier.fillMaxWidth().padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){
-                    Icon(Icons.Default.CollectionsBookmark,null,tint=Plum,modifier=Modifier.size(38.dp))
+                    Icon(Icons.Default.MenuBook,null,tint=Plum,modifier=Modifier.size(38.dp))
                     Text("Your library is waiting",fontWeight=FontWeight.SemiBold)
                     Text("Create books, stories, and series to build your visual bookshelf.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center)
                 }
