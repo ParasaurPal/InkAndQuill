@@ -26,11 +26,11 @@ function ask(label:string,initial=""){const v=prompt(label,initial);return v?.tr
 type TemplateNode={name:string;level:number;children:TemplateNode[]};
 function parseTemplateOutline(source:string):TemplateNode[]{
  const roots:TemplateNode[]=[];const stack:{node:TemplateNode;indent:number}[]=[];
- for(const raw of source.replace(/\\r/g,"").split("\\n")){
+ for(const raw of source.replace(/\r/g,"").split("\n")){
   if(!raw.trim())continue;
-  const prefix=raw.match(/^[ \\t]*/)?.[0]||"";
-  const indent=[...prefix].reduce((n,c)=>n+(c==="\\t"?4:1),0);
-  const name=raw.slice(prefix.length).replace(/^[-*+•]\\s+/,"").replace(/^\\d+[.)]\\s+/,"").trim();
+  const prefix=raw.match(/^[ \t]*/)?.[0]||"";
+  const indent=[...prefix].reduce((n,c)=>n+(c==="\t"?4:1),0);
+  const name=raw.slice(prefix.length).replace(/^[-*+•]\s+/,"").replace(/^\d+[.)]\s+/,"").trim();
   if(!name)continue;
   const node:TemplateNode={name,level:0,children:[]};
   while(stack.length&&indent<=stack[stack.length-1].indent)stack.pop();
