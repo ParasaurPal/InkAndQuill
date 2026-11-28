@@ -703,6 +703,26 @@ private fun buildReaderDocumentHtml(
             if (bodyHtml.isNotBlank()) sb.append("<hr/>")
             sb.append(compiledSheet)
         }
+        if (sheetTplId.isNotBlank()) {
+            val parentArticle = rec.parentId.takeIf { it.isNotBlank() }?.let { db.get(it) }
+                ?.takeIf { db.sheetTemplateId(it.id).isNotBlank() }
+            if (parentArticle != null) {
+                sb.append("<p class=\"wiki-parent\">Filed under: <a href=\"inkquill://record/")
+                    .append(Uri.encode(parentArticle.id)).append("\">")
+                    .append(escapeHtml(parentArticle.title)).append("</a></p>")
+            }
+            val childArticles = db.descendants(rec.id).filter {
+                it.parentId == rec.id && db.sheetTemplateId(it.id).isNotBlank()
+            }
+            if (childArticles.isNotEmpty()) {
+                sb.append("<section class=\"wiki-child-articles\"><h2>Articles in this entry</h2><ul>")
+                childArticles.forEach { child ->
+                    sb.append("<li><a href=\"inkquill://record/").append(Uri.encode(child.id))
+                        .append("\">").append(escapeHtml(child.title)).append("</a></li>")
+                }
+                sb.append("</ul></section>")
+            }
+        }
     }
 
     if (isBookKind) {
