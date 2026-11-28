@@ -170,3 +170,9 @@ button,input,select,textarea{transition:border-color .18s ease,background .18s e
 .wiki-article-table th,.wiki-article-table td{padding:9px 11px;border-bottom:1px solid #443a50;text-align:left;vertical-align:top;white-space:pre-wrap}
 .wiki-article-table th{background:#2b2435;color:#e2d4f0;font-weight:750}
 .wiki-article-table tr:last-child td{border-bottom:0}
+
+/* Nested custom wiki-template hierarchy */
+.wiki-section .wiki-section{margin:12px 0 0 12px;padding:12px;border-color:#51445f;background:#191620}
+.wiki-section .wiki-section h3{font-size:14px}
+.wiki-article-section .wiki-article-section{margin:12px 0 0 12px;padding:12px;border-left:2px solid #625174;background:rgba(35,29,45,.45)}
+.wiki-article-section .wiki-article-section h2{font-size:17px}
