@@ -42,7 +42,7 @@ object FantasyTemplateCatalog {
     )
 
     val allSpecs: List<TemplateSpec> by lazy {
-        fantasySpecsPartA + fantasySpecsPartB + writingAndLegacySpecs
+        fantasySpecsPartA + fantasySpecsPartB + fantasySpecsPartC + writingAndLegacySpecs
     }
 
     val starterRecordKinds: List<String> = listOf(
