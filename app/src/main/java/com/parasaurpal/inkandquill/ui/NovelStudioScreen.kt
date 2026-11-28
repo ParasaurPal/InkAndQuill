@@ -104,7 +104,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         if(sidebarSearch.isBlank()) emptyList() else store.readableDatabase.rawQuery(
             "SELECT id,entity_type,title,description,fields_json,custom_label FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ? OR fields_json LIKE ? OR custom_label LIKE ?) ORDER BY title LIMIT 60",
             arrayOf(worldId,"%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
-        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)).put("fields",c.getString(4)).put("label",c.getString(5)))}}
     }
     val worlds= remember(level,refresh){store.universes()}
     val series= remember(level,worldId,refresh){if(worldId.isBlank()) emptyList() else store.series(worldId)}
@@ -345,7 +345,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                     Text(if(sidebarContextId.isBlank())"Open a chapter or scene to see its linked worldbuilding items." else "Added to this "+(if(sidebarContextType=="scene")"scene" else "chapter"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=8.dp))
                     LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
                         items(linkedWorldItems,key={it.optString("id")}){entry->
-                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description");sidebarSelectedFields=entry.optString("fields")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description");sidebarSelectedFields=entry.optString("fields");sidebarSelectedFields=entry.optString("fields")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
                                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.SemiBold);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)};Icon(Icons.Default.ChevronRight,null)}
                             }
                         }
@@ -353,7 +353,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                         if(sidebarSearch.isNotBlank())item{Text("Search results",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)}
                         items(sidebarSearchResults,key={"search-"+it.optString("id")}){entry->
                             val alreadyLinked=linkedWorldItems.any{it.optString("id")==entry.optString("id")}
-                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description");sidebarSelectedFields=entry.optString("fields")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
                                 Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.Medium);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall)};if(!alreadyLinked)TextButton(onClick={store.link(sidebarContextType,sidebarContextId,"entity",entry.optString("id"),"Appears in");refresh++}){Text("Add")}else Icon(Icons.Default.Check,"Added")}
                             }
                         }
