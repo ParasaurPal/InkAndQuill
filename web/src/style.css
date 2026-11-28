@@ -176,3 +176,16 @@ button,input,select,textarea{transition:border-color .18s ease,background .18s e
 .wiki-section .wiki-section h3{font-size:14px}
 .wiki-article-section .wiki-article-section{margin:12px 0 0 12px;padding:12px;border-left:2px solid #625174;background:rgba(35,29,45,.45)}
 .wiki-article-section .wiki-article-section h2{font-size:17px}
+
+/* Searchable template browser */
+.wiki-index-actions{display:flex;gap:8px;flex-wrap:wrap}
+.wiki-template-browser{width:min(1100px,100%)}
+.wiki-template-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,.35fr);gap:10px;margin:16px 0}
+.wiki-template-filters input,.wiki-template-filters select{min-width:0;padding:11px;border:1px solid #554866;border-radius:10px;background:#17141d;color:#f1eaf7}
+.wiki-template-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:12px;max-height:62vh;overflow:auto;padding:2px}
+.wiki-template-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px;border:1px solid #51445f;border-radius:13px;background:#191620}
+.wiki-template-card h3{margin:2px 0;color:#eee6f5;font-size:15px}
+.wiki-template-card p{margin:0;color:#bdb1c9;font-size:12px;line-height:1.55;flex:1}
+.wiki-template-card small{color:#a99eb3}
+.wiki-template-card button{margin-top:4px;padding:9px 12px;border:0;border-radius:9px;background:#d4bee9;color:#241b2d;font-weight:750}
+@media(max-width:600px){.wiki-index-actions{width:100%}.wiki-index-actions button{flex:1}.wiki-template-filters{grid-template-columns:1fr}.wiki-template-grid{max-height:65vh}}
