@@ -1328,8 +1328,7 @@ class MainActivity:ComponentActivity(){
                         }
                         if (t.body.isNotBlank()) {
                             Text(
-                                t.body.replace("\
-", " "),
+                                t.body.replace("\n", " "),
                                 fontSize = 12.sp,
                                 maxLines = 2,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
@@ -1580,11 +1579,7 @@ class MainActivity:ComponentActivity(){
         val sections=db.templateSections(attachedTemplateId)
         val sheetPart=SheetEngine.compileToPlainText(fields,sections,sheetValues){db.get(it)}
         val prosePart=DocumentExport.plain(html).trim()
-        listOf(sheetPart,prosePart).filter{it.isNotBlank()}.joinToString("
-
----
-
-")
+        listOf(sheetPart,prosePart).filter{it.isNotBlank()}.joinToString("\n\n---\n\n")
     }else DocumentExport.plain(html)
 
     val txtExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{appContext.contentResolver.openOutputStream(it)?.use{o->o.write(compiledPlain().toByteArray())}}}
