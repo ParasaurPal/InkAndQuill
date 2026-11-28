@@ -30,9 +30,9 @@ Open a world, choose **Modules → World Encyclopedia**, then switch between **A
 
 - Search article titles, summaries, tags and structured field values.
 - Filter by the template category.
-- Choose a specialist or custom template to create an article inside the current world.
+- Choose a specialist or custom template, then place the new article under the world or an existing parent article.
 - Open the existing structured sheet editor to fill in its sections and fields.
-- Read the article in the native reader, which shows both prose and structured sheet content.
+- Read the article in the native reader, which shows prose and structured sheet content, clickable relationship references, and parent/child article navigation.
 - Article cards show a cover/attached image when one is available, plus a short field preview and completion count.
 
 The native catalog contains 108 built-in templates in total, including the 49 specialist encyclopedia subjects and the existing writing/planning templates. New templates are seeded through the existing database template system; existing records and saved field values are preserved.
