@@ -679,16 +679,18 @@ private fun buildReaderDocumentHtml(
     val sb = StringBuilder()
 
     fun appendRecordProseOrSheet(rec: InkRecord) {
-        val bodyHtml = rec.body.trim()
+        val bodyHtml = rec.body.trim().takeIf { DocumentExport.plain(it).isNotBlank() }.orEmpty()
         val sheetTplId = db.sheetTemplateId(rec.id)
-        if (bodyHtml.isNotBlank() && DocumentExport.plain(bodyHtml).isNotBlank()) {
-            sb.append(bodyHtml)
-        } else if (sheetTplId.isNotBlank()) {
+        val compiledSheet = if (sheetTplId.isNotBlank()) {
             val fields = db.templateFields(sheetTplId)
             val sections = db.templateSections(sheetTplId)
             val vals = db.sheetValues(rec.id)
-            val compiled = SheetEngine.compileToHtml(fields, sections, vals, "") { db.get(it) }
-            if (compiled.isNotBlank()) sb.append(compiled)
+            SheetEngine.compileToHtml(fields, sections, vals, "") { db.get(it) }
+        } else ""
+        if (bodyHtml.isNotBlank()) sb.append(bodyHtml)
+        if (compiledSheet.isNotBlank()) {
+            if (bodyHtml.isNotBlank()) sb.append("<hr/>")
+            sb.append(compiledSheet)
         }
     }
 
