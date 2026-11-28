@@ -63,11 +63,14 @@ fun WorldEncyclopediaScreen(
     val categories = remember(templates) {
         listOf("All") + templates.map { it.tags.ifBlank { "Other" } }.distinct().sorted()
     }
+    val templateFieldsById = remember(templates, refresh) {
+        templates.associate { it.id to db.templateFields(it.id) }
+    }
     val visibleTemplates = templates.filter { template ->
         (category == "All" || template.tags.ifBlank { "Other" } == category) &&
             (query.isBlank() || template.title.contains(query, true) ||
                 template.body.contains(query, true) || template.tags.contains(query, true) ||
-                db.templateFields(template.id).any { it.name.contains(query, true) || it.section.contains(query, true) })
+                templateFieldsById[template.id].orEmpty().any { it.name.contains(query, true) || it.section.contains(query, true) })
     }
     val visibleArticles = articles.filter { article ->
         val template = templates.firstOrNull { it.id == db.sheetTemplateId(article.id) }
