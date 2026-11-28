@@ -162,9 +162,9 @@ function wire(rows:Row[]){$("#wiki-category")?.addEventListener("change",e=>{wik
 $("#new")?.addEventListener("click",async()=>{const name=ask("New universe / project name");if(name){const w=await add("universe",name);activeUniverse=w.id}});
 $("#add-world")?.addEventListener("click",async()=>{const name=ask("Universe name");if(name){const w=await add("universe",name);activeUniverse=w.id}});
 $("#world-select")?.addEventListener("change",e=>{activeUniverse=(e.target as HTMLSelectElement).value;current=null;render()});
-const openStoryModal=()=>$("#story-modal")?.classList.remove("hidden");
+const openStoryModal=async()=>{if(!activeUniverse){const name=ask("Create a world for this story","My World");if(!name)return;const world=await add("universe",name);activeUniverse=world.id;await render()}$("#story-modal")?.classList.remove("hidden")};
 $("#add-book")?.addEventListener("click",openStoryModal);$("#add-first-story")?.addEventListener("click",openStoryModal);
-$("#add-series")?.addEventListener("click",()=>$("#series-modal")?.classList.remove("hidden"));
+$("#add-series")?.addEventListener("click",async()=>{if(!activeUniverse){const name=ask("Create a world for this series","My World");if(!name)return;const world=await add("universe",name);activeUniverse=world.id;await render()}$("#series-modal")?.classList.remove("hidden")});
 $("#cancel-story")?.addEventListener("click",()=>$("#story-modal")?.classList.add("hidden"));
 $("#cancel-series")?.addEventListener("click",()=>$("#series-modal")?.classList.add("hidden"));
 $("#story-create-form")?.addEventListener("submit",async e=>{
