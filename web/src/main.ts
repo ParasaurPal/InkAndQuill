@@ -1,5 +1,5 @@
 import "./style.css";
-import { WIKI_TEMPLATES, WIKI_TEMPLATE_CATEGORIES, getWikiTemplate, type WikiField, type WikiTemplate } from "./wiki-templates";
+import { WIKI_TEMPLATES, WIKI_TEMPLATE_CATEGORIES, getWikiTemplate, type WikiField, type WikiSection, type WikiTemplate } from "./wiki-templates";
 
 type Kind="universe"|"book"|"chapter"|"scene"|"entity"|"timeline"|"moment"|"event"|"board"|"boardText"|"connector"|"goal"|"log"|"tag"|"link"|"snapshot"|"schema"|"table"|"tableRow"|"attachment"|"sprint"|"prompt"|"familyEdge"|"invite"|"chat"|"setting";
 type Row={id:string;kind:Kind;parentId?:string;universeId?:string;title:string;body?:string;customText?:string;status?:string;metadata?:Record<string,any>;position?:number;updatedAt:number;createdAt:number};
