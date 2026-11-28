@@ -2,6 +2,9 @@ package com.parasaurpal.inkandquill.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +16,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +29,7 @@ import com.parasaurpal.inkandquill.data.StudioNode
 import org.json.JSONObject
 
 private enum class NovelLevel { WORLDS, BOOKS, CHAPTERS, SCENES, EDITOR }
+private val StudioFonts = listOf("Literata", "Source Serif 4", "Lora", "Crimson Pro", "Merriweather")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,10 +57,25 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var toolsOpen by remember{mutableStateOf(false)}
     var planningOpen by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
+    var fontChoice by remember{mutableStateOf("Literata")}
+    var fontMenuExpanded by remember{mutableStateOf(false)}
+    var showSeriesCreate by remember{mutableStateOf(false)}
+    var seriesTitle by remember{mutableStateOf("")}
+    var seriesBanner by remember{mutableStateOf("")}
+    var storyType by remember{mutableStateOf("NOVEL")}
+    var selectedSeriesId by remember{mutableStateOf("")}
+    var connectedBookId by remember{mutableStateOf("")}
+    var coverUri by remember{mutableStateOf("")}
+    var expandedSeries by remember{mutableStateOf(setOf<String>())}
+    var seriesMenuExpanded by remember{mutableStateOf(false)}
+    var connectedMenuExpanded by remember{mutableStateOf(false)}
+    val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString()}}
+    val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString()}}
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
     val worlds= remember(level,refresh){store.universes()}
+    val series= remember(level,worldId,refresh){if(worldId.isBlank()) emptyList() else store.series(worldId)}
     val nodes= remember(level,worldId,bookId,chapterId,refresh){
         when(level){
             NovelLevel.BOOKS->store.orderedNodes(worldId,"Book")
