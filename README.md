@@ -38,9 +38,11 @@ Cloud sync setup and conflict behavior: [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md)
 
 ## Novel Studio and offline web app
 
-The Android app now includes a separate **Novel Studio** workspace backed by its own local SQLite database. It creates Universes, Books, Chapters and Scenes; stores scene planning fields and manuscript text; supports focus mode, local autosave, manual scene checkpoints, plain-text scene export, and portable Fortelling JSON project export/import. Existing Ink & Quill libraries remain untouched by the new store.
+The Android app includes a separate **Novel Studio** workspace backed by its own local SQLite database. It creates Universes, Series, Novels, Short Stories, Chapters and Scenes. Stories stay in the overall world library and can optionally belong to a series, connect to another book, or both. Series banners expand/collapse their cover-card collections; individual novels and short stories have editable covers. The manuscript editor supports full basic formatting, planning notes, autosave, checkpoints, word counts and five open-license typefaces. Project JSON backup/import includes series and side-story relationships. Existing Ink & Quill libraries remain untouched by the new store.
 
-A responsive offline-capable web/PWA client is in `web/`. It uses IndexedDB for local persistence and includes manuscript outline/editor, browser rich-text controls, focus mode, Story Bible entries, timelines, text-card boards, writing goals/logs, and JSON project import/export.
+A responsive web/PWA client is in `web/`. It uses IndexedDB for local persistence and includes the same expandable series and cover-based story library, standalone and connected side stories, rich-text manuscript editing, image insertion, Story Bible entries, timelines, text-card boards, writing goals/logs, and JSON project import/export.
+
+Writing Studio guide: [docs/WRITING_STUDIO.md](docs/WRITING_STUDIO.md).
 
 Run the web client locally:
 
