@@ -71,6 +71,8 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var connectedMenuExpanded by remember{mutableStateOf(false)}
     val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString()}}
     val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString()}}
+    val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString()}}
+    val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString()}}
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
@@ -225,25 +227,69 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }
         }
     }
+    if(showSeriesCreate){
+        AlertDialog(
+            onDismissRequest={showSeriesCreate=false},
+            title={Text("New series")},
+            text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+                OutlinedTextField(seriesTitle,{seriesTitle=it},label={Text("Series name")},singleLine=true)
+                OutlinedButton(onClick={bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
+                    Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text(if(seriesBanner.isBlank())"Choose banner image" else "Change banner image")
+                }
+            }},
+            confirmButton={TextButton(onClick={if(seriesTitle.isNotBlank()){store.createSeries(worldId,seriesTitle,seriesBanner);refresh++;showSeriesCreate=false}}){Text("Create series")}},
+            dismissButton={TextButton(onClick={showSeriesCreate=false}){Text("Cancel")}}
+        )
+    }
     if(showCreate){
         AlertDialog(
             onDismissRequest={showCreate=false},
-            title={Text(when(level){NovelLevel.WORLDS->"New universe";NovelLevel.BOOKS->"New book";NovelLevel.CHAPTERS->"New chapter";else->"New scene"})},
+            title={Text(when(level){NovelLevel.WORLDS->"New universe";NovelLevel.BOOKS->if(storyType=="SHORT_STORY")"New short story" else "New novel";NovelLevel.CHAPTERS->"New chapter";else->"New scene"})},
             text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 OutlinedTextField(newTitle,{newTitle=it},label={Text("Name")},singleLine=true)
                 if(level==NovelLevel.WORLDS)OutlinedTextField(extra,{extra=it},label={Text("Description")})
+                if(level==NovelLevel.BOOKS){
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        FilterChip(selected=storyType=="NOVEL",onClick={storyType="NOVEL"},label={Text("Novel")})
+                        FilterChip(selected=storyType=="SHORT_STORY",onClick={storyType="SHORT_STORY"},label={Text("Short story")})
+                    }
+                    Box{
+                        OutlinedButton(onClick={seriesMenuExpanded=true},modifier=Modifier.fillMaxWidth()){
+                            Text("Series: ${series.firstOrNull{it.optString("id")==selectedSeriesId}?.optString("title")?: "Standalone"}")
+                        }
+                        DropdownMenu(expanded=seriesMenuExpanded,onDismissRequest={seriesMenuExpanded=false}){
+                            DropdownMenuItem(text={Text("Standalone · no series")},onClick={selectedSeriesId="";seriesMenuExpanded=false})
+                            series.forEach{ser->DropdownMenuItem(text={Text(ser.optString("title"))},onClick={selectedSeriesId=ser.optString("id");seriesMenuExpanded=false})}
+                        }
+                    }
+                    Box{
+                        OutlinedButton(onClick={connectedMenuExpanded=true},modifier=Modifier.fillMaxWidth()){
+                            Text("Connected to: ${nodes.firstOrNull{it.id==connectedBookId}?.title?: "No book"}")
+                        }
+                        DropdownMenu(expanded=connectedMenuExpanded,onDismissRequest={connectedMenuExpanded=false}){
+                            DropdownMenuItem(text={Text("No connected book")},onClick={connectedBookId="";connectedMenuExpanded=false})
+                            nodes.filter{it.id!=bookId}.forEach{other->DropdownMenuItem(text={Text(other.title)},onClick={
+                                connectedBookId=other.id;connectedMenuExpanded=false
+                                if(selectedSeriesId.isBlank())selectedSeriesId=runCatching{JSONObject(other.metadata).optString("series_id")}.getOrDefault("")
+                            })}
+                        }
+                    }
+                    OutlinedButton(onClick={coverPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
+                        Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text(if(coverUri.isBlank())"Choose cover artwork" else "Change cover artwork")
+                    }
+                }
                 if(level==NovelLevel.CHAPTERS)OutlinedTextField(extra,{extra=it},label={Text("Custom status label")})
             }},
             confirmButton={TextButton(onClick={
                 if(newTitle.isNotBlank()){
                     when(level){
                         NovelLevel.WORLDS->{worldId=store.createUniverse(newTitle,description=extra);parentTitle=newTitle;level=NovelLevel.BOOKS}
-                        NovelLevel.BOOKS->store.createBook(worldId,newTitle)
+                        NovelLevel.BOOKS->store.createBook(worldId,newTitle,storyType=storyType,seriesId=selectedSeriesId.takeIf{it.isNotBlank()},connectedBookId=connectedBookId.takeIf{it.isNotBlank()},coverUri=coverUri)
                         NovelLevel.CHAPTERS->store.createChapter(bookId,newTitle,extra)
                         NovelLevel.SCENES->store.createScene(chapterId,newTitle)
                         else->Unit
                     }
-                    refresh++;showCreate=false
+                    refresh++;showCreate=false;storyType="NOVEL";selectedSeriesId="";connectedBookId="";coverUri=""
                 }
             }){Text("Create")}},
             dismissButton={TextButton(onClick={showCreate=false}){Text("Cancel")}}
