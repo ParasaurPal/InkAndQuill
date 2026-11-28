@@ -167,8 +167,8 @@ internal val fantasySpecsPartD: List<TemplateSpec> = listOf(
     paritySpec("quest-brief", "Quest & Adventure Brief", "Plot & Writing", "Quest",
         "A playable or narrative quest plan with objectives, stakes, steps, branching outcomes and rewards.",
         listOf(
-            "Quest premise" to parityFields("Quest premise", "Quest Name", "Quest Type", "Quest Giver and Key Participants", "Hook and Initial Situation", "Primary Objective", "Stakes, Deadline and Failure Cost"),
-            "Progress & obstacles" to parityFields("Progress & obstacles", "Required Steps and Milestones", "Locations and Travel Route", "Clues, Leads and Required Knowledge", "Opposition, Hazards and Complications", "Choices and Branching Paths", "Resources, Allies and Requirements"),
-            "Outcome & continuity" to parityFields("Outcome & continuity", "Possible Endings and Consequences", "Rewards, Costs and Discoveries", "Related Character and Story Arcs", "Timeline Events and Scene Links", "Open Threads and Follow-up Hooks", "Quest Status")
+            Pair("Quest premise", parityFields("Quest premise", "Quest Name", "Quest Type", "Quest Giver and Key Participants", "Hook and Initial Situation", "Primary Objective", "Stakes, Deadline and Failure Cost")),
+            Pair("Progress and obstacles", parityFields("Progress and obstacles", "Required Steps and Milestones", "Locations and Travel Route", "Clues, Leads and Required Knowledge", "Opposition, Hazards and Complications", "Choices and Branching Paths", "Resources, Allies and Requirements")),
+            Pair("Outcome and continuity", parityFields("Outcome and continuity", "Possible Endings and Consequences", "Rewards, Costs and Discoveries", "Related Character and Story Arcs", "Timeline Events and Scene Links", "Open Threads and Follow-up Hooks", "Quest Status"))
         ))
 )
