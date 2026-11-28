@@ -220,7 +220,7 @@ fun WorldEncyclopediaScreen(
             title = { Text("Create ${template.title} article") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Choose where this article belongs. It can be moved later by editing its parent.")
+                    Text("Choose the world or an existing article that should contain this entry.")
                     Box {
                         OutlinedButton(onClick = { parentMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                             Text("Filed under: ${parentChoices.firstOrNull { it.id == selectedParentId }?.title ?: world.title}")
