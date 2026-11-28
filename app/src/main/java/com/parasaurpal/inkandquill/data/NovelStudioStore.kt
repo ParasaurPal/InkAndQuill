@@ -300,7 +300,7 @@ class NovelStudioStore(context: Context) :
     }
 
     fun exportJson():String {
-        val root=JSONObject().put("format","fortelling").put("schema_version",1).put("exported_at",now())
+        val root=JSONObject().put("format","fortelling").put("schema_version",2).put("exported_at",now())
         CONTENT_TABLES.forEach { table ->
             val rows=JSONArray()
             readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){
@@ -323,7 +323,7 @@ class NovelStudioStore(context: Context) :
     fun importJson(raw:String) {
         val root=JSONObject(raw)
         require(root.optString("format")=="fortelling") { "Not a Fortelling project archive." }
-        require(root.optInt("schema_version",0) in 1..1) { "Unsupported Fortelling archive version." }
+        require(root.optInt("schema_version",0) in 1..2) { "Unsupported Fortelling archive version." }
         val db=writableDatabase
         db.beginTransaction()
         try {
@@ -351,7 +351,7 @@ class NovelStudioStore(context: Context) :
 
     private fun columnsFor(table:String):Set<String> = when(table) {
         "universes"->setOf("id","title","author","description","settings_json","created_at","updated_at")
-        "books"->setOf("id","universe_id","title","custom_label","position","created_at","updated_at")
+        "books"->setOf("id","universe_id","title","custom_label","position","story_type","series_id","connected_book_id","cover_uri","created_at","updated_at")
         "chapters"->setOf("id","book_id","title","position","status_key","custom_status_text","manual_status_override","created_at","updated_at")
         "scenes"->setOf("id","chapter_id","title","position","summary","goal","conflict","pov_character_id","sensory_details","hook","custom_fields_json","created_at","updated_at")
         "documents"->setOf("id","scene_id","format_version","content_json","plain_text","word_count","updated_at")
