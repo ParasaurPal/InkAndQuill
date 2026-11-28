@@ -98,7 +98,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         if(sidebarContextId.isBlank()) emptyList() else store.readableDatabase.rawQuery(
             "SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.target_type='entity' AND l.target_id=e.id WHERE l.source_type=? AND l.source_id=? UNION SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.source_type='entity' AND l.source_id=e.id WHERE l.target_type=? AND l.target_id=? ORDER BY 3",
             arrayOf(sidebarContextType,sidebarContextId,sidebarContextType,sidebarContextId)
-        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)) .put("description",c.getString(3)).put("fields",c.getString(4)))}}
     }
     val sidebarSearchResults=remember(worldId,sidebarSearch,refresh,sidebarOpen){
         if(sidebarSearch.isBlank()) emptyList() else store.readableDatabase.rawQuery(
