@@ -123,6 +123,10 @@ fun WorldModulesScreen(
             }
         }
 
+        ModuleSection("Encyclopedia") {
+            ModuleRow("World Encyclopedia", Icons.Default.LibraryBooks) { onOpenMode("Encyclopedia") }
+        }
+
         ModuleSection("Story") {
             ModuleRow("Timeline", Icons.Default.Timeline) { onOpenMode("Timeline") }
         }

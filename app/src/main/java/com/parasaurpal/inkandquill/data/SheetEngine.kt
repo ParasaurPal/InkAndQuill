@@ -376,6 +376,17 @@ object SheetEngine {
                                     append("</p>")
                                 }
                             }
+                            "Relationship" -> {
+                                val links = parseRelationshipIds(raw).mapNotNull { id ->
+                                    recordResolver(id)?.let { related ->
+                                        "<a href=\"inkquill://record/${Uri.encode(id)}\">${TextUtils.htmlEncode(related.title)}</a>"
+                                    }
+                                }
+                                if (links.isNotEmpty()) {
+                                    append("<p><strong>").append(TextUtils.htmlEncode(f.name)).append(":</strong> ")
+                                    append(links.joinToString(", ")).append("</p>")
+                                }
+                            }
                             "Table" -> {
                                 val t = parseTable(raw, f.hint)
                                 if (t.rows.isNotEmpty()) {

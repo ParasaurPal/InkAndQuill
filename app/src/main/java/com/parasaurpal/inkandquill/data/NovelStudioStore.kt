@@ -42,11 +42,11 @@ data class StudioEntity(
 )
 
 class NovelStudioStore(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "novel_studio.db", null, 1) {
+    SQLiteOpenHelper(context.applicationContext, "novel_studio.db", null, 2) {
 
     companion object {
         private val CONTENT_TABLES = listOf(
-            "universes", "books", "chapters", "scenes", "documents",
+            "universes", "series", "books", "chapters", "scenes", "documents",
             "annotations", "entities", "entity_links", "tags", "entity_tags",
             "attachments", "entity_categories", "category_fields", "embedded_tables",
             "table_columns", "table_rows", "table_cells", "timelines", "moments",
@@ -67,7 +67,8 @@ class NovelStudioStore(context: Context) :
     override fun onCreate(db: SQLiteDatabase) {
         val ddl = listOf(
             """CREATE TABLE universes(id TEXT PRIMARY KEY,title TEXT NOT NULL,author TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',settings_json TEXT NOT NULL DEFAULT '{}',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
-            """CREATE TABLE books(id TEXT PRIMARY KEY,universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,title TEXT NOT NULL,custom_label TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
+            """CREATE TABLE series(id TEXT PRIMARY KEY,universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,title TEXT NOT NULL,banner_uri TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
+            """CREATE TABLE books(id TEXT PRIMARY KEY,universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,title TEXT NOT NULL,custom_label TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL,story_type TEXT NOT NULL DEFAULT 'NOVEL',series_id TEXT REFERENCES series(id) ON DELETE SET NULL,connected_book_id TEXT REFERENCES books(id) ON DELETE SET NULL,cover_uri TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
             """CREATE TABLE chapters(id TEXT PRIMARY KEY,book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,title TEXT NOT NULL,position INTEGER NOT NULL,status_key TEXT NOT NULL DEFAULT 'NOT_STARTED',custom_status_text TEXT NOT NULL DEFAULT '',manual_status_override INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
             """CREATE TABLE scenes(id TEXT PRIMARY KEY,chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,title TEXT NOT NULL,position INTEGER NOT NULL,summary TEXT NOT NULL DEFAULT '',goal TEXT NOT NULL DEFAULT '',conflict TEXT NOT NULL DEFAULT '',pov_character_id TEXT,sensory_details TEXT NOT NULL DEFAULT '',hook TEXT NOT NULL DEFAULT '',custom_fields_json TEXT NOT NULL DEFAULT '{}',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)""",
             """CREATE TABLE documents(id TEXT PRIMARY KEY,scene_id TEXT NOT NULL UNIQUE REFERENCES scenes(id) ON DELETE CASCADE,format_version INTEGER NOT NULL DEFAULT 1,content_json TEXT NOT NULL DEFAULT '{\"blocks\":[]}',plain_text TEXT NOT NULL DEFAULT '',word_count INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL)""",
@@ -97,6 +98,7 @@ class NovelStudioStore(context: Context) :
             """CREATE TABLE prompt_entries(id TEXT PRIMARY KEY,universe_id TEXT REFERENCES universes(id) ON DELETE CASCADE,prompt_text TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'user',created_at INTEGER NOT NULL)""",
             """CREATE TABLE version_snapshots(id TEXT PRIMARY KEY,owner_type TEXT NOT NULL,owner_id TEXT NOT NULL,label TEXT NOT NULL DEFAULT '',content_json TEXT NOT NULL,created_at INTEGER NOT NULL,automatic INTEGER NOT NULL DEFAULT 0)""",
             "CREATE INDEX books_universe_order ON books(universe_id,position)",
+            "CREATE INDEX series_universe_order ON series(universe_id,position)",
             "CREATE INDEX chapters_book_order ON chapters(book_id,position)",
             "CREATE INDEX scenes_chapter_order ON scenes(chapter_id,position)",
             "CREATE INDEX entities_universe_type ON entities(universe_id,entity_type)",
@@ -113,7 +115,14 @@ class NovelStudioStore(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         // Schema changes are additive and must never destroy user-authored work.
-        if (oldVersion < 1) onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS series(id TEXT PRIMARY KEY,universe_id TEXT NOT NULL REFERENCES universes(id) ON DELETE CASCADE,title TEXT NOT NULL,banner_uri TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)")
+            db.execSQL("ALTER TABLE books ADD COLUMN story_type TEXT NOT NULL DEFAULT 'NOVEL'")
+            db.execSQL("ALTER TABLE books ADD COLUMN series_id TEXT REFERENCES series(id) ON DELETE SET NULL")
+            db.execSQL("ALTER TABLE books ADD COLUMN connected_book_id TEXT REFERENCES books(id) ON DELETE SET NULL")
+            db.execSQL("ALTER TABLE books ADD COLUMN cover_uri TEXT NOT NULL DEFAULT ''")
+            db.execSQL("CREATE INDEX IF NOT EXISTS series_universe_order ON series(universe_id,position)")
+        }
     }
 
     fun createUniverse(title: String, author: String = "", description: String = ""): String {
@@ -127,8 +136,44 @@ class NovelStudioStore(context: Context) :
         return key
     }
 
-    fun createBook(universeId: String, title: String, customLabel: String = ""): String =
-        createOrderedChild("books", "universe_id", universeId, title, customLabel)
+    fun createBook(
+        universeId: String, title: String, customLabel: String = "",
+        storyType: String = "NOVEL", seriesId: String? = null,
+        connectedBookId: String? = null, coverUri: String = ""
+    ): String {
+        require(storyType in setOf("NOVEL", "SHORT_STORY"))
+        val key=id(); val time=now(); val position=nextPosition("books","universe_id",universeId)
+        val v=ContentValues().apply {
+            put("id",key);put("universe_id",universeId);put("title",title);put("custom_label",customLabel)
+            put("position",position);put("story_type",storyType);put("series_id",seriesId)
+            put("connected_book_id",connectedBookId);put("cover_uri",coverUri);put("created_at",time);put("updated_at",time)
+        }
+        writableDatabase.insertOrThrow("books",null,v);return key
+    }
+
+    fun createSeries(universeId:String,title:String,bannerUri:String=""):String {
+        require(title.isNotBlank())
+        val key=id();val time=now()
+        val position=readableDatabase.rawQuery("SELECT COALESCE(MAX(position),0)+1024 FROM series WHERE universe_id=?",arrayOf(universeId)).use{if(it.moveToFirst())it.getLong(0)else 1024L}
+        val v=ContentValues().apply{put("id",key);put("universe_id",universeId);put("title",title);put("banner_uri",bannerUri);put("position",position);put("created_at",time);put("updated_at",time)}
+        writableDatabase.insertOrThrow("series",null,v);return key
+    }
+
+    fun updateSeriesBanner(seriesId:String,bannerUri:String) {
+        val v=ContentValues().apply{put("banner_uri",bannerUri);put("updated_at",now())}
+        writableDatabase.update("series",v,"id=?",arrayOf(seriesId))
+    }
+
+    fun series(universeId:String):List<JSONObject> =
+        readableDatabase.rawQuery("SELECT id,title,banner_uri,position FROM series WHERE universe_id=? ORDER BY position",arrayOf(universeId)).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("title",c.getString(1)).put("banner_uri",c.getString(2)).put("position",c.getLong(3)))}}
+
+    fun bookMetadata(bookId:String):JSONObject =
+        readableDatabase.rawQuery("SELECT story_type,series_id,connected_book_id,cover_uri FROM books WHERE id=?",arrayOf(bookId)).use{c->if(c.moveToFirst())JSONObject().put("story_type",c.getString(0)).put("series_id",c.getString(1)).put("connected_book_id",c.getString(2)).put("cover_uri",c.getString(3)) else JSONObject()}
+
+    fun updateBookCover(bookId:String,coverUri:String) {
+        val v=ContentValues().apply{put("cover_uri",coverUri);put("updated_at",now())}
+        writableDatabase.update("books",v,"id=?",arrayOf(bookId))
+    }
 
     fun createChapter(bookId: String, title: String, customStatus: String = ""): String {
         val key=id(); val time=now()
@@ -224,7 +269,7 @@ class NovelStudioStore(context: Context) :
     fun orderedNodes(parentId:String,kind:String):List<StudioNode> {
         val (table,parentColumn)=when(kind){"Book"->"books" to "universe_id";"Chapter"->"chapters" to "book_id";"Scene"->"scenes" to "chapter_id";else->throw IllegalArgumentException("Unknown manuscript node type")}
         val sql=when(kind) {
-            "Book"->"SELECT id,universe_id,NULL, 'Book',title,'' ,position,'','', '{}' ,updated_at FROM books WHERE universe_id=? ORDER BY position"
+            "Book"->"SELECT id,universe_id,NULL, 'Book',title,'' ,position,'','', json_object('story_type',story_type,'series_id',COALESCE(series_id,''),'connected_book_id',COALESCE(connected_book_id,''),'cover_uri',cover_uri),updated_at FROM books WHERE universe_id=? ORDER BY position"
             "Chapter"->"SELECT id,'',book_id,'Chapter',title,'',position,status_key,custom_status_text,'{}',updated_at FROM chapters WHERE book_id=? ORDER BY position"
             else->"SELECT id,'',chapter_id,'Scene',title,'',position,'','',json_object('summary',summary,'goal',goal,'conflict',conflict,'hook',hook),updated_at FROM scenes WHERE chapter_id=? ORDER BY position"
         }
@@ -255,7 +300,7 @@ class NovelStudioStore(context: Context) :
     }
 
     fun exportJson():String {
-        val root=JSONObject().put("format","fortelling").put("schema_version",1).put("exported_at",now())
+        val root=JSONObject().put("format","fortelling").put("schema_version",2).put("exported_at",now())
         CONTENT_TABLES.forEach { table ->
             val rows=JSONArray()
             readableDatabase.rawQuery("SELECT * FROM $table",null).use{c->while(c.moveToNext()){
@@ -278,7 +323,7 @@ class NovelStudioStore(context: Context) :
     fun importJson(raw:String) {
         val root=JSONObject(raw)
         require(root.optString("format")=="fortelling") { "Not a Fortelling project archive." }
-        require(root.optInt("schema_version",0) in 1..1) { "Unsupported Fortelling archive version." }
+        require(root.optInt("schema_version",0) in 1..2) { "Unsupported Fortelling archive version." }
         val db=writableDatabase
         db.beginTransaction()
         try {
@@ -306,7 +351,7 @@ class NovelStudioStore(context: Context) :
 
     private fun columnsFor(table:String):Set<String> = when(table) {
         "universes"->setOf("id","title","author","description","settings_json","created_at","updated_at")
-        "books"->setOf("id","universe_id","title","custom_label","position","created_at","updated_at")
+        "books"->setOf("id","universe_id","title","custom_label","position","story_type","series_id","connected_book_id","cover_uri","created_at","updated_at")
         "chapters"->setOf("id","book_id","title","position","status_key","custom_status_text","manual_status_override","created_at","updated_at")
         "scenes"->setOf("id","chapter_id","title","position","summary","goal","conflict","pov_character_id","sensory_details","hook","custom_fields_json","created_at","updated_at")
         "documents"->setOf("id","scene_id","format_version","content_json","plain_text","word_count","updated_at")

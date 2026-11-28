@@ -6,6 +6,7 @@ import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -382,7 +383,17 @@ fun ReadingModeScreen(
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = false
                         isVerticalScrollBarEnabled = true
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                val uri = request?.url ?: return false
+                                if (uri.scheme == "inkquill" && uri.host == "record") {
+                                    val targetId = uri.lastPathSegment.orEmpty()
+                                    if (targetId.isNotBlank()) db.get(targetId)?.let(onOpenRecord)
+                                    return true
+                                }
+                                return false
+                            }
+                        }
                         addJavascriptInterface(object {
                             @JavascriptInterface
                             fun onScroll(ratio: Float) {
@@ -679,16 +690,38 @@ private fun buildReaderDocumentHtml(
     val sb = StringBuilder()
 
     fun appendRecordProseOrSheet(rec: InkRecord) {
-        val bodyHtml = rec.body.trim()
+        val bodyHtml = rec.body.trim().takeIf { DocumentExport.plain(it).isNotBlank() }.orEmpty()
         val sheetTplId = db.sheetTemplateId(rec.id)
-        if (bodyHtml.isNotBlank() && DocumentExport.plain(bodyHtml).isNotBlank()) {
-            sb.append(bodyHtml)
-        } else if (sheetTplId.isNotBlank()) {
+        val compiledSheet = if (sheetTplId.isNotBlank()) {
             val fields = db.templateFields(sheetTplId)
             val sections = db.templateSections(sheetTplId)
             val vals = db.sheetValues(rec.id)
-            val compiled = SheetEngine.compileToHtml(fields, sections, vals, "") { db.get(it) }
-            if (compiled.isNotBlank()) sb.append(compiled)
+            SheetEngine.compileToHtml(fields, sections, vals, "") { db.get(it) }
+        } else ""
+        if (bodyHtml.isNotBlank()) sb.append(bodyHtml)
+        if (compiledSheet.isNotBlank()) {
+            if (bodyHtml.isNotBlank()) sb.append("<hr/>")
+            sb.append(compiledSheet)
+        }
+        if (sheetTplId.isNotBlank()) {
+            val parentArticle = rec.parentId.takeIf { it.isNotBlank() }?.let { db.get(it) }
+                ?.takeIf { db.sheetTemplateId(it.id).isNotBlank() }
+            if (parentArticle != null) {
+                sb.append("<p class=\"wiki-parent\">Filed under: <a href=\"inkquill://record/")
+                    .append(Uri.encode(parentArticle.id)).append("\">")
+                    .append(escapeHtml(parentArticle.title)).append("</a></p>")
+            }
+            val childArticles = db.descendants(rec.id).filter {
+                it.parentId == rec.id && db.sheetTemplateId(it.id).isNotBlank()
+            }
+            if (childArticles.isNotEmpty()) {
+                sb.append("<section class=\"wiki-child-articles\"><h2>Articles in this entry</h2><ul>")
+                childArticles.forEach { child ->
+                    sb.append("<li><a href=\"inkquill://record/").append(Uri.encode(child.id))
+                        .append("\">").append(escapeHtml(child.title)).append("</a></li>")
+                }
+                sb.append("</ul></section>")
+            }
         }
     }
 

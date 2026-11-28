@@ -23,6 +23,10 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 - Comprehensive portable JSON backup/restore including attachments and board images; password-encrypted cloud sync through Android's Storage Access Framework with WorkManager retries and explicit conflict choices; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; PDF, text, Markdown, HTML, DOCX, and EPUB import.
 - Android automatic device backup is disabled to avoid unintended unencrypted cloud copies. User-initiated cloud backup is encrypted locally and saved to a provider the user selects.
 
+## Campfire Write replacement scope
+
+The full module-by-module feature parity plan, including template coverage and completion criteria, is tracked in [docs/CAMPFIRE_PARITY.md](docs/CAMPFIRE_PARITY.md). This is an implementation target, not a claim that every module is complete yet.
+
 ## Build
 JDK 17 and Gradle 8.11.1:
 `gradle :app:assembleDebug`
@@ -38,9 +42,11 @@ Cloud sync setup and conflict behavior: [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md)
 
 ## Novel Studio and offline web app
 
-The Android app now includes a separate **Novel Studio** workspace backed by its own local SQLite database. It creates Universes, Books, Chapters and Scenes; stores scene planning fields and manuscript text; supports focus mode, local autosave, manual scene checkpoints, plain-text scene export, and portable Fortelling JSON project export/import. Existing Ink & Quill libraries remain untouched by the new store.
+The Android app includes a separate **Novel Studio** workspace backed by its own local SQLite database. It creates Universes, Series, Novels, Short Stories, Chapters and Scenes. Stories stay in the overall world library and can optionally belong to a series, connect to another book, or both. Series banners expand/collapse their cover-card collections; individual novels and short stories have editable covers. The manuscript editor supports full basic formatting, planning notes, autosave, checkpoints, word counts and five open-license typefaces. Project JSON backup/import includes series and side-story relationships. Existing Ink & Quill libraries remain untouched by the new store.
 
-A responsive offline-capable web/PWA client is in `web/`. It uses IndexedDB for local persistence and includes manuscript outline/editor, browser rich-text controls, focus mode, Story Bible entries, timelines, text-card boards, writing goals/logs, and JSON project import/export.
+A responsive web/PWA client is in `web/`. It uses IndexedDB for local persistence and includes the same expandable series and cover-based story library, standalone and connected side stories, rich-text manuscript editing, image insertion, Story Bible entries, timelines, text-card boards, writing goals/logs, and JSON project import/export.
+
+Writing Studio guide: [docs/WRITING_STUDIO.md](docs/WRITING_STUDIO.md).
 
 Run the web client locally:
 
@@ -61,6 +67,10 @@ The web client is a PWA and can be installed from a supported browser. It stores
 
 **Implementation status:** this is an active implementation. The new schema establishes the wider relational feature model, but advanced canvas drawing/family-tree interactions, full rich-text document parity, DOCX/EPUB publishing, multi-user collaboration, public wiki hosting, and a native desktop package are not yet complete. The product remains no-AI and local-first.
 
+
+### World Encyclopedia
+
+The offline World Encyclopedia is available in both the web/PWA and native Android clients. It provides 49 specialist wiki article types plus custom templates, nested custom sections, structured article editing, category/search, tags, parent/child articles, cross-references, image/gallery fields, table fields, attachments, and a wiki-style reader. Android includes the same 49 encyclopedia subjects alongside its existing writing templates. See [World Encyclopedia documentation](docs/WORLD_ENCYCLOPEDIA.md) for navigation, storage behavior, and current boundaries.
 
 ### Expanded offline studio modules
 
