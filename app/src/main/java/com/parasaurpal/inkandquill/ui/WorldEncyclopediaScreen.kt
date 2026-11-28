@@ -45,6 +45,11 @@ fun WorldEncyclopediaScreen(
     var tab by remember { mutableStateOf("Articles") }
     var category by remember { mutableStateOf("All") }
     var query by remember { mutableStateOf("") }
+    var createTemplate by remember { mutableStateOf<InkRecord?>(null) }
+    var selectedParentId by remember(world.id) { mutableStateOf(world.id) }
+    var parentMenuExpanded by remember { mutableStateOf(false) }
+    val parentChoices = remember(world.id, articles) { listOf(world) + articles }
+    fun requestTemplate(template: InkRecord) { selectedParentId = world.id; createTemplate = template }
 
     val templates = remember(refresh) {
         db.all().filter { it.kind == "Template" }
@@ -127,14 +132,7 @@ fun WorldEncyclopediaScreen(
                     val fields = remember(template.id, refresh) { db.templateFields(template.id) }
                     val sections = remember(template.id, refresh) { db.templateSections(template.id) }
                     ElevatedCard(
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            val record = db.createRecordFromTemplate(
-                                template.id,
-                                parentId = world.id,
-                                scope = "World"
-                            )
-                            onEditArticle(record)
-                        },
+                        modifier = Modifier.fillMaxWidth().clickable { requestTemplate(template) },
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -143,10 +141,7 @@ fun WorldEncyclopediaScreen(
                                     Text(template.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                                     Text(template.tags.ifBlank { "Other" } + " · " + template.scope, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                                 }
-                                FilledTonalIconButton(onClick = {
-                                    val record = db.createRecordFromTemplate(template.id, parentId = world.id, scope = "World")
-                                    onEditArticle(record)
-                                }) {
+                                FilledTonalIconButton(onClick = { requestTemplate(template) }) {
                                     Icon(Icons.Default.Add, contentDescription = "Create ${template.title} article")
                                 }
                             }
@@ -214,6 +209,48 @@ fun WorldEncyclopediaScreen(
                 }
             }
         }
+    }
+
+    createTemplate?.let { template ->
+        AlertDialog(
+            onDismissRequest = { createTemplate = null; parentMenuExpanded = false },
+            title = { Text("Create ${template.title} article") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Choose where this article belongs. It can be moved later by editing its parent.")
+                    Box {
+                        OutlinedButton(onClick = { parentMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Filed under: ${parentChoices.firstOrNull { it.id == selectedParentId }?.title ?: world.title}")
+                        }
+                        DropdownMenu(
+                            expanded = parentMenuExpanded,
+                            onDismissRequest = { parentMenuExpanded = false }
+                        ) {
+                            parentChoices.forEach { parent ->
+                                DropdownMenuItem(
+                                    text = { Text(if (parent.id == world.id) "${parent.title} · World" else parent.title) },
+                                    onClick = { selectedParentId = parent.id; parentMenuExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val record = db.createRecordFromTemplate(
+                        template.id,
+                        parentId = selectedParentId,
+                        scope = "World"
+                    )
+                    createTemplate = null
+                    onEditArticle(record)
+                }) { Text("Create article") }
+            },
+            dismissButton = {
+                TextButton(onClick = { createTemplate = null; parentMenuExpanded = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
