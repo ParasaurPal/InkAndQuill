@@ -62,12 +62,21 @@ function resolveWikiTemplate(rows:Row[],id:string):WikiTemplate|undefined{
  return{id:"custom-"+record.id,title:record.title,category:"Custom",description:record.body||"A user-created article template.",sections};
 }
 
-function renderEntityFields(e:Row,rows:Row[]=[]){const values=e.metadata?.wikiFields||e.metadata?.fields||{};const t=resolveWikiTemplate(rows,String(e.metadata?.templateId||""));const fields=t?.sections.flatMap(section=>section.fields.map(field=>({label:field.label,value:values[field.id]}))).filter(x=>x.value!==undefined&&x.value!==""&&x.value!==false)||Object.entries(values).map(([label,value])=>({label,value}));return fields.slice(0,5).map(x=>'<small><b>'+safe(x.label)+':</b> '+safe(Array.isArray(x.value)?x.value.join(", "):String(x.value)).slice(0,180)+'</small>').join("")+(fields.length>5?'<small>+'+(fields.length-5)+' more fields</small>':"")}
+function renderEntityFields(e:Row,rows:Row[]=[]){
+ const values=e.metadata?.wikiFields||e.metadata?.fields||{},t=resolveWikiTemplate(rows,String(e.metadata?.templateId||""));
+ const fields=t?.sections.flatMap(section=>section.fields.map(field=>({label:field.label,value:values[field.id],type:field.type}))).filter(x=>x.value!==undefined&&x.value!==""&&x.value!==false)||Object.entries(values).map(([label,value])=>({label,value,type:"text"}));
+ return fields.slice(0,5).map(x=>{
+  if(x.type==="image"&&typeof x.value==="string")return '<img class="wiki-card-image" src="'+safe(x.value)+'" alt="'+safe(x.label)+'">';
+  if(x.type==="gallery"&&Array.isArray(x.value))return '<div class="wiki-card-gallery">'+x.value.slice(0,3).map((url:string)=>'<img class="wiki-card-image" src="'+safe(url)+'" alt="'+safe(x.label)+'">').join("")+'</div>';
+  const value=Array.isArray(x.value)?x.value.join(", "):String(x.value);
+  return '<small><b>'+safe(x.label)+':</b> '+safe(value).slice(0,180)+'</small>';
+ }).join("")+(fields.length>5?'<small>+'+(fields.length-5)+' more fields</small>':"");
+}
 
 
 function wikiControl(field:WikiField,value:any,rows:Row[]=[]):string{
  const v=Array.isArray(value)?value.join(", "):String(value??""),n="wiki-"+field.id,req=field.required?" required":"";
- if(field.type==="textarea"||field.type==="table")return '<label class="wiki-field">'+safe(field.label)+'<textarea name="'+n+'" rows="'+(field.type==="table"?4:3)+'"'+req+'>'+safe(v)+'</textarea></label>';
+ if(field.type==="textarea"||field.type==="table")return '<label class="wiki-field">'+safe(field.label)+'<textarea name="'+n+'" rows="'+(field.type==="table"?5:3)+'" placeholder="'+(field.type==="table"?"One row per line; separate columns with | (pipe)":"")+'"'+req+'>'+safe(v)+'</textarea>'+(field.type==="table"?'<small class="wiki-hint">Example: Name | Date | Notes</small>':"")+'</label>';
  if(field.type==="select")return '<label class="wiki-field">'+safe(field.label)+'<select name="'+n+'"'+req+'><option value="">Choose…</option>'+(field.options||[]).map(o=>'<option '+(v===o?"selected":"")+'>'+safe(o)+'</option>').join("")+'</select></label>';
  if(field.type==="checkbox")return '<label class="wiki-check"><input type="checkbox" name="'+n+'" '+(value===true||v==="true"?"checked":"")+'> '+safe(field.label)+'</label>';
  if(field.type==="image"||field.type==="gallery"){const arr=Array.isArray(value)?value:[value];return '<label class="wiki-field">'+safe(field.label)+'<input type="file" accept="image/*" data-wiki-image="'+field.id+'" '+(field.type==="gallery"?"multiple":"")+'><div data-preview="'+field.id+'" class="wiki-image-previews">'+arr.filter(Boolean).map((x:string)=>'<img class="wiki-image-preview" src="'+safe(x)+'">').join("")+'</div></label>'}
@@ -96,7 +105,7 @@ function openWikiArticle(rows:Row[],entry:Row){
   if(field.type==="image")return'<img class="wiki-article-image" src="'+safe(String(value))+'" alt="'+safe(field.label)+'">';
   if(field.type==="gallery")return'<div class="wiki-article-gallery">'+(Array.isArray(value)?value:[]).map((url:string)=>'<img src="'+safe(url)+'" alt="'+safe(field.label)+'">').join("")+'</div>';
   if(field.type==="relation"){const names=String(value).split(",").map(x=>x.trim()).filter(Boolean);return names.map(name=>{const target=rows.find(r=>r.kind==="entity"&&r.title.toLowerCase()===name.toLowerCase());return target?'<button class="wiki-relation-link" data-wiki-related="'+target.id+'">'+safe(name)+'</button>':safe(name)}).join(", ")}
-  return'<div class="wiki-article-value">'+safe(Array.isArray(value)?value.join(", "):String(value))+'</div>';
+  if(field.type==="table"){const rows=String(value).split(/\r?\n/).map(line=>line.split("|").map(cell=>cell.trim())).filter(row=>row.some(cell=>cell));if(rows.length&&rows.some(row=>row.length>1))return '<div class="wiki-table-wrap"><table class="wiki-article-table"><thead><tr>'+rows[0].map(cell=>'<th>'+safe(cell)+'</th>').join("")+'</tr></thead><tbody>'+rows.slice(1).map(row=>'<tr>'+rows[0].map((_,i)=>'<td>'+safe(row[i]||"")+"</td>").join("")+"</tr>").join("")+"</tbody></table></div>";}return'<div class="wiki-article-value">'+safe(Array.isArray(value)?value.join(", "):String(value))+'</div>';
  };
  const sections=template?.sections.map(section=>{const fields=section.fields.map(field=>({field,value:values[field.id]})).filter(x=>x.value!==undefined&&x.value!==""&&x.value!==false);return fields.length?'<section class="wiki-article-section"><h2>'+safe(section.title)+'</h2>'+fields.map(x=>'<div class="wiki-article-field"><h3>'+safe(x.field.label)+'</h3>'+renderValue(x.field,x.value)+'</div>').join("")+'</section>':""}).join("")||'<section class="wiki-article-section"><p>No structured sections have been filled in yet.</p></section>';
  const backlinks=rows.filter(r=>r.kind==="link"&&r.metadata?.targetId===entry.id).map(r=>rows.find(x=>x.id===r.parentId)).filter(Boolean) as Row[];
