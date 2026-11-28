@@ -46,7 +46,7 @@ fun WorldEncyclopediaScreen(
     val articles = remember(world.id, refresh) {
         db.descendants(world.id)
             .filter { db.sheetTemplateId(it.id).isNotBlank() }
-            .sortedBy { it.title.lowercase() }
+            .sortedByDescending { it.updatedAt }
     }
     val categories = remember(templates) {
         listOf("All") + templates.map { it.tags.ifBlank { "Other" } }.distinct().sorted()
@@ -60,7 +60,8 @@ fun WorldEncyclopediaScreen(
         val template = templates.firstOrNull { it.id == db.sheetTemplateId(article.id) }
         (category == "All" || template?.tags?.ifBlank { "Other" } == category) &&
             (query.isBlank() || article.title.contains(query, true) ||
-                article.body.contains(query, true) || article.tags.contains(query, true))
+                article.body.contains(query, true) || article.tags.contains(query, true) ||
+                db.sheetValues(article.id).values.any { it.contains(query, true) })
     }
 
     Column(
@@ -173,11 +174,18 @@ fun WorldEncyclopediaScreen(
                                     Icon(Icons.Default.Edit, contentDescription = "Edit ${article.title}")
                                 }
                             }
+                            val values = remember(article.id, refresh) { db.sheetValues(article.id) }
+                            val fields = remember(article.id, template?.id, refresh) { template?.id?.let { db.templateFields(it) }.orEmpty() }
+                            val completed = fields.mapNotNull { field -> values[field.id]?.takeIf { it.isNotBlank() }?.let { "${field.name}: ${it.replace("\\n", " ").take(90)}" } }
                             if (article.body.isNotBlank()) {
                                 Text(article.body, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            } else if (completed.isNotEmpty()) {
+                                Text(completed.take(2).joinToString(" · "), style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             } else {
-                                Text("Structured article · ${db.sheetValues(article.id).count { it.value.isNotBlank() }} completed fields", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("No details yet · open to start building this article", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            if (article.tags.isNotBlank()) Text(article.tags, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${completed.size} of ${fields.size} fields completed", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { onReadArticle(article) }) {
                                     Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
