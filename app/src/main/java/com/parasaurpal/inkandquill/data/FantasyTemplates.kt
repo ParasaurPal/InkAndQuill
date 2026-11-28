@@ -103,6 +103,7 @@ object FantasyTemplateCatalog {
         "Calendar",
         "Timeline Event",
         "Quest",
-        "Research Note"
+        "Research Note",
+        "Philosophy"
     )
 }
