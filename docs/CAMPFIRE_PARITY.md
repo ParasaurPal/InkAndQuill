@@ -37,7 +37,7 @@ Non-negotiable Ink & Quill requirements remain in force:
 
 ## Template coverage policy
 
-The current native catalog contains 108 built-in templates plus custom-template support. The current web/PWA catalog contains 108 built-ins plus its custom option. Treat these as a starting library, not a finished ceiling.
+The native Android catalog now contains 120 built-in templates plus custom-template support. The web/PWA catalog now contains 120 built-ins plus its custom option. Twelve matching subject-specific templates were added for research sources and annotations, philosophy, character and story arcs, relationship webs, family trees, constructed-language dictionaries, scripts, map atlases, system diagrams, and calendar observances. Treat this as a growing starter library, not a finished ceiling.
 
 The complete starter library must cover:
 - Every module above with multiple subject-specific templates where useful.
