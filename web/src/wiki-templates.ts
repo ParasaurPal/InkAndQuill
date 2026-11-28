@@ -1,6 +1,6 @@
 export type WikiFieldType = "text" | "textarea" | "number" | "date" | "select" | "checkbox" | "tags" | "relation" | "image" | "gallery" | "table";
 export type WikiField = { id: string; label: string; type: WikiFieldType; hint?: string; options?: string[]; required?: boolean; multiple?: boolean };
-export type WikiSection = { id: string; title: string; description?: string; fields: WikiField[] };
+export type WikiSection = { id: string; title: string; description?: string; fields: WikiField[]; subsections?: WikiSection[] };
 export type WikiTemplate = { id: string; title: string; category: string; description: string; sections: WikiSection[] };
 const f = (id: string, label: string, type: WikiFieldType = "textarea", hint = "", options?: string[], required = false): WikiField => ({ id, label, type, ...(hint ? { hint } : {}), ...(options ? { options } : {}), ...(required ? { required } : {}) });
 const s = (id: string, title: string, fields: WikiField[], description = ""): WikiSection => ({ id, title, fields, ...(description ? { description } : {}) });
