@@ -176,6 +176,9 @@ fun WorldEncyclopediaScreen(
                                     Icon(Icons.Default.Edit, contentDescription = "Edit ${article.title}")
                                 }
                             }
+                            articles.firstOrNull { it.id == article.parentId }?.let { parent ->
+                                Text("Filed under: ${parent.title}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             val values = remember(article.id, refresh) { db.sheetValues(article.id) }
                             val fields = remember(article.id, template?.id, refresh) { template?.id?.let { db.templateFields(it) }.orEmpty() }
                             val previewUri = remember(article.id, article.coverUri, refresh) {
