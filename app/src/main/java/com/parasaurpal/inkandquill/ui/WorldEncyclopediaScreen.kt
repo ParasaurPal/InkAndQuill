@@ -1,6 +1,10 @@
 package com.parasaurpal.inkandquill.ui
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -17,6 +21,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -176,6 +183,11 @@ fun WorldEncyclopediaScreen(
                             }
                             val values = remember(article.id, refresh) { db.sheetValues(article.id) }
                             val fields = remember(article.id, template?.id, refresh) { template?.id?.let { db.templateFields(it) }.orEmpty() }
+                            val previewUri = remember(article.id, article.coverUri, refresh) {
+                                db.mediaForRecord(article.id).firstOrNull { it.mimeType.startsWith("image/") }?.uri
+                                    ?.takeIf { it.isNotBlank() } ?: article.coverUri
+                            }
+                            if (previewUri.isNotBlank()) EncyclopediaCoverImage(previewUri)
                             val completed = fields.mapNotNull { field -> values[field.id]?.takeIf { it.isNotBlank() }?.let { "${field.name}: ${it.replace("\n", " ").take(90)}" } }
                             if (article.body.isNotBlank()) {
                                 Text(article.body, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -213,5 +225,29 @@ private fun EmptyEncyclopediaMessage(message: String) {
         shape = RoundedCornerShape(14.dp)
     ) {
         Text(message, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun EncyclopediaCoverImage(uri: String) {
+    val context = LocalContext.current
+    val bitmap = remember(uri) {
+        runCatching {
+            val parsed = Uri.parse(uri)
+            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+            val stream = when (parsed.scheme) {
+                "content", "file" -> context.contentResolver.openInputStream(parsed)
+                else -> java.io.FileInputStream(uri)
+            }
+            stream?.use { BitmapFactory.decodeStream(it, null, options) }
+        }.getOrNull()
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "Article image",
+            modifier = Modifier.fillMaxWidth().heightIn(max = 170.dp),
+            contentScale = ContentScale.Crop
+        )
     }
 }
