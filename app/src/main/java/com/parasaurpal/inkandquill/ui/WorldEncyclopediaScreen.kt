@@ -48,7 +48,6 @@ fun WorldEncyclopediaScreen(
     var createTemplate by remember { mutableStateOf<InkRecord?>(null) }
     var selectedParentId by remember(world.id) { mutableStateOf(world.id) }
     var parentMenuExpanded by remember { mutableStateOf(false) }
-    val parentChoices = remember(world.id, articles) { listOf(world) + articles }
     fun requestTemplate(template: InkRecord) { selectedParentId = world.id; createTemplate = template }
 
     val templates = remember(refresh) {
@@ -60,6 +59,7 @@ fun WorldEncyclopediaScreen(
             .filter { db.sheetTemplateId(it.id).isNotBlank() }
             .sortedByDescending { it.updatedAt }
     }
+    val parentChoices = remember(world.id, articles) { listOf(world) + articles }
     val categories = remember(templates) {
         listOf("All") + templates.map { it.tags.ifBlank { "Other" } }.distinct().sorted()
     }
