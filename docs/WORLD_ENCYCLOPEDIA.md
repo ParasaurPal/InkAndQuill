@@ -4,7 +4,7 @@ Ink & Quill's World Encyclopedia is a private, offline-first wiki for a fantasy 
 
 ## Article model
 
-The encyclopedia contains 49 built-in specialist article types plus a custom-template option. A specialist template defines its own sections and fields; the shared editor and storage layer do not impose one universal schema on every subject. For example, a tree has botanical taxonomy, trunk and canopy architecture, leaves, flowers, fruit, growth, habitat, ecology and human uses. A character has identity, appearance, psychology, biography, abilities, relationships and narrative continuity.
+The encyclopedia now contains 108 built-in, subject-specific templates plus a custom-template option, shared across the native Android and web/PWA catalogs. The library includes specialist encyclopedia subjects as well as character and relationship sheets, worldbuilding records, magic and technology systems, story structures, chapter and scene plans, research references, maps and floor plans. Each template defines its own sections and fields; the shared editor and storage layer do not impose one universal schema on every subject. For example, a tree has botanical taxonomy, trunk and canopy architecture, leaves, flowers, fruit, growth, habitat, ecology and human uses. A character has identity, appearance, psychology, biography, abilities, relationships and narrative continuity.
 
 Built-in subject areas cover people and lineages, flora and fauna, places and polities, belief and myth, societies, language and knowledge, magic and metaphysics, objects and technology, and history and time.
 
@@ -35,7 +35,7 @@ Open a world, choose **Modules → World Encyclopedia**, then switch between **A
 - Read the article in the native reader, which shows prose and structured sheet content, clickable relationship references, and parent/child article navigation.
 - Article cards show a cover/attached image when one is available, plus a short field preview and completion count.
 
-The native catalog contains 108 built-in templates in total, including the 49 specialist encyclopedia subjects and the existing writing/planning templates. New templates are seeded through the existing database template system; existing records and saved field values are preserved.
+Both native Android and web/PWA now expose the same 108 built-in template types, alongside user-created custom templates. Android seeds missing built-ins on database initialization; adding the remaining web catalog entries brings the browser template picker into parity. Existing records and saved field values are preserved.
 
 ## Storage and boundaries
 
