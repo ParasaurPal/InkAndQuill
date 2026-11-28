@@ -140,7 +140,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             actions={
                 if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
                 if(level==NovelLevel.BOOKS){IconButton(onClick={seriesTitle="";seriesBanner="";editingSeriesId="";showSeriesCreate=true}){Icon(Icons.Default.CollectionsBookmark,"New series")}}
-                if(level!=NovelLevel.WORLDS&&level!=NovelLevel.EDITOR){IconButton(onClick={toolsOpen=true}){Icon(Icons.Default.Explore,"Worldbuilding and planning")}}
+                if(level!=NovelLevel.WORLDS){IconButton(onClick={toolsOpen=true}){Icon(Icons.Default.Explore,"Worldbuilding and planning")}}
                 if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
