@@ -101,4 +101,74 @@ internal val fantasySpecsPartD: List<TemplateSpec> = listOf(
             "Traditions & activities" to parityFields("Traditions & activities", "Origin and Historical Meaning", "Stories and Symbolism", "Rituals, Foods and Customs", "Participants and Roles", "Locations and Processions", "Preparation and Prohibitions"),
             "Modern practice" to parityFields("Modern practice", "Regional Variations", "Public / Private Status", "Changes, Bans and Revivals", "Related Timeline Events", "Sources and Notes")
         ))
+    paritySpec("culture-profile", "Culture & Society Profile", "Cultures & Societies", "Culture",
+        "A detailed cultural dossier covering identity, values, institutions, daily life and change.",
+        listOf(
+            "Identity & worldview" to parityFields("Identity & worldview", "Culture Name", "Endonyms and Exonyms", "Region and Environment", "Cultural Emblem / Image", "Origin and Founding Narratives", "Core Values and Worldview"),
+            "People & social life" to parityFields("People & social life", "Population and Communities", "Languages and Dialects", "Family and Kinship Structures", "Social Classes and Roles", "Hospitality and Etiquette", "Daily Life and Life Stages"),
+            "Traditions & change" to parityFields("Traditions & change", "Food, Clothing and Architecture", "Arts, Music and Storytelling", "Rites, Festivals and Holidays", "Religion and Philosophy", "Internal Differences and Subcultures", "Historical Changes and External Influences")
+        )),
+    paritySpec("government-system", "Government & Political System", "Cultures & Societies", "Government",
+        "A practical reference for political institutions, authority, law, administration and civic participation.",
+        listOf(
+            "Structure & legitimacy" to parityFields("Structure & legitimacy", "Government Name", "Government Type", "Constitution / Founding Charter", "Source of Legitimacy", "Head of State and Executive", "Territorial Scope"),
+            "Institutions & law" to parityFields("Institutions & law", "Legislative Bodies and Process", "Courts and Legal Traditions", "Administrative Departments", "Local and Regional Government", "Rights, Duties and Citizenship", "Taxation and Public Finance"),
+            "Power & accountability" to parityFields("Power & accountability", "Elections and Succession", "Political Parties and Factions", "Checks, Oversight and Accountability", "Corruption and Abuse Risks", "Foreign Relations and Treaties", "Reforms and Constitutional Crises")
+        )),
+    paritySpec("military-force", "Military & Armed Forces", "Cultures & Societies", "Military",
+        "An organizational profile for armed forces, command, doctrine, logistics, equipment and campaigns.",
+        listOf(
+            "Identity & command" to parityFields("Identity & command", "Force Name", "Branch and Service Type", "Emblem / Uniform Image", "Founding and Historical Context", "Commander and Chain of Command", "Recruitment and Personnel"),
+            "Doctrine & capability" to parityFields("Doctrine & capability", "Strategic Doctrine and Objectives", "Training and Discipline", "Units, Ranks and Specializations", "Weapons, Armor and Equipment", "Magic / Technology Integration", "Intelligence and Communications"),
+            "Operations & support" to parityFields("Operations & support", "Logistics, Supply and Medical Support", "Bases, Fortifications and Fleet", "Allies and Rival Forces", "Campaigns and Battle History", "Rules of Engagement and Ethics", "Current Readiness and Weaknesses")
+        )),
+    paritySpec("economy-system", "Economy & Trade Network", "Cultures & Societies", "Economy",
+        "A setting-level economic reference covering production, labor, exchange, finance and inequality.",
+        listOf(
+            "Economic identity" to parityFields("Economic identity", "Economy Name", "Economic Model", "Currency and Units of Value", "Geographic Scope", "Historical Development", "Key Economic Institutions"),
+            "Production & exchange" to parityFields("Production & exchange", "Agriculture and Food Systems", "Industries, Crafts and Services", "Natural Resources and Extraction", "Trade Routes and Trading Partners", "Markets, Guilds and Merchant Groups", "Imports, Exports and Supply Chains"),
+            "People & stability" to parityFields("People & stability", "Labor, Wages and Working Conditions", "Wealth Distribution and Social Mobility", "Taxation, Debt and Public Spending", "Banking, Credit and Investment", "Shortages, Inflation and Crises", "Informal Economy and Black Markets")
+        )),
+    paritySpec("cuisine-tradition", "Cuisine & Food Culture", "Cultures & Societies", "Culture",
+        "A culinary reference for ingredients, techniques, meals, etiquette and regional food traditions.",
+        listOf(
+            "Food identity" to parityFields("Food identity", "Cuisine Name", "Associated Culture and Region", "Historical Influences", "Staple Ingredients", "Climate and Seasonal Availability", "Food Image Gallery"),
+            "Methods & dishes" to parityFields("Methods & dishes", "Cooking Methods and Equipment", "Signature Dishes and Recipes", "Preservation and Fermentation", "Meals and Daily Eating Patterns", "Drinks, Sweets and Street Food", "Dietary Restrictions and Taboos"),
+            "Social meaning" to parityFields("Social meaning", "Hospitality and Table Etiquette", "Feasts, Ceremonial Foods and Offerings", "Trade, Scarcity and Food Security", "Regional and Class Differences", "Related Festivals and Traditions", "Sources and Inspiration")
+        )),
+    paritySpec("clothing-tradition", "Clothing & Dress Tradition", "Cultures & Societies", "Culture",
+        "A costume and material-culture record for garments, textiles, adornment, status and practical dress.",
+        listOf(
+            "Dress identity" to parityFields("Dress identity", "Tradition Name", "Associated Culture and Region", "Historical Period", "Reference Gallery", "Climate and Practical Needs", "Materials and Textile Sources"),
+            "Garments & craft" to parityFields("Garments & craft", "Everyday Garments and Layers", "Formal, Ceremonial and Sacred Dress", "Footwear, Headwear and Accessories", "Textile Production and Dyeing", "Construction, Fasteners and Patterns", "Care, Repair and Reuse"),
+            "Meaning & variation" to parityFields("Meaning & variation", "Status, Profession and Rank Signals", "Gender, Age and Life-Stage Conventions", "Mourning, Marriage and Rites of Passage", "Uniforms, Insignia and Regalia", "Regional and Historical Variations", "Cultural Rules and Controversies")
+        )),
+    paritySpec("biome-ecosystem", "Biome & Ecosystem", "Flora & Ecology", "Biome",
+        "An ecological profile of a habitat system, its climate, communities, food webs and environmental pressures.",
+        listOf(
+            "Environment" to parityFields("Environment", "Biome Name", "Biome Type", "Map / Landscape Image", "Geographic Range", "Climate and Seasonal Patterns", "Terrain, Soil and Water"),
+            "Ecological networks" to parityFields("Ecological networks", "Dominant Flora and Vegetation", "Characteristic Fauna", "Food Web and Trophic Levels", "Keystone and Indicator Species", "Pollination and Decomposition", "Migration and Seasonal Cycles"),
+            "Change & stewardship" to parityFields("Change & stewardship", "Natural Disturbances and Succession", "Diseases, Invasive Species and Threats", "Human Use and Settlement Pressure", "Conservation and Management", "Regional Variants and Microhabitats", "Unknowns and Research Notes")
+        )),
+    paritySpec("dungeon-site", "Dungeon & Subterranean Site", "Locations & Realms", "Location",
+        "A layered site dossier for ruins, caverns, vaults and dangerous underground complexes.",
+        listOf(
+            "Site identity" to parityFields("Site identity", "Site Name", "Site Type and Purpose", "Entrance Image / Site Map", "Location and Access Points", "Creator, Builders or Natural Origin", "Age and Historical Context"),
+            "Layout & hazards" to parityFields("Layout & hazards", "Levels, Rooms and Connected Areas", "Passages, Vertical Shafts and Routes", "Traps, Locks and Security Systems", "Environmental Hazards and Conditions", "Defenders, Creatures and Occupants", "Secrets, Hidden Areas and Mechanisms"),
+            "Exploration & lore" to parityFields("Exploration & lore", "Treasures, Relics and Resources", "Puzzles, Clues and Challenges", "Historical Events and Previous Expeditions", "Current Control and Factions", "Known Routes and Exit Conditions", "Related Maps, People and Sources")
+        )),
+    paritySpec("temple-site", "Temple, Shrine & Sacred Site", "Belief & Myth", "Location",
+        "A sacred-place record connecting architecture, ritual use, religious authority and pilgrimage.",
+        listOf(
+            "Sacred identity" to parityFields("Sacred identity", "Site Name", "Sacred Tradition and Patron", "Site Type and Status", "Exterior / Interior Image", "Location and Founding Date", "Origin Story and Consecration"),
+            "Architecture & service" to parityFields("Architecture & service", "Layout, Orientation and Sacred Geometry", "Altars, Relics and Sacred Objects", "Priesthood and Resident Community", "Ritual Schedule and Ceremonies", "Pilgrimage, Access and Restrictions", "Maintenance and Funding"),
+            "Meaning & history" to parityFields("Meaning & history", "Doctrines and Symbolic Meaning", "Miracles, Omens and Reported Events", "Historical Conflicts and Changes", "Related Deities, Figures and Festivals", "Current Condition and Threats", "Sources and Oral Traditions")
+        )),
+    paritySpec("quest-brief", "Quest & Adventure Brief", "Plot & Writing", "Quest",
+        "A playable or narrative quest plan with objectives, stakes, steps, branching outcomes and rewards.",
+        listOf(
+            "Quest premise" to parityFields("Quest premise", "Quest Name", "Quest Type", "Quest Giver and Key Participants", "Hook and Initial Situation", "Primary Objective", "Stakes, Deadline and Failure Cost"),
+            "Progress & obstacles" to parityFields("Progress & obstacles", "Required Steps and Milestones", "Locations and Travel Route", "Clues, Leads and Required Knowledge", "Opposition, Hazards and Complications", "Choices and Branching Paths", "Resources, Allies and Requirements"),
+            "Outcome & continuity" to parityFields("Outcome & continuity", "Possible Endings and Consequences", "Rewards, Costs and Discoveries", "Related Character and Story Arcs", "Timeline Events and Scene Links", "Open Threads and Follow-up Hooks", "Quest Status")
+        ))
 )
