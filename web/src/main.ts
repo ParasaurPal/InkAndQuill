@@ -67,7 +67,7 @@ function allWikiFields(template:WikiTemplate):WikiField[]{const collect=(section
 function renderEntityFields(e:Row,rows:Row[]=[]){
  const values=e.metadata?.wikiFields||e.metadata?.fields||{},t=resolveWikiTemplate(rows,String(e.metadata?.templateId||""));
  const fields=t?allWikiFields(t).map(field=>({label:field.label,value:values[field.id],type:field.type})).filter(x=>x.value!==undefined&&x.value!==""&&x.value!==false):Object.entries(values).map(([label,value])=>({label,value,type:"text"}));
- return fields.slice(0,5).map(x=>{
+ const previewFields=[...fields.filter(x=>x.type==="image"||x.type==="gallery").slice(0,1),...fields.filter(x=>x.type!=="image"&&x.type!=="gallery").slice(0,4)];return previewFields.map(x=>{
   if(x.type==="image"&&typeof x.value==="string")return '<img class="wiki-card-image" src="'+safe(x.value)+'" alt="'+safe(x.label)+'">';
   if(x.type==="gallery"&&Array.isArray(x.value))return '<div class="wiki-card-gallery">'+x.value.slice(0,3).map((url:string)=>'<img class="wiki-card-image" src="'+safe(url)+'" alt="'+safe(x.label)+'">').join("")+'</div>';
   const value=Array.isArray(x.value)?x.value.join(", "):String(x.value);
