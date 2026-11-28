@@ -589,8 +589,7 @@ class MainActivity:ComponentActivity(){
     }
     val previewText=remember(record.id,record.body,sheetTplId,record.updatedAt){
         if(record.body.isNotBlank()){
-            android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().take(150).replace('
-',' ')
+            android.text.Html.fromHtml(record.body,android.text.Html.FROM_HTML_MODE_COMPACT).toString().take(150).replace('\n',' ')
         }else if(sheetTplId.isNotBlank()){
             val fields=db.templateFields(sheetTplId)
             val secs=db.templateSections(sheetTplId)
