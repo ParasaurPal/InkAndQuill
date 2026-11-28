@@ -94,17 +94,26 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
     val sidebarContextType=if(level==NovelLevel.EDITOR) "scene" else "chapter"
     val sidebarContextId=if(level==NovelLevel.EDITOR) sceneId else chapterId
+    val resourceUnion = """
+        SELECT id,'entity' AS kind,entity_type AS type,title,description,fields_json AS fields FROM entities WHERE universe_id='$worldId'
+        UNION ALL SELECT id,'timeline','Timeline',name,custom_description,'{}' FROM timelines WHERE universe_id='$worldId'
+        UNION ALL SELECT m.id,'moment','Timeline moment',m.title,COALESCE(m.date_or_era_text,'')||' '||COALESCE(m.custom_text,''),'{}' FROM moments m JOIN timelines t ON t.id=m.timeline_id WHERE t.universe_id='$worldId'
+        UNION ALL SELECT id,'board','Board',title,board_type,'{}' FROM boards WHERE universe_id='$worldId'
+        UNION ALL SELECT bo.id,'board_card','Board card',COALESCE(json_extract(bo.payload_json,'$.text'),'Board card'),b.title,bo.payload_json FROM board_objects bo JOIN boards b ON b.id=bo.board_id WHERE b.universe_id='$worldId'
+        UNION ALL SELECT id,'prompt','Writing prompt',prompt_text,source,'{}' FROM prompt_entries WHERE universe_id='$worldId' OR universe_id IS NULL
+        UNION ALL SELECT id,'goal','Writing goal',period||' writing goal',CAST(target_words AS TEXT)||' words','{}' FROM writing_goals WHERE universe_id='$worldId'
+    """.trimIndent()
     val linkedWorldItems=remember(worldId,sidebarContextType,sidebarContextId,refresh,sidebarOpen){
         if(sidebarContextId.isBlank()) emptyList() else store.readableDatabase.rawQuery(
-            "SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.target_type='entity' AND l.target_id=e.id WHERE l.source_type=? AND l.source_id=? UNION SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.source_type='entity' AND l.source_id=e.id WHERE l.target_type=? AND l.target_id=? ORDER BY 3",
+            "SELECT r.id,r.kind,r.type,r.title,r.description,r.fields FROM entity_links l JOIN ($resourceUnion) r ON ((l.target_type=r.kind AND l.target_id=r.id) OR (l.source_type=r.kind AND l.source_id=r.id)) WHERE (l.source_type=? AND l.source_id=?) OR (l.target_type=? AND l.target_id=?) ORDER BY r.title",
             arrayOf(sidebarContextType,sidebarContextId,sidebarContextType,sidebarContextId)
-        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)) .put("description",c.getString(3)).put("fields",c.getString(4)))}}
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("kind",c.getString(1)).put("type",c.getString(2)).put("title",c.getString(3)).put("description",c.getString(4)).put("fields",c.getString(5)))}}
     }
     val sidebarSearchResults=remember(worldId,sidebarSearch,refresh,sidebarOpen){
         if(sidebarSearch.isBlank()) emptyList() else store.readableDatabase.rawQuery(
-            "SELECT id,entity_type,title,description,fields_json,custom_label FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ? OR fields_json LIKE ? OR custom_label LIKE ?) ORDER BY title LIMIT 60",
-            arrayOf(worldId,"%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
-        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)).put("fields",c.getString(4)).put("label",c.getString(5)))}}
+            "SELECT id,kind,type,title,description,fields FROM ($resourceUnion) WHERE title LIKE ? OR description LIKE ? OR type LIKE ? OR fields LIKE ? ORDER BY title LIMIT 80",
+            arrayOf("%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("kind",c.getString(1)).put("type",c.getString(2)).put("title",c.getString(3)).put("description",c.getString(4)).put("fields",c.getString(5)))}}
     }
     val worlds= remember(level,refresh){store.universes()}
     val series= remember(level,worldId,refresh){if(worldId.isBlank()) emptyList() else store.series(worldId)}
@@ -352,9 +361,9 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                         if(linkedWorldItems.isEmpty())item{Text("No worldbuilding items linked here yet. Search below to add characters, locations, factions, objects and more.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                         if(sidebarSearch.isNotBlank())item{Text("Search results",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)}
                         items(sidebarSearchResults,key={"search-"+it.optString("id")}){entry->
-                            val alreadyLinked=linkedWorldItems.any{it.optString("id")==entry.optString("id")}
+                            val alreadyLinked=linkedWorldItems.any{it.optString("id")==entry.optString("id") && it.optString("kind")==entry.optString("kind")}
                             Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description");sidebarSelectedFields=entry.optString("fields")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
-                                Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.Medium);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall)};if(!alreadyLinked)TextButton(onClick={store.link(sidebarContextType,sidebarContextId,"entity",entry.optString("id"),"Appears in");refresh++}){Text("Add")}else Icon(Icons.Default.Check,"Added")}
+                                Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.Medium);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall)};if(!alreadyLinked)TextButton(onClick={store.link(sidebarContextType,sidebarContextId,entry.optString("kind"),entry.optString("id"),"Appears in");refresh++}){Text("Add")}else Icon(Icons.Default.Check,"Added")}
                             }
                         }
                     }
