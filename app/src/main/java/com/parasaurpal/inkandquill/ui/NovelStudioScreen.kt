@@ -115,6 +115,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }){Icon(if(level==NovelLevel.WORLDS)Icons.Default.Close else Icons.Default.ArrowBack,"Back")}},
             actions={
                 if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
+                if(level==NovelLevel.BOOKS){IconButton(onClick={seriesTitle="";seriesBanner="";showSeriesCreate=true}){Icon(Icons.Default.CollectionsBookmark,"New series")}}
                 if(level!=NovelLevel.WORLDS&&level!=NovelLevel.EDITOR){IconButton(onClick={toolsOpen=true}){Icon(Icons.Default.Explore,"Worldbuilding and planning")}}
                 if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
@@ -135,8 +136,32 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }
             NovelLevel.BOOKS,NovelLevel.CHAPTERS,NovelLevel.SCENES->{
                 LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                    items(nodes){node->
-                        Surface(Modifier.fillMaxWidth().clickable{
+                    if(level==NovelLevel.BOOKS){
+                        series.forEach { seriesRow ->
+                            val sid=seriesRow.optString("id")
+                            val expanded=sid in expandedSeries
+                            val grouped=nodes.filter{runCatching{JSONObject(it.metadata).optString("series_id")==sid}.getOrDefault(false)}
+                            item(key="series-$sid"){
+                                Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+                                    Surface(Modifier.fillMaxWidth().clickable{expandedSeries=if(expanded)expandedSeries-sid else expandedSeries+sid},shape=RoundedCornerShape(16.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                                        Box(Modifier.fillMaxWidth().height(118.dp)){
+                                            if(seriesRow.optString("banner_uri").isNotBlank()) StudioArtwork(seriesRow.optString("banner_uri"),Modifier.fillMaxSize())
+                                            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Color.Black.copy(alpha=.62f)).padding(12.dp)){
+                                                Text(seriesRow.optString("title"),color=Color.White,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.titleLarge)
+                                                Text("${grouped.size} novels and stories · ${if(expanded)"Tap to collapse" else "Tap to expand"}",color=Color.White,style=MaterialTheme.typography.labelSmall)
+                                            }
+                                            IconButton(onClick={bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.align(Alignment.TopEnd)){Icon(Icons.Default.Image,"Change banner",tint=Color.White)}
+                                        }
+                                    }
+                                    if(expanded) grouped.forEach { book -> StudioBookCard(book,store,{bookId=book.id;parentTitle=book.title;level=NovelLevel.CHAPTERS}) }
+                                }
+                            }
+                        }
+                    }
+                    items(if(level==NovelLevel.BOOKS) nodes.filter{runCatching{JSONObject(it.metadata).optString("series_id").isBlank()}.getOrDefault(true)} else nodes){node->
+                        if(level==NovelLevel.BOOKS){
+                            StudioBookCard(node,store,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS})
+                        } else Surface(Modifier.fillMaxWidth().clickable{
                             parentTitle=node.title
                             when(level){NovelLevel.BOOKS->{bookId=node.id;level=NovelLevel.CHAPTERS};NovelLevel.CHAPTERS->{chapterId=node.id;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
                         },shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){
@@ -146,7 +171,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                             }
                         }
                     }
-                    if(nodes.isEmpty())item{Text("Nothing here yet. Add the first item.")}
+                    if(nodes.isEmpty()&&series.isEmpty())item{Text("Nothing here yet. Add the first item.")}
                 }
                 Button(onClick={newTitle="";extra="";showCreate=true},modifier=Modifier.fillMaxWidth().padding(16.dp)){Text(when(level){NovelLevel.BOOKS->"Add book";NovelLevel.CHAPTERS->"Add chapter";else->"Add scene"})}
             }
