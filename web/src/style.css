@@ -115,3 +115,23 @@ button,input,select,textarea{transition:border-color .18s ease,background .18s e
 .global-save:disabled{opacity:.72;cursor:wait}
 .global-save-status{font-size:11px;color:var(--muted);white-space:nowrap}
 @media(max-width:720px){.top-actions{flex-wrap:wrap}.global-save{order:-1;flex:1}.global-save-status{display:none}}
+
+
+/* Specialized encyclopedia article editor */
+.wiki-entry-dialog{width:min(1040px,96vw);max-height:94vh;overflow:auto}
+.wiki-template-description{display:flex;flex-direction:column;gap:5px;padding:13px 15px;border:1px solid #51435f;border-radius:12px;background:#211c2a;color:#cfc4dc}
+.wiki-template-description b{color:#eee6f5;font-size:14px}
+.wiki-template-description span,.wiki-hint{font-size:12px;color:#aaa0b4;line-height:1.5}
+.wiki-section{border:1px solid #3e354a;border-radius:14px;padding:15px;margin:14px 0;background:#1c1923}
+.wiki-section h3{margin:0 0 12px;color:#d8c8eb;font-size:15px}
+.wiki-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wiki-field{display:flex;flex-direction:column;gap:6px;min-width:0;color:#e6deed;font-size:12px;font-weight:650}
+.wiki-field input,.wiki-field textarea,.wiki-field select{width:100%;box-sizing:border-box;border:1px solid #50445e;border-radius:9px;padding:10px 11px;background:#17141d;color:#f1eaf7;font:inherit;font-weight:400}
+.wiki-field textarea{resize:vertical;min-height:74px}
+.wiki-field input[type=file]{padding:8px}
+.wiki-check{display:flex;align-items:center;gap:9px;color:#e6deed;font-size:13px;padding:8px 0}
+.wiki-check input{accent-color:#c7a9e8;width:17px;height:17px}
+.wiki-image-previews{display:flex;flex-wrap:wrap;gap:8px}
+.wiki-image-preview{max-width:120px;max-height:100px;object-fit:cover;border-radius:8px;border:1px solid #574a65}
+.required-mark{color:#d9bd83}
+@media(max-width:700px){.wiki-entry-dialog{width:100%;max-height:96vh;border-radius:14px;padding:14px}.wiki-fields-grid{grid-template-columns:1fr}.wiki-section{padding:12px}.wiki-entry-dialog .entry-fields{grid-template-columns:1fr}}
