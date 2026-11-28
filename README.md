@@ -62,6 +62,10 @@ The web client is a PWA and can be installed from a supported browser. It stores
 **Implementation status:** this is an active implementation. The new schema establishes the wider relational feature model, but advanced canvas drawing/family-tree interactions, full rich-text document parity, DOCX/EPUB publishing, multi-user collaboration, public wiki hosting, and a native desktop package are not yet complete. The product remains no-AI and local-first.
 
 
+### World Encyclopedia
+
+The offline World Encyclopedia is available in both the web/PWA and native Android clients. It provides 49 specialist wiki article types plus custom templates, nested custom sections, structured article editing, category/search, tags, parent/child articles, cross-references, image/gallery fields, table fields, attachments, and a wiki-style reader. Android includes the same 49 encyclopedia subjects alongside its existing writing templates. See [World Encyclopedia documentation](docs/WORLD_ENCYCLOPEDIA.md) for navigation, storage behavior, and current boundaries.
+
 ### Expanded offline studio modules
 
 The web client now includes responsive workspaces for the manuscript editor, Story Bible, multiple timelines and events, visual boards with draggable cards/connectors/freehand drawing, family relationship records, custom entity schemas, inline relational tables, writing sprints, word goals and daily logs, editable writing prompts, sharing/role manifests, static read-only wiki export, DOCX/TXT import, DOCX/EPUB/TXT publishing, theme and type-size controls, and portable JSON/ZIP project exports. It remains browser-local and does not transmit manuscript content.
