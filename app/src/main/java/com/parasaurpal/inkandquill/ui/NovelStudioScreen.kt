@@ -8,6 +8,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -61,6 +63,13 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var hook by remember{mutableStateOf("")}
     var focus by remember{mutableStateOf(false)}
     var toolsOpen by remember{mutableStateOf(false)}
+    var sidebarOpen by remember{mutableStateOf(false)}
+    var sidebarSearch by remember{mutableStateOf("")}
+    var sidebarSelectedId by remember{mutableStateOf("")}
+    var sidebarSelectedTitle by remember{mutableStateOf("")}
+    var sidebarSelectedType by remember{mutableStateOf("")}
+    var sidebarSelectedDescription by remember{mutableStateOf("")}
+    var sidebarDrag by remember{mutableFloatStateOf(0f)}
     var planningOpen by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
     var fontChoice by remember{mutableStateOf("Literata")}
@@ -82,6 +91,20 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.openInputStream(it)?.bufferedReader()?.use{reader->store.importJson(reader.readText())};refresh++}}}
     val textExportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.bufferedWriter()?.use{writer->writer.write(prose)}}}
+    val sidebarContextType=if(level==NovelLevel.EDITOR) "scene" else "chapter"
+    val sidebarContextId=if(level==NovelLevel.EDITOR) sceneId else chapterId
+    val linkedWorldItems=remember(worldId,sidebarContextType,sidebarContextId,refresh,sidebarOpen){
+        if(sidebarContextId.isBlank()) emptyList() else store.readableDatabase.rawQuery(
+            "SELECT e.id,e.entity_type,e.title,e.description FROM entity_links l JOIN entities e ON l.target_type='entity' AND l.target_id=e.id WHERE l.source_type=? AND l.source_id=? UNION SELECT e.id,e.entity_type,e.title,e.description FROM entity_links l JOIN entities e ON l.source_type='entity' AND l.source_id=e.id WHERE l.target_type=? AND l.target_id=? ORDER BY 3",
+            arrayOf(sidebarContextType,sidebarContextId,sidebarContextType,sidebarContextId)
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
+    }
+    val sidebarSearchResults=remember(worldId,sidebarSearch,refresh,sidebarOpen){
+        if(sidebarSearch.isBlank()) emptyList() else store.readableDatabase.rawQuery(
+            "SELECT id,entity_type,title,description FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ?) ORDER BY title LIMIT 60",
+            arrayOf(worldId,"%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
+        ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
+    }
     val worlds= remember(level,refresh){store.universes()}
     val series= remember(level,worldId,refresh){if(worldId.isBlank()) emptyList() else store.series(worldId)}
     val nodes= remember(level,worldId,bookId,chapterId,refresh){
@@ -131,7 +154,10 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             saved=true
         }
     }
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).pointerInput(sidebarOpen){
+        detectHorizontalDragGestures(onHorizontalDrag={change,amount->if(!sidebarOpen)sidebarDrag+=amount},onDragEnd={if(sidebarDrag>85f)sidebarOpen=true;sidebarDrag=0f})
+    }){
+    Column(Modifier.fillMaxSize()){
         if(!focus) TopAppBar(
             title={Column{Text("Novel Studio",fontWeight=FontWeight.Bold);Text(when(level){NovelLevel.WORLDS->"Universes";NovelLevel.BOOKS,NovelLevel.CHAPTERS,NovelLevel.SCENES->parentTitle;NovelLevel.EDITOR->title},style=MaterialTheme.typography.labelSmall)}},
             navigationIcon={IconButton(onClick={
@@ -303,6 +329,39 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             confirmButton={TextButton(onClick={if(seriesTitle.isNotBlank()){store.createSeries(worldId,seriesTitle,seriesBanner);refresh++;showSeriesCreate=false}}){Text("Create series")}},
             dismissButton={TextButton(onClick={showSeriesCreate=false}){Text("Cancel")}}
         )
+    }
+    if(sidebarOpen && level!=NovelLevel.WORLDS){
+        Surface(Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max=380.dp).fillMaxWidth(.88f),color=MaterialTheme.colorScheme.surface,shadowElevation=18.dp,shape=RoundedCornerShape(topStart=20.dp,bottomStart=20.dp)){
+            Column(Modifier.fillMaxSize().padding(14.dp)){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    if(sidebarSelectedId.isNotBlank())IconButton(onClick={sidebarSelectedId=""}){Icon(Icons.Default.ArrowBack,"Back to linked items")}
+                    Column(Modifier.weight(1f)){Text(if(sidebarSelectedId.isBlank())"Worldbuilding" else sidebarSelectedTitle,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.titleLarge);Text(if(sidebarSelectedId.isBlank())"Quick reference · "+worldTitle else sidebarSelectedType,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
+                    IconButton(onClick={sidebarOpen=false;sidebarSelectedId=""}){Icon(Icons.Default.Close,"Close sidebar")}
+                }
+                if(sidebarSelectedId.isNotBlank()){
+                    Text(sidebarSelectedDescription,Modifier.weight(1f).fillMaxWidth().padding(top=12.dp),style=MaterialTheme.typography.bodyMedium)
+                }else{
+                    Text(if(sidebarContextId.isBlank())"Open a chapter or scene to see its linked worldbuilding items." else "Added to this "+(if(sidebarContextType=="scene")"scene" else "chapter"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=8.dp))
+                    LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
+                        items(linkedWorldItems,key={it.optString("id")}){entry->
+                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                                Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.SemiBold);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)};Icon(Icons.Default.ChevronRight,null)}
+                            }
+                        }
+                        if(linkedWorldItems.isEmpty())item{Text("No worldbuilding items linked here yet. Search below to add characters, locations, factions, objects and more.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                        if(sidebarSearch.isNotBlank())item{Text("Search results",style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.Bold)}
+                        items(sidebarSearchResults,key={"search-"+it.optString("id")}){entry->
+                            val alreadyLinked=linkedWorldItems.any{it.optString("id")==entry.optString("id")}
+                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                                Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.Medium);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall)};if(!alreadyLinked)TextButton(onClick={store.link(sidebarContextType,sidebarContextId,"entity",entry.optString("id"),"Appears in");refresh++}){Text("Add")}else Icon(Icons.Default.Check,"Added")}
+                            }
+                        }
+                    }
+                    OutlinedTextField(sidebarSearch,{sidebarSearch=it},modifier=Modifier.fillMaxWidth().padding(top=10.dp),singleLine=true,label={Text("Search all worldbuilding")},leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(sidebarSearch.isNotBlank())IconButton(onClick={sidebarSearch=""}){Icon(Icons.Default.Close,"Clear search")}})
+                }
+            }
+        }
+    }
     }
     if(showCreate){
         AlertDialog(
