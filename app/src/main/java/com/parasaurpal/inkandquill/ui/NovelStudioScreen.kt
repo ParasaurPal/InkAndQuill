@@ -66,11 +66,13 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var selectedSeriesId by remember{mutableStateOf("")}
     var connectedBookId by remember{mutableStateOf("")}
     var coverUri by remember{mutableStateOf("")}
+    var editingSeriesId by remember{mutableStateOf("")}
+    var editingBookId by remember{mutableStateOf("")}
     var expandedSeries by remember{mutableStateOf(setOf<String>())}
     var seriesMenuExpanded by remember{mutableStateOf(false)}
     var connectedMenuExpanded by remember{mutableStateOf(false)}
-    val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString()}}
-    val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString()}}
+    val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString();if(editingSeriesId.isNotBlank()){store.updateSeriesBanner(editingSeriesId,it.toString());refresh++}}}
+    val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString();if(editingBookId.isNotBlank()){store.updateBookCover(editingBookId,it.toString());refresh++}}}
     val bannerPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};seriesBanner=it.toString()}}
     val coverPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{runCatching{context.contentResolver.takePersistableUriPermission(it,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)};coverUri=it.toString()}}
     val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->uri?.let{context.contentResolver.openOutputStream(it)?.use{out->out.write(store.exportJson().toByteArray())}}}
@@ -92,6 +94,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             if(c.moveToFirst()){
                 summary=c.getString(0)?: "";goal=c.getString(1)?: "";conflict=c.getString(2)?: "";hook=c.getString(3)?: ""
                 prose=c.getString(5)?: ""
+                fontChoice=runCatching{JSONObject(c.getString(4)?: "{}").optString("font","Literata")}.getOrDefault("Literata").ifBlank{"Literata"}
                 val stored=runCatching{JSONObject(c.getString(4)?: "{}")}.getOrDefault(JSONObject())
                 editorHtml=stored.optString("html").ifBlank{android.text.Html.escapeHtml(prose).replace("\n","<br>")}
             }
@@ -104,7 +107,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             val meta=JSONObject().put("summary",summary).put("goal",goal).put("conflict",conflict).put("hook",hook)
             val plain=DocumentExport.plain(editorHtml)
             prose=plain
-            val content=JSONObject().put("format_version",2).put("html",editorHtml)
+            val content=JSONObject().put("format_version",2).put("html",editorHtml).put("font",fontChoice)
             store.saveScene(sceneId,title,meta,content,plain)
             saved=true
         }
@@ -152,17 +155,17 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                                                 Text(seriesRow.optString("title"),color=Color.White,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.titleLarge)
                                                 Text("${grouped.size} novels and stories · ${if(expanded)"Tap to collapse" else "Tap to expand"}",color=Color.White,style=MaterialTheme.typography.labelSmall)
                                             }
-                                            IconButton(onClick={bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.align(Alignment.TopEnd)){Icon(Icons.Default.Image,"Change banner",tint=Color.White)}
+                                            IconButton(onClick={editingSeriesId=sid;bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.align(Alignment.TopEnd)){Icon(Icons.Default.Image,"Change banner",tint=Color.White)}
                                         }
                                     }
-                                    if(expanded) grouped.forEach { book -> StudioBookCard(book,store,{bookId=book.id;parentTitle=book.title;level=NovelLevel.CHAPTERS}) }
+                                    if(expanded) grouped.forEach { book -> StudioBookCard(book,nodes,{bookId=book.id;parentTitle=book.title;level=NovelLevel.CHAPTERS},{editingBookId=book.id;coverPicker.launch(arrayOf("image/*"))}) }
                                 }
                             }
                         }
                     }
                     items(if(level==NovelLevel.BOOKS) nodes.filter{runCatching{JSONObject(it.metadata).optString("series_id").isBlank()}.getOrDefault(true)} else nodes){node->
                         if(level==NovelLevel.BOOKS){
-                            StudioBookCard(node,store,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS})
+                            StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
                         } else Surface(Modifier.fillMaxWidth().clickable{
                             parentTitle=node.title
                             when(level){NovelLevel.BOOKS->{bookId=node.id;level=NovelLevel.CHAPTERS};NovelLevel.CHAPTERS->{chapterId=node.id;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
@@ -203,11 +206,21 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                             OutlinedTextField(hook,{hook=it;saved=false},label={Text("Hook / turning point")},modifier=Modifier.fillMaxWidth(),minLines=2)
                         }
                     }
+                    if(!focus) Row(verticalAlignment=Alignment.CenterVertically){
+                        Text("TYPEFACE",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box{
+                            TextButton(onClick={fontMenuExpanded=true}){Text(fontChoice);Icon(Icons.Default.ArrowDropDown,null)}
+                            DropdownMenu(expanded=fontMenuExpanded,onDismissRequest={fontMenuExpanded=false}){
+                                StudioFonts.forEach{font->DropdownMenuItem(text={Text(font)},onClick={fontChoice=font;fontMenuExpanded=false;saved=false})}
+                            }
+                        }
+                    }
                     RichTextEditor(
                         value=editorHtml,
                         onValueChange={editorHtml=it;prose=DocumentExport.plain(it);saved=false},
                         modifier=Modifier.weight(1f).fillMaxWidth(),
                         fontSize=18f,
+                        fontFamily=fontChoice,
                         enabledCommands=if(focus) emptySet() else null
                     )
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
@@ -233,7 +246,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             title={Text("New series")},
             text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
                 OutlinedTextField(seriesTitle,{seriesTitle=it},label={Text("Series name")},singleLine=true)
-                OutlinedButton(onClick={bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
+                OutlinedButton(onClick={editingSeriesId="";bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
                     Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text(if(seriesBanner.isBlank())"Choose banner image" else "Change banner image")
                 }
             }},
