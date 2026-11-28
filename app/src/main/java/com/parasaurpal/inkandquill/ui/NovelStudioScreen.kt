@@ -155,7 +155,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         }
     }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).pointerInput(sidebarOpen){
-        detectHorizontalDragGestures(onHorizontalDrag={change,amount->if(!sidebarOpen)sidebarDrag+=amount},onDragEnd={if(sidebarDrag>85f)sidebarOpen=true;sidebarDrag=0f})
+        detectHorizontalDragGestures(onHorizontalDrag={change,amount->if(!sidebarOpen && (level==NovelLevel.EDITOR || level==NovelLevel.SCENES))sidebarDrag+=amount},onDragEnd={if(sidebarDrag>85f && (level==NovelLevel.EDITOR || level==NovelLevel.SCENES))sidebarOpen=true;sidebarDrag=0f})
     }){
     Column(Modifier.fillMaxSize()){
         if(!focus) TopAppBar(
@@ -330,7 +330,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             dismissButton={TextButton(onClick={showSeriesCreate=false}){Text("Cancel")}}
         )
     }
-    if(sidebarOpen && level!=NovelLevel.WORLDS){
+    if(sidebarOpen && (level==NovelLevel.EDITOR || level==NovelLevel.SCENES)){
         Surface(Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max=380.dp).fillMaxWidth(.88f),color=MaterialTheme.colorScheme.surface,shadowElevation=18.dp,shape=RoundedCornerShape(topStart=20.dp,bottomStart=20.dp)){
             Column(Modifier.fillMaxSize().padding(14.dp)){
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
