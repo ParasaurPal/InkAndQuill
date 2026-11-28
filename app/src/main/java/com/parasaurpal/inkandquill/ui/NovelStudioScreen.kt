@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
@@ -101,7 +102,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         }
         level=NovelLevel.EDITOR;saved=false
     }
-    LaunchedEffect(sceneId,title,editorHtml,summary,goal,conflict,hook) {
+    LaunchedEffect(sceneId,title,editorHtml,summary,goal,conflict,hook,fontChoice) {
         if(sceneId.isNotBlank()) {
             kotlinx.coroutines.delay(650)
             val meta=JSONObject().put("summary",summary).put("goal",goal).put("conflict",conflict).put("hook",hook)
@@ -120,7 +121,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             }){Icon(if(level==NovelLevel.WORLDS)Icons.Default.Close else Icons.Default.ArrowBack,"Back")}},
             actions={
                 if(level==NovelLevel.WORLDS){IconButton(onClick={exportLauncher.launch("InkAndQuill.fortelling.json")}){Icon(Icons.Default.FileDownload,"Export project")};IconButton(onClick={importLauncher.launch(arrayOf("application/json","text/*"))}){Icon(Icons.Default.FileUpload,"Import project")}}
-                if(level==NovelLevel.BOOKS){IconButton(onClick={seriesTitle="";seriesBanner="";showSeriesCreate=true}){Icon(Icons.Default.CollectionsBookmark,"New series")}}
+                if(level==NovelLevel.BOOKS){IconButton(onClick={seriesTitle="";seriesBanner="";editingSeriesId="";showSeriesCreate=true}){Icon(Icons.Default.CollectionsBookmark,"New series")}}
                 if(level!=NovelLevel.WORLDS&&level!=NovelLevel.EDITOR){IconButton(onClick={toolsOpen=true}){Icon(Icons.Default.Explore,"Worldbuilding and planning")}}
                 if(level==NovelLevel.EDITOR){IconButton(onClick={textExportLauncher.launch((title.ifBlank{"Scene"}).replace(Regex("[^a-zA-Z0-9_-]"),"_")+".txt")}){Icon(Icons.Default.TextSnippet,"Export scene as text")};IconButton(onClick={focus=!focus}){Icon(Icons.Default.CenterFocusStrong,if(focus)"Exit focus mode" else "Focus mode")}}
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
@@ -287,7 +288,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                             })}
                         }
                     }
-                    OutlinedButton(onClick={coverPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
+                    OutlinedButton(onClick={editingBookId="";coverPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){
                         Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text(if(coverUri.isBlank())"Choose cover artwork" else "Change cover artwork")
                     }
                 }
