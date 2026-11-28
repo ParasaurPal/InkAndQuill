@@ -379,7 +379,7 @@ object SheetEngine {
                             "Relationship" -> {
                                 val links = parseRelationshipIds(raw).mapNotNull { id ->
                                     recordResolver(id)?.let { related ->
-                                        "<a href=\\"inkquill://record/${Uri.encode(id)}\\">${TextUtils.htmlEncode(related.title)}</a>"
+                                        "<a href=\"inkquill://record/${Uri.encode(id)}\">${TextUtils.htmlEncode(related.title)}</a>"
                                     }
                                 }
                                 if (links.isNotEmpty()) {
