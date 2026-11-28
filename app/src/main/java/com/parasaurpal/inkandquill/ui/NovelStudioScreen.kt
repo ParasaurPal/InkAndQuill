@@ -69,6 +69,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var sidebarSelectedTitle by remember{mutableStateOf("")}
     var sidebarSelectedType by remember{mutableStateOf("")}
     var sidebarSelectedDescription by remember{mutableStateOf("")}
+    var sidebarSelectedFields by remember{mutableStateOf("")}
     var sidebarDrag by remember{mutableFloatStateOf(0f)}
     var planningOpen by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf(false)}
@@ -95,14 +96,14 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     val sidebarContextId=if(level==NovelLevel.EDITOR) sceneId else chapterId
     val linkedWorldItems=remember(worldId,sidebarContextType,sidebarContextId,refresh,sidebarOpen){
         if(sidebarContextId.isBlank()) emptyList() else store.readableDatabase.rawQuery(
-            "SELECT e.id,e.entity_type,e.title,e.description FROM entity_links l JOIN entities e ON l.target_type='entity' AND l.target_id=e.id WHERE l.source_type=? AND l.source_id=? UNION SELECT e.id,e.entity_type,e.title,e.description FROM entity_links l JOIN entities e ON l.source_type='entity' AND l.source_id=e.id WHERE l.target_type=? AND l.target_id=? ORDER BY 3",
+            "SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.target_type='entity' AND l.target_id=e.id WHERE l.source_type=? AND l.source_id=? UNION SELECT e.id,e.entity_type,e.title,e.description,e.fields_json FROM entity_links l JOIN entities e ON l.source_type='entity' AND l.source_id=e.id WHERE l.target_type=? AND l.target_id=? ORDER BY 3",
             arrayOf(sidebarContextType,sidebarContextId,sidebarContextType,sidebarContextId)
         ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
     }
     val sidebarSearchResults=remember(worldId,sidebarSearch,refresh,sidebarOpen){
         if(sidebarSearch.isBlank()) emptyList() else store.readableDatabase.rawQuery(
-            "SELECT id,entity_type,title,description FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ?) ORDER BY title LIMIT 60",
-            arrayOf(worldId,"%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
+            "SELECT id,entity_type,title,description,fields_json,custom_label FROM entities WHERE universe_id=? AND (title LIKE ? OR description LIKE ? OR entity_type LIKE ? OR fields_json LIKE ? OR custom_label LIKE ?) ORDER BY title LIMIT 60",
+            arrayOf(worldId,"%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%","%$sidebarSearch%")
         ).use{c->buildList{while(c.moveToNext())add(JSONObject().put("id",c.getString(0)).put("type",c.getString(1)).put("title",c.getString(2)).put("description",c.getString(3)))}}
     }
     val worlds= remember(level,refresh){store.universes()}
@@ -339,12 +340,12 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                     IconButton(onClick={sidebarOpen=false;sidebarSelectedId=""}){Icon(Icons.Default.Close,"Close sidebar")}
                 }
                 if(sidebarSelectedId.isNotBlank()){
-                    Text(sidebarSelectedDescription,Modifier.weight(1f).fillMaxWidth().padding(top=12.dp),style=MaterialTheme.typography.bodyMedium)
+                    Column(Modifier.weight(1f).fillMaxWidth().padding(top=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){if(sidebarSelectedDescription.isNotBlank())Text(sidebarSelectedDescription,style=MaterialTheme.typography.bodyMedium);if(sidebarSelectedFields.isNotBlank() && sidebarSelectedFields!="{}")Text(runCatching{JSONObject(sidebarSelectedFields).toString(2)}.getOrDefault(sidebarSelectedFields),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                 }else{
                     Text(if(sidebarContextId.isBlank())"Open a chapter or scene to see its linked worldbuilding items." else "Added to this "+(if(sidebarContextType=="scene")"scene" else "chapter"),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=8.dp))
                     LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
                         items(linkedWorldItems,key={it.optString("id")}){entry->
-                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
+                            Surface(Modifier.fillMaxWidth().clickable{sidebarSelectedId=entry.optString("id");sidebarSelectedTitle=entry.optString("title");sidebarSelectedType=entry.optString("type");sidebarSelectedDescription=entry.optString("description");sidebarSelectedFields=entry.optString("fields")},shape=RoundedCornerShape(10.dp),color=MaterialTheme.colorScheme.surfaceVariant){
                                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(entry.optString("title"),fontWeight=FontWeight.SemiBold);Text(entry.optString("type"),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)};Icon(Icons.Default.ChevronRight,null)}
                             }
                         }
