@@ -99,7 +99,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         UNION ALL SELECT id,'timeline','Timeline',name,custom_description,'{}' FROM timelines WHERE universe_id='$worldId'
         UNION ALL SELECT m.id,'moment','Timeline moment',m.title,COALESCE(m.date_or_era_text,'')||' '||COALESCE(m.custom_text,''),'{}' FROM moments m JOIN timelines t ON t.id=m.timeline_id WHERE t.universe_id='$worldId'
         UNION ALL SELECT id,'board','Board',title,board_type,'{}' FROM boards WHERE universe_id='$worldId'
-        UNION ALL SELECT bo.id,'board_card','Board card',COALESCE(json_extract(bo.payload_json,'$.text'),'Board card'),b.title,bo.payload_json FROM board_objects bo JOIN boards b ON b.id=bo.board_id WHERE b.universe_id='$worldId'
+        UNION ALL SELECT bo.id,'board_card','Board card',substr(bo.payload_json,1,80),b.title,bo.payload_json FROM board_objects bo JOIN boards b ON b.id=bo.board_id WHERE b.universe_id='$worldId'
         UNION ALL SELECT id,'prompt','Writing prompt',prompt_text,source,'{}' FROM prompt_entries WHERE universe_id='$worldId' OR universe_id IS NULL
         UNION ALL SELECT id,'goal','Writing goal',period||' writing goal',CAST(target_words AS TEXT)||' words','{}' FROM writing_goals WHERE universe_id='$worldId'
     """.trimIndent()
