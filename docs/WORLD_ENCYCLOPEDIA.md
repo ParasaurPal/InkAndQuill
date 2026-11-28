@@ -28,7 +28,7 @@ The web/PWA stores data in that browser's IndexedDB. It does not automatically s
 
 Open a world, choose **Modules → World Encyclopedia**, then switch between **Articles** and **Templates**.
 
-- Search article titles, summaries, tags and structured field values.
+- Search article titles, summaries, tags and structured field values, plus template names, descriptions and specialist field names.
 - Filter by the template category.
 - Choose a specialist or custom template, then place the new article under the world or an existing parent article.
 - Open the existing structured sheet editor to fill in its sections and fields.
