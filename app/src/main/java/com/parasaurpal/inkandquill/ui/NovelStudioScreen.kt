@@ -88,6 +88,21 @@ fun NovelStudioScreen(onClose: () -> Unit) {
             else-> emptyList()
         }
     }
+
+    // Keep standalone novels and short stories visibly distinct from series.
+    // Stable book IDs preserve existing manuscripts and chapter/scene links.
+    val standaloneNovels=remember(nodes){
+        nodes.filter { node ->
+            val meta=runCatching{JSONObject(node.metadata)}.getOrDefault(JSONObject())
+            meta.optString("series_id").isBlank() && meta.optString("story_type")!="SHORT_STORY"
+        }
+    }
+    val standaloneStories=remember(nodes){
+        nodes.filter { node ->
+            val meta=runCatching{JSONObject(node.metadata)}.getOrDefault(JSONObject())
+            meta.optString("series_id").isBlank() && meta.optString("story_type")=="SHORT_STORY"
+        }
+    }
     fun loadScene(node:StudioNode){
         sceneId=node.id;title=node.title
         store.readableDatabase.rawQuery("SELECT s.summary,s.goal,s.conflict,s.hook,d.content_json,d.plain_text FROM scenes s LEFT JOIN documents d ON d.scene_id=s.id WHERE s.id=?",arrayOf(node.id)).use{c->
@@ -162,23 +177,38 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                                 }
                             }
                         }
-                    }
-                    items(if(level==NovelLevel.BOOKS) nodes.filter{runCatching{JSONObject(it.metadata).optString("series_id").isBlank()}.getOrDefault(true)} else nodes){node->
-                        if(level==NovelLevel.BOOKS){
-                            StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
-                        } else Surface(Modifier.fillMaxWidth().clickable{
-                            parentTitle=node.title
-                            when(level){NovelLevel.BOOKS->{bookId=node.id;level=NovelLevel.CHAPTERS};NovelLevel.CHAPTERS->{chapterId=node.id;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
-                        },shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){
-                            Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
-                                Column(Modifier.weight(1f)){Text(node.title,fontWeight=FontWeight.Medium);if(node.customStatus.isNotBlank()||node.status.isNotBlank())Text(node.customStatus.ifBlank{node.status},style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
-                                Icon(Icons.Default.ChevronRight,"Open")
+                        if(standaloneNovels.isNotEmpty()){
+                            item(key="standalone-novels-heading"){
+                                Text("Standalone novels",modifier=Modifier.padding(top=10.dp,bottom=2.dp),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+                            }
+                            items(standaloneNovels,key={it.id}){node->
+                                StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
+                            }
+                        }
+                        if(standaloneStories.isNotEmpty()){
+                            item(key="standalone-stories-heading"){
+                                Text("Standalone stories",modifier=Modifier.padding(top=10.dp,bottom=2.dp),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
+                            }
+                            items(standaloneStories,key={it.id}){node->
+                                StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
+                            }
+                        }
+                    } else {
+                        items(nodes,key={it.id}){node->
+                            Surface(Modifier.fillMaxWidth().clickable{
+                                parentTitle=node.title
+                                when(level){NovelLevel.CHAPTERS->{chapterId=node.id;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
+                            },shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){
+                                Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
+                                    Column(Modifier.weight(1f)){Text(node.title,fontWeight=FontWeight.Medium);if(node.customStatus.isNotBlank()||node.status.isNotBlank())Text(node.customStatus.ifBlank{node.status},style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
+                                    Icon(Icons.Default.ChevronRight,"Open")
+                                }
                             }
                         }
                     }
                     if(nodes.isEmpty()&&series.isEmpty())item{Text("Nothing here yet. Add the first item.")}
                 }
-                Button(onClick={newTitle="";extra="";showCreate=true},modifier=Modifier.fillMaxWidth().padding(16.dp)){Text(when(level){NovelLevel.BOOKS->"Add book";NovelLevel.CHAPTERS->"Add chapter";else->"Add scene"})}
+                Button(onClick={newTitle="";extra="";showCreate=true},modifier=Modifier.fillMaxWidth().padding(16.dp)){Text(when(level){NovelLevel.BOOKS->"Add novel or story";NovelLevel.CHAPTERS->"Add chapter";else->"Add scene"})}
             }
             NovelLevel.EDITOR->{
                 Column(Modifier.weight(1f).fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
