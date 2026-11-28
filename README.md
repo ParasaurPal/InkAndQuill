@@ -23,6 +23,10 @@ A native Android writing studio built for writers, novelists, poets, journal kee
 - Comprehensive portable JSON backup/restore including attachments and board images; password-encrypted cloud sync through Android's Storage Access Framework with WorkManager retries and explicit conflict choices; TXT, Markdown, HTML, paginated PDF, DOCX, and EPUB export; PDF, text, Markdown, HTML, DOCX, and EPUB import.
 - Android automatic device backup is disabled to avoid unintended unencrypted cloud copies. User-initiated cloud backup is encrypted locally and saved to a provider the user selects.
 
+## Campfire Write replacement scope
+
+The full module-by-module feature parity plan, including template coverage and completion criteria, is tracked in [docs/CAMPFIRE_PARITY.md](docs/CAMPFIRE_PARITY.md). This is an implementation target, not a claim that every module is complete yet.
+
 ## Build
 JDK 17 and Gradle 8.11.1:
 `gradle :app:assembleDebug`
