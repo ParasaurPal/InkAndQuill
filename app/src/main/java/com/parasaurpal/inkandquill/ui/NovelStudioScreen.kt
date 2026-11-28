@@ -44,6 +44,9 @@ fun NovelStudioScreen(onClose: () -> Unit) {
     var chapterId by remember{mutableStateOf("")}
     var sceneId by remember{mutableStateOf("")}
     var parentTitle by remember{mutableStateOf("")}
+    var worldTitle by remember{mutableStateOf("")}
+    var bookTitle by remember{mutableStateOf("")}
+    var chapterTitle by remember{mutableStateOf("")}
     var refresh by remember{mutableIntStateOf(0)}
     var showCreate by remember{mutableStateOf(false)}
     var newTitle by remember{mutableStateOf("")}
@@ -141,12 +144,28 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                 if(level!=NovelLevel.EDITOR) IconButton(onClick={newTitle="";extra="";showCreate=true}){Icon(Icons.Default.Add,"Add")}
             }
         ) else if(level==NovelLevel.EDITOR){Row(Modifier.fillMaxWidth().padding(10.dp),horizontalArrangement=Arrangement.End){TextButton(onClick={focus=false}){Text("Exit focus mode")}}}
+        if(!focus && level!=NovelLevel.WORLDS){
+            Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal=14.dp, vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                Text("Universes",color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,modifier=Modifier.clickable{level=NovelLevel.WORLDS})
+                Text("›",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(worldTitle.ifBlank{"World"},color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,modifier=Modifier.clickable{level=NovelLevel.BOOKS})
+                if(level==NovelLevel.CHAPTERS || level==NovelLevel.SCENES || level==NovelLevel.EDITOR){
+                    Text("›",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(bookTitle.ifBlank{"Books"},color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,modifier=Modifier.clickable{level=NovelLevel.CHAPTERS})
+                }
+                if(level==NovelLevel.SCENES || level==NovelLevel.EDITOR){
+                    Text("›",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(chapterTitle.ifBlank{"Chapters"},color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelMedium,modifier=Modifier.clickable{level=NovelLevel.SCENES})
+                }
+                if(level==NovelLevel.EDITOR){Text("›",color=MaterialTheme.colorScheme.onSurfaceVariant);Text(title.ifBlank{"Scene"},style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            }
+        }
         if(toolsOpen){NovelStudioToolsScreen(worldId,store){toolsOpen=false;refresh++}} else when(level){
             NovelLevel.WORLDS->{
                 LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
                     item{Text("Build a world. Write its stories.",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("Offline-first. Your work stays on this device.",color=MaterialTheme.colorScheme.onSurfaceVariant)}
                     items(worlds){w->
-                        Surface(Modifier.fillMaxWidth().clickable{worldId=w.getString("id");parentTitle=w.getString("title");level=NovelLevel.BOOKS},shape=RoundedCornerShape(16.dp),color=MaterialTheme.colorScheme.surface){
+                        Surface(Modifier.fillMaxWidth().clickable{worldId=w.getString("id");worldTitle=w.getString("title");parentTitle=worldTitle;level=NovelLevel.BOOKS},shape=RoundedCornerShape(16.dp),color=MaterialTheme.colorScheme.surface){
                             Row(Modifier.padding(18.dp),verticalAlignment=Alignment.CenterVertically){Text(w.getString("title"),Modifier.weight(1f),fontWeight=FontWeight.SemiBold);Icon(Icons.Default.ChevronRight,"Open")}
                         }
                     }
@@ -173,7 +192,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                                             IconButton(onClick={editingSeriesId=sid;bannerPicker.launch(arrayOf("image/*"))},modifier=Modifier.align(Alignment.TopEnd)){Icon(Icons.Default.Image,"Change banner",tint=Color.White)}
                                         }
                                     }
-                                    if(expanded) grouped.forEach { book -> StudioBookCard(book,nodes,{bookId=book.id;parentTitle=book.title;level=NovelLevel.CHAPTERS},{editingBookId=book.id;coverPicker.launch(arrayOf("image/*"))}) }
+                                    if(expanded) grouped.forEach { book -> StudioBookCard(book,nodes,{bookId=book.id;bookTitle=book.title;parentTitle=book.title;level=NovelLevel.CHAPTERS},{editingBookId=book.id;coverPicker.launch(arrayOf("image/*"))}) }
                                 }
                             }
                         }
@@ -182,7 +201,7 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                                 Text("Standalone novels",modifier=Modifier.padding(top=10.dp,bottom=2.dp),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
                             }
                             items(standaloneNovels,key={it.id}){node->
-                                StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
+                                StudioBookCard(node,nodes,{bookId=node.id;bookTitle=node.title;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
                             }
                         }
                         if(standaloneStories.isNotEmpty()){
@@ -190,14 +209,14 @@ fun NovelStudioScreen(onClose: () -> Unit) {
                                 Text("Standalone stories",modifier=Modifier.padding(top=10.dp,bottom=2.dp),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
                             }
                             items(standaloneStories,key={it.id}){node->
-                                StudioBookCard(node,nodes,{bookId=node.id;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
+                                StudioBookCard(node,nodes,{bookId=node.id;bookTitle=node.title;parentTitle=node.title;level=NovelLevel.CHAPTERS},{editingBookId=node.id;coverPicker.launch(arrayOf("image/*"))})
                             }
                         }
                     } else {
                         items(nodes,key={it.id}){node->
                             Surface(Modifier.fillMaxWidth().clickable{
                                 parentTitle=node.title
-                                when(level){NovelLevel.CHAPTERS->{chapterId=node.id;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
+                                when(level){NovelLevel.CHAPTERS->{chapterId=node.id;chapterTitle=node.title;level=NovelLevel.SCENES};NovelLevel.SCENES->loadScene(node);else->Unit}
                             },shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){
                                 Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
                                     Column(Modifier.weight(1f)){Text(node.title,fontWeight=FontWeight.Medium);if(node.customStatus.isNotBlank()||node.status.isNotBlank())Text(node.customStatus.ifBlank{node.status},style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)}
