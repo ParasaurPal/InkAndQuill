@@ -176,7 +176,7 @@ fun WorldEncyclopediaScreen(
                             }
                             val values = remember(article.id, refresh) { db.sheetValues(article.id) }
                             val fields = remember(article.id, template?.id, refresh) { template?.id?.let { db.templateFields(it) }.orEmpty() }
-                            val completed = fields.mapNotNull { field -> values[field.id]?.takeIf { it.isNotBlank() }?.let { "${field.name}: ${it.replace("\\n", " ").take(90)}" } }
+                            val completed = fields.mapNotNull { field -> values[field.id]?.takeIf { it.isNotBlank() }?.let { "${field.name}: ${it.replace("\n", " ").take(90)}" } }
                             if (article.body.isNotBlank()) {
                                 Text(article.body, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             } else if (completed.isNotEmpty()) {
