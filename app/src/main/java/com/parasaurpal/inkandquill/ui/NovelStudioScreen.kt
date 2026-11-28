@@ -309,3 +309,34 @@ fun NovelStudioScreen(onClose: () -> Unit) {
         )
     }
 }
+
+
+@Composable
+private fun StudioArtwork(uri:String,modifier:Modifier=Modifier){
+    val context=LocalContext.current
+    val bitmap=remember(uri){runCatching{context.contentResolver.openInputStream(Uri.parse(uri))?.use{BitmapFactory.decodeStream(it)?.asImageBitmap()}}.getOrNull()}
+    if(bitmap!=null) Image(bitmap=bitmap,contentDescription=null,modifier=modifier,contentScale=ContentScale.Crop)
+    else Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){Icon(Icons.Default.AutoStories,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}
+}
+
+@Composable
+private fun StudioBookCard(node:StudioNode,allBooks:List<StudioNode>,onOpen:()->Unit,onChangeCover:()->Unit){
+    val meta=remember(node.metadata){runCatching{JSONObject(node.metadata)}.getOrDefault(JSONObject())}
+    val cover=meta.optString("cover_uri")
+    val type=if(meta.optString("story_type")=="SHORT_STORY")"Short story" else "Novel"
+    val connected=allBooks.firstOrNull{it.id==meta.optString("connected_book_id")}
+    Surface(Modifier.fillMaxWidth().clickable(onClick=onOpen),shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){
+        Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+            Box(Modifier.width(82.dp).height(116.dp).clip(RoundedCornerShape(7.dp))){
+                if(cover.isNotBlank())StudioArtwork(cover,Modifier.fillMaxSize()) else Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){Icon(Icons.Default.MenuBook,null,modifier=Modifier.size(30.dp))}
+            }
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                Text(node.title,fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.titleMedium)
+                Text(type,color=MaterialTheme.colorScheme.primary,style=MaterialTheme.typography.labelSmall)
+                if(connected!=null)Text("Side story connected to ${connected.title}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Open manuscript →",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick=onChangeCover){Icon(Icons.Default.Image,"Change cover")}
+        }
+    }
+}
