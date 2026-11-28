@@ -687,6 +687,7 @@ private fun buildRichEditorHtml(
     val bgImg = if (backgroundImageData.isNotBlank()) "url(data:$backgroundImageMime;base64,$backgroundImageData)" else "none"
     val borderCss = if (pageMode) "box-shadow:0 4px 22px rgba(0,0,0,.25);border:1px solid #8b8495;" else ""
     return """<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+@import url('https://fonts.googleapis.com/css2?family=Literata:wght@400;500;600;700&family=Source+Serif+4:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Crimson+Pro:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap');
 @font-face{font-family:Custom;src:url(data:$customFontMime;base64,$customFontData)}
 body{font-family:$fontFamily;font-size:${fontSize}px;line-height:$lineSpacing;padding:${pageMargin}px;margin:0 auto;width:100%;max-width:${if (pageMode) "min(${pageWidth}px,100%)" else "100%"};min-height:${if (pageMode) "1056px" else "95vh"};box-sizing:border-box;overflow-x:hidden;${borderCss}background:$backgroundColor;background-image:$bgImg;background-size:cover;background-attachment:fixed;color:$textColor}
 p{margin-bottom:${paragraphSpacing}px}
