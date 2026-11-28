@@ -269,7 +269,7 @@ class NovelStudioStore(context: Context) :
     fun orderedNodes(parentId:String,kind:String):List<StudioNode> {
         val (table,parentColumn)=when(kind){"Book"->"books" to "universe_id";"Chapter"->"chapters" to "book_id";"Scene"->"scenes" to "chapter_id";else->throw IllegalArgumentException("Unknown manuscript node type")}
         val sql=when(kind) {
-            "Book"->"SELECT id,universe_id,NULL, 'Book',title,'' ,position,'','', json_object('story_type',story_type,'series_id',series_id,'connected_book_id',connected_book_id,'cover_uri',cover_uri),updated_at FROM books WHERE universe_id=? ORDER BY position"
+            "Book"->"SELECT id,universe_id,NULL, 'Book',title,'' ,position,'','', json_object('story_type',story_type,'series_id',COALESCE(series_id,''),'connected_book_id',COALESCE(connected_book_id,''),'cover_uri',cover_uri),updated_at FROM books WHERE universe_id=? ORDER BY position"
             "Chapter"->"SELECT id,'',book_id,'Chapter',title,'',position,status_key,custom_status_text,'{}',updated_at FROM chapters WHERE book_id=? ORDER BY position"
             else->"SELECT id,'',chapter_id,'Scene',title,'',position,'','',json_object('summary',summary,'goal',goal,'conflict',conflict,'hook',hook),updated_at FROM scenes WHERE chapter_id=? ORDER BY position"
         }
