@@ -60,6 +60,9 @@ fun WorldEncyclopediaScreen(
             .sortedByDescending { it.updatedAt }
     }
     val parentChoices = remember(world.id, articles) { listOf(world) + articles }
+    val articleValuesById = remember(articles, refresh) {
+        articles.associate { it.id to db.sheetValues(it.id) }
+    }
     val categories = remember(templates) {
         listOf("All") + templates.map { it.tags.ifBlank { "Other" } }.distinct().sorted()
     }
@@ -77,7 +80,7 @@ fun WorldEncyclopediaScreen(
         (category == "All" || template?.tags?.ifBlank { "Other" } == category) &&
             (query.isBlank() || article.title.contains(query, true) ||
                 article.body.contains(query, true) || article.tags.contains(query, true) ||
-                db.sheetValues(article.id).values.any { it.contains(query, true) })
+                articleValuesById[article.id].orEmpty().values.any { it.contains(query, true) })
     }
 
     Column(
@@ -183,7 +186,7 @@ fun WorldEncyclopediaScreen(
                             articles.firstOrNull { it.id == article.parentId }?.let { parent ->
                                 Text("Filed under: ${parent.title}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            val values = remember(article.id, refresh) { db.sheetValues(article.id) }
+                            val values = articleValuesById[article.id].orEmpty()
                             val fields = remember(article.id, template?.id, refresh) { template?.id?.let { db.templateFields(it) }.orEmpty() }
                             val previewUri = remember(article.id, article.coverUri, refresh) {
                                 db.mediaForRecord(article.id).firstOrNull { it.mimeType.startsWith("image/") }?.uri
