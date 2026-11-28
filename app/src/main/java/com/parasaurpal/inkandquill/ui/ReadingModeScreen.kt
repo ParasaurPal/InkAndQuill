@@ -6,6 +6,7 @@ import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -382,7 +383,17 @@ fun ReadingModeScreen(
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = false
                         isVerticalScrollBarEnabled = true
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                val uri = request?.url ?: return false
+                                if (uri.scheme == "inkquill" && uri.host == "record") {
+                                    val targetId = uri.lastPathSegment.orEmpty()
+                                    if (targetId.isNotBlank()) db.get(targetId)?.let(onOpenRecord)
+                                    return true
+                                }
+                                return false
+                            }
+                        }
                         addJavascriptInterface(object {
                             @JavascriptInterface
                             fun onScroll(ratio: Float) {
