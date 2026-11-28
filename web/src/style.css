@@ -229,3 +229,14 @@ button,input,select,textarea{transition:border-color .18s ease,background .18s e
 .wiki-template-card small{color:#a99eb3}
 .wiki-template-card button{margin-top:4px;padding:9px 12px;border:0;border-radius:9px;background:#d4bee9;color:#241b2d;font-weight:750}
 @media(max-width:600px){.wiki-index-actions{width:100%}.wiki-index-actions button{flex:1}.wiki-template-filters{grid-template-columns:1fr}.wiki-template-grid{max-height:65vh}}
+
+.toolbar select{background:var(--panel2);color:#eee8f5;border:1px solid var(--border);border-radius:7px;padding:6px;max-width:130px}
+.prose{font-family:var(--editor-font,Georgia,serif);font-size:18px;line-height:1.8;min-height:45vh;overflow-wrap:anywhere}
+.prose h1,.prose h2,.prose h3{font-family:Literata,serif;line-height:1.25;margin:1.2em 0 .55em}
+.prose blockquote{border-left:3px solid var(--accent);margin:1em 0;padding:8px 14px;background:#c9b6e410;color:#d8cbe5}
+.prose pre{white-space:pre-wrap;background:#111018;padding:12px;border-radius:8px}
+.prose figure{margin:14px 0;text-align:center}
+.prose figure img{max-width:100%;height:auto;border-radius:8px}
+.prose figcaption{font-size:11px;color:var(--muted);margin-top:5px}
+.prose a{color:#d5b9f3;text-decoration:underline}
+.studio-book-outline .tree-scene{display:block;width:100%;text-align:left;margin:4px 0}
