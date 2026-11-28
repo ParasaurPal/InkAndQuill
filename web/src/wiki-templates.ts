@@ -314,6 +314,298 @@ export const WIKI_TEMPLATES: WikiTemplate[] = [
  s("inhabitants","Inhabitants & hazards",[f("inhabitants","Current inhabitants and factions","relation"),f("creatures","Creatures and ecosystems","relation"),f("traps","Traps, puzzles and security systems","table"),f("hazards","Environmental, magical and structural hazards"),f("resources","Resources, treasure and salvage")]),
  s("history","History & exploration",[f("history","Historical use and abandonment"),f("events","Notable events and previous expeditions","table"),f("secrets","Hidden chambers, secrets and mysteries"),f("discoveries","Known discoveries and unresolved areas"),f("current","Current ownership, control and threat")])
 ]},
+{ id:"companion", title:"Companion, Familiar & Bonded Beast", category:"People", description:"Track animal companions, spirit familiars, bonded mounts, or loyal sidekicks.", sections:[
+ s("sec_0", "Bond & Origin", [f("name_0", "Name", "text", "", undefined, true), f("species_type_1", "Species / Type", "text", "", undefined, false), f("bonded_to_2", "Bonded To", "relation", "", undefined, false), f("nature_of_bond_3", "Nature of Bond", "select", "", ["Telepathic","Blood Pact","Lifelong Companion","Summoned Familiar","Earned Trust","Enchanted Collar"], false)]),
+ s("sec_1", "Appearance & Nature", [f("appearance_0", "Appearance", "textarea", "", undefined, false), f("image_1", "Image", "image", "", undefined, false), f("personality_habits_2", "Personality & Habits", "textarea", "", undefined, false)]),
+ s("sec_2", "Abilities & Quirks", [f("special_abilities_0", "Special Abilities", "table", "", undefined, false), f("communication_method_1", "Communication Method", "text", "", undefined, false)]),
+ s("sec_3", "Care & Loyalty", [f("diet_upkeep_0", "Diet & Upkeep", "textarea", "", undefined, false), f("breaking_point_trigger_1", "Breaking Point / Trigger", "textarea", "", undefined, false)])
+] },
+{ id:"npc", title:"NPC & Minor Figure", category:"People", description:"Fast, memorable sheet for recurring tavern keepers, scholars, captains, and informants.", sections:[
+ s("sec_0", "Role & Impression", [f("name_0", "Name", "text", "", undefined, true), f("occupation_station_1", "Occupation / Station", "text", "", undefined, false), f("primary_location_2", "Primary Location", "relation", "", undefined, false), f("three_second_impression_3", "Three-Second Impression", "textarea", "Voice, posture, distinct detail", undefined, false)]),
+ s("sec_1", "Motivation & Secrets", [f("immediate_goal_0", "Immediate Goal", "textarea", "", undefined, false), f("what_they_know_1", "What They Know", "textarea", "", undefined, false), f("hidden_secret_or_leverage_2", "Hidden Secret or Leverage", "textarea", "", undefined, false)]),
+ s("sec_2", "Connections", [f("faction_connections_0", "Faction / Connections", "relation", "", undefined, false), f("rumors_about_them_1", "Rumors About Them", "table", "", undefined, false)])
+] },
+{ id:"lineage", title:"Character Lineage & Bloodline", category:"People", description:"Trace ancestry, inherited magic, cadet branches, and disputed claims across generations.", sections:[
+ s("sec_0", "Root & Heritage", [f("lineage_name_0", "Lineage Name", "text", "", undefined, true), f("subject_heir_1", "Subject / Heir", "relation", "", undefined, false), f("ancestral_origin_2", "Ancestral Origin", "textarea", "", undefined, false)]),
+ s("sec_1", "Inherited Gifts", [f("bloodline_magic_curse_0", "Bloodline Magic / Curse", "textarea", "", undefined, false), f("physical_hallmarks_1", "Physical Hallmarks", "textarea", "", undefined, false)]),
+ s("sec_2", "Genealogy & Claims", [f("generational_table_0", "Generational Table", "table", "Generation | Ancestor | Partner | Notable Notes", undefined, false), f("cadet_branches_1", "Cadet Branches", "table", "", undefined, false), f("disputed_claims_bastardry_2", "Disputed Claims & Bastardry", "textarea", "", undefined, false)])
+] },
+{ id:"party", title:"Party, Crew & Ensemble Roster", category:"People", description:"Manage an adventuring company, ship crew, heist team, or fellowship.", sections:[
+ s("sec_0", "Company Overview", [f("group_name_0", "Group Name", "text", "", undefined, true), f("shared_purpose_oath_1", "Shared Purpose / Oath", "textarea", "", undefined, false), f("home_base_or_vessel_2", "Home Base or Vessel", "relation", "", undefined, false)]),
+ s("sec_1", "Member Roster", [f("roster_0", "Roster", "table", "Character | Role | Specialty | Current Status", undefined, false)]),
+ s("sec_2", "Dynamics & Shared Assets", [f("internal_friction_alliances_0", "Internal Friction & Alliances", "textarea", "", undefined, false), f("shared_treasury_gear_1", "Shared Treasury & Gear", "table", "", undefined, false), f("reputation_across_regions_2", "Reputation Across Regions", "textarea", "", undefined, false)])
+] },
+{ id:"arc", title:"Character Arc", category:"People", description:"Plot an individual character's emotional transformation across the narrative.", sections:[
+ s("sec_0", "Arc Polarity", [f("character_0", "Character", "relation", "", undefined, true), f("arc_type_1", "Arc Type", "select", "", ["Positive Change","Flat / Steadfast","Fall / Corruption","Disillusionment","Redemption"], false), f("starting_belief_the_lie_2", "Starting Belief (The Lie)", "textarea", "", undefined, false)]),
+ s("sec_1", "Turning Points", [f("catalyst_first_threshold_0", "Catalyst & First Threshold", "textarea", "", undefined, false), f("midpoint_mirror_1", "Midpoint Mirror", "textarea", "", undefined, false), f("dark_night_lowest_ebb_2", "Dark Night / Lowest Ebb", "textarea", "", undefined, false)]),
+ s("sec_2", "Resolution", [f("final_choice_transformation_0", "Final Choice & Transformation", "textarea", "", undefined, false)])
+] },
+{ id:"relationship", title:"Relationship Profile", category:"People", description:"Chart evolving trust, tension, shared history, and unspoken truths between two figures.", sections:[
+ s("sec_0", "Parties & Bond", [f("relationship_title_0", "Relationship Title", "text", "", undefined, true), f("first_character_1", "First Character", "relation", "", undefined, false), f("second_character_2", "Second Character", "relation", "", undefined, false), f("bond_type_3", "Bond Type", "select", "", ["Siblings","Found Family","Romance","Rivalry","Mentor-Apprentice","Sworn Enemies","Unlikely Allies","Oathbound"], false)]),
+ s("sec_1", "Dynamics & History", [f("shared_history_0", "Shared History", "textarea", "", undefined, false), f("what_each_wants_from_the_other_1", "What Each Wants From the Other", "textarea", "", undefined, false), f("core_source_of_tension_2", "Core Source of Tension", "textarea", "", undefined, false)]),
+ s("sec_2", "Evolution", [f("progression_beats_0", "Progression Beats", "table", "Stage | Event | Trust Level", undefined, false)])
+] },
+{ id:"plant", title:"Fantasy Flora & Plant", category:"Life & Ecology", description:"Comprehensive botanical compendium covering habitat, lifecycle, culinary/alchemical uses, and arcane traits.", sections:[
+ s("sec_0", "Botanical Identity", [f("common_name_0", "Common Name", "text", "", undefined, true), f("scientific_arcane_binomial_1", "Scientific / Arcane Binomial", "text", "", undefined, false), f("local_regional_names_2", "Local Regional Names", "text", "", undefined, false), f("plant_category_3", "Plant Category", "select", "", ["Herb","Tree","Shrub","Vine","Aquatic","Epiphyte","Carnivorous","Crystal-Flora","Parasitic","Other"], false), f("botanical_illustration_4", "Botanical Illustration", "image", "", undefined, false)]),
+ s("sec_1", "Habitat & Climate", [f("native_regions_0", "Native Regions", "table", "", undefined, false), f("preferred_biome_1", "Preferred Biome", "relation", "", undefined, false), f("climate_light_needs_2", "Climate & Light Needs", "select", "", ["Tropical","Temperate","Alpine","Arid","Subterranean","Twilight/Nocturnal","Astral","Arctic"], false), f("soil_moisture_3", "Soil & Moisture", "text", "", undefined, false)]),
+ s("sec_2", "Anatomy & Lifecycle", [f("physical_description_0", "Physical Description", "textarea", "", undefined, false), f("foliage_bark_bloom_color_1", "Foliage, Bark & Bloom Color", "text", "", ["#5B8A72"], false), f("flowering_fruiting_cycle_2", "Flowering & Fruiting Cycle", "textarea", "", undefined, false), f("pollination_seed_dispersal_3", "Pollination & Seed Dispersal", "textarea", "", undefined, false)]),
+ s("sec_3", "Ecological Role", [f("symbiotic_pollinator_species_0", "Symbiotic & Pollinator Species", "table", "", undefined, false), f("grazer_pest_interactions_1", "Grazer & Pest Interactions", "textarea", "", undefined, false)]),
+ s("sec_4", "Culinary & Alchemical Uses", [f("edible_parts_flavor_0", "Edible Parts & Flavor", "textarea", "", undefined, false), f("medicinal_alchemical_uses_1", "Medicinal & Alchemical Uses", "textarea", "", undefined, false), f("toxicity_rating_2", "Toxicity Rating", "number", "", undefined, false)]),
+ s("sec_5", "Magical Properties & Hazards", [f("has_magical_properties_0", "Has Magical Properties?", "checkbox", "", undefined, false), f("arcane_effects_potency_1", "Arcane Effects & Potency", "textarea", "", undefined, false), f("defenses_hazards_2", "Defenses & Hazards", "textarea", "Thorns, illusions, luring scent, spores", undefined, false)]),
+ s("sec_6", "Harvesting & Lore", [f("harvesting_method_taboos_0", "Harvesting Method & Taboos", "textarea", "", undefined, false), f("cultivation_rarity_1", "Cultivation & Rarity", "select", "", ["Ubiquitous","Common","Uncommon","Rare","Endangered","Mythic"], false), f("folklore_symbolism_2", "Folklore & Symbolism", "textarea", "", undefined, false), f("gallery_3", "Gallery", "gallery", "", undefined, false)])
+] },
+{ id:"sacred_tree", title:"Sacred Tree & Ancient Grove", category:"Life & Ecology", description:"Detail world-trees, heartwoods, druid groves, and living botanical landmarks.", sections:[
+ s("sec_0", "Origin & Myth", [f("tree_or_grove_name_0", "Tree or Grove Name", "text", "", undefined, true), f("location_1", "Location", "relation", "", undefined, false), f("age_planting_myth_2", "Age & Planting Myth", "textarea", "", undefined, false)]),
+ s("sec_1", "Scale & Ecology", [f("canopy_roots_microclimate_0", "Canopy, Roots & Microclimate", "textarea", "", undefined, false), f("image_1", "Image", "image", "", undefined, false)]),
+ s("sec_2", "Arcane Resonance", [f("leyline_or_spiritual_power_0", "Leyline or Spiritual Power", "textarea", "", undefined, false), f("boon_or_blessing_granted_1", "Boon or Blessing Granted", "textarea", "", undefined, false)]),
+ s("sec_3", "Guardians & Rites", [f("guardians_keepers_0", "Guardians & Keepers", "relation", "", undefined, false), f("pilgrimage_rites_taboos_1", "Pilgrimage Rites & Taboos", "textarea", "", undefined, false)])
+] },
+{ id:"weather", title:"Weather & Arcane Climate Phenomenon", category:"Life & Ecology", description:"Design mana-storms, ash-winters, starfalls, and seasonal weather anomalies.", sections:[
+ s("sec_0", "Phenomenon Profile", [f("phenomenon_name_0", "Phenomenon Name", "text", "", undefined, true), f("nature_1", "Nature", "select", "", ["Natural Meteorological","Magical Storm","Planar Bleed","Curse-Driven","Seasonal Tide"], false), f("sensory_description_2", "Sensory Description", "textarea", "", undefined, false)]),
+ s("sec_1", "Triggers & Cycles", [f("omen_warning_signs_0", "Omen / Warning Signs", "textarea", "", undefined, false), f("seasonality_duration_1", "Seasonality & Duration", "text", "", undefined, false)]),
+ s("sec_2", "Impact & Survival", [f("effect_on_magic_travel_crops_0", "Effect on Magic, Travel & Crops", "textarea", "", undefined, false), f("how_locals_shelter_or_exploit_it_1", "How Locals Shelter or Exploit It", "textarea", "", undefined, false)])
+] },
+{ id:"animal", title:"Fantasy Fauna & Beast", category:"Life & Ecology", description:"Naturalist field guide for wildlife, beasts of burden, birds, and aquatic creatures.", sections:[
+ s("sec_0", "Taxonomy & Form", [f("common_name_0", "Common Name", "text", "", undefined, true), f("scientific_scholarly_name_1", "Scientific / Scholarly Name", "text", "", undefined, false), f("classification_2", "Classification", "select", "", ["Mammal","Avian","Reptile","Amphibian","Fish","Invertebrate","Chimeric","Elemental","Spirit-Beast","Other"], false), f("size_weight_3", "Size & Weight", "text", "", undefined, false), f("illustration_4", "Illustration", "image", "", undefined, false), f("anatomy_coat_markings_5", "Anatomy, Coat & Markings", "textarea", "", undefined, false)]),
+ s("sec_1", "Habitat & Range", [f("primary_biome_0", "Primary Biome", "relation", "", undefined, false), f("territory_migration_1", "Territory & Migration", "textarea", "", undefined, false)]),
+ s("sec_2", "Diet & Behavior", [f("trophic_role_diet_0", "Trophic Role & Diet", "select", "", ["Herbivore","Carnivore","Omnivore","Insectivore","Filter Feeder","Scavenger","Mana-Feeder","Lithovore"], false), f("foraging_hunting_tactics_1", "Foraging / Hunting Tactics", "textarea", "", undefined, false), f("social_structure_vocalizations_2", "Social Structure & Vocalizations", "textarea", "", undefined, false)]),
+ s("sec_3", "Lifecycle & Adaptations", [f("reproduction_lifespan_0", "Reproduction & Lifespan", "textarea", "", undefined, false), f("special_adaptations_1", "Special Adaptations", "table", "", undefined, false)]),
+ s("sec_4", "Human Interaction & Lore", [f("domestication_potential_0", "Domestication Potential", "select", "", ["Widely Domesticated","Tameable with Effort","Semi-Feral","Untameable","Sacred/Protected"], false), f("harvestable_materials_uses_1", "Harvestable Materials & Uses", "table", "", undefined, false), f("threat_level_2", "Threat Level", "number", "", undefined, false), f("folklore_heraldic_meaning_3", "Folklore & Heraldic Meaning", "textarea", "", undefined, false)])
+] },
+{ id:"monster", title:"Monster & Aberration", category:"Life & Ecology", description:"Bestiary entry for apex predators, cursed beasts, eldritch horrors, and dungeon terrors.", sections:[
+ s("sec_0", "Classification & Origin", [f("monster_name_0", "Monster Name", "text", "", undefined, true), f("category_1", "Category", "select", "", ["Apex Beast","Aberration","Fey Horror","Fiend","Cursed Construct","Shadowspawn","Chimera","Titan"], false), f("origin_myth_or_creation_2", "Origin Myth or Creation", "textarea", "", undefined, false), f("threat_rating_3", "Threat Rating", "number", "", undefined, false)]),
+ s("sec_1", "Dread Anatomy", [f("illustration_0", "Illustration", "image", "", undefined, false), f("appearance_scent_sounds_1", "Appearance, Scent & Sounds", "textarea", "", undefined, false)]),
+ s("sec_2", "Lair & Hunting", [f("preferred_lair_signs_of_presence_0", "Preferred Lair & Signs of Presence", "textarea", "", undefined, false), f("prey_hunting_strategy_1", "Prey & Hunting Strategy", "textarea", "", undefined, false)]),
+ s("sec_3", "Abilities & Weaknesses", [f("supernatural_abilities_0", "Supernatural Abilities", "table", "", undefined, false), f("weaknesses_silver_bullets_1", "Weaknesses & Silver Bullets", "table", "", undefined, false), f("wards_countermeasures_2", "Wards & Countermeasures", "textarea", "", undefined, false)]),
+ s("sec_4", "Bounty & Folklore", [f("alchemical_harvests_trophies_0", "Alchemical Harvests / Trophies", "table", "", undefined, false), f("famous_encounters_songs_1", "Famous Encounters & Songs", "textarea", "", undefined, false)])
+] },
+{ id:"construct", title:"Undead, Construct & Summoned Entity", category:"Life & Ecology", description:"Golems, clockwork automatons, revenants, liches, and bound planar entities.", sections:[
+ s("sec_0", "Creation & Binding", [f("entity_name_0", "Entity Name", "text", "", undefined, true), f("category_1", "Category", "select", "", ["Corporeal Undead","Spectral Undead","Clay/Stone Golem","Clockwork Automaton","Bound Spirit","Planar Summon"], false), f("creator_binder_2", "Creator / Binder", "relation", "", undefined, false), f("animation_core_or_anchor_3", "Animation Core or Anchor", "textarea", "Phylactery, rune-heart, unfinished oath", undefined, false)]),
+ s("sec_1", "Form & Mechanics", [f("form_sensory_tell_0", "Form & Sensory Tell", "textarea", "", undefined, false), f("will_autonomy_1", "Will & Autonomy", "select", "", ["Mindless Automaton","Literal Instruction-Bound","Semi-Autonomous","Full Sapient Will","Rebellious"], false), f("abilities_immunities_2", "Abilities & Immunities", "table", "", undefined, false)]),
+ s("sec_2", "Limitations & Destruction", [f("banishment_or_destruction_method_0", "Banishment or Destruction Method", "textarea", "", undefined, false)])
+] },
+{ id:"mount", title:"Mount, Warbeast & Pack Animal", category:"Life & Ecology", description:"Detail fantasy steeds, griffons, giant beetles, war-elephants, and caravan beasts.", sections:[
+ s("sec_0", "Breed Profile", [f("breed_name_0", "Breed Name", "text", "", undefined, true), f("base_species_1", "Base Species", "relation", "", undefined, false), f("role_2", "Role", "select", "", ["Cavalry Charger","Courier Steed","Aerial Mount","Aquatic Mount","Heavy Caravan Beast","Noble Showbreed"], false)]),
+ s("sec_1", "Performance & Care", [f("daily_range_speed_0", "Daily Range & Speed", "text", "", undefined, false), f("carry_capacity_endurance_1", "Carry Capacity & Endurance", "text", "", undefined, false), f("feed_stabling_temperament_2", "Feed, Stabling & Temperament", "textarea", "", undefined, false)]),
+ s("sec_2", "Tack & Culture", [f("specialized_harness_armor_0", "Specialized Harness & Armor", "textarea", "", undefined, false), f("cultural_prestige_cost_1", "Cultural Prestige & Cost", "text", "", undefined, false)])
+] },
+{ id:"world_overview", title:"World & Setting Bible", category:"Places & Polities", description:"High-level anchor sheet defining a fictional world's cosmology, premise, and core tensions.", sections:[
+ s("sec_0", "Premise & Atmosphere", [f("world_name_0", "World Name", "text", "", undefined, true), f("genre_tone_1", "Genre & Tone", "text", "", undefined, false), f("elevator_premise_2", "Elevator Premise", "textarea", "", undefined, false)]),
+ s("sec_1", "Geography & Cosmos", [f("world_map_0", "World Map", "image", "", undefined, false), f("continents_seas_skies_1", "Continents, Seas & Skies", "table", "", undefined, false), f("suns_moons_cosmology_2", "Suns, Moons & Cosmology", "textarea", "", undefined, false)]),
+ s("sec_2", "Magic & Technology Baseline", [f("tech_magic_era_0", "Tech & Magic Era", "select", "", ["Mythic Bronze","High Medieval","Renaissance/Flintlock","Arcane Industrial","Post-Apocalyptic Fantasy","Gaslamp","Other"], false), f("governing_metaphysical_rules_1", "Governing Metaphysical Rules", "textarea", "", undefined, false)]),
+ s("sec_3", "Powers & Core Conflicts", [f("major_civilizations_0", "Major Civilizations", "table", "", undefined, false), f("age_defining_conflicts_1", "Age-Defining Conflicts", "textarea", "", undefined, false)])
+] },
+{ id:"country", title:"Kingdom, Nation & Empire", category:"Places & Polities", description:"Sovereignty, borders, demographics, economy, diplomacy, and internal fissures.", sections:[
+ s("sec_0", "Sovereignty & Symbols", [f("nation_name_0", "Nation Name", "text", "", undefined, true), f("government_type_1", "Government Type", "select", "", ["Absolute Monarchy","Constitutional Monarchy","Merchant Republic","Theocracy","Magocracy","Imperial Federation","Tribal Confederacy","City-State League"], false), f("current_ruler_council_2", "Current Ruler / Council", "relation", "", undefined, false), f("banner_heraldry_3", "Banner & Heraldry", "image", "", undefined, false), f("national_color_4", "National Color", "text", "", ["#3F608C"], false)]),
+ s("sec_1", "Demographics & Lands", [f("capital_city_0", "Capital City", "relation", "", undefined, false), f("provinces_holdings_1", "Provinces & Holdings", "table", "", undefined, false), f("population_primary_languages_2", "Population & Primary Languages", "textarea", "", undefined, false)]),
+ s("sec_2", "Economy & Military", [f("core_industries_currency_0", "Core Industries & Currency", "textarea", "", undefined, false), f("standing_forces_defenses_1", "Standing Forces & Defenses", "textarea", "", undefined, false)]),
+ s("sec_3", "Diplomacy & Fault Lines", [f("allies_treaties_0", "Allies & Treaties", "table", "", undefined, false), f("rivals_wars_1", "Rivals & Wars", "table", "", undefined, false), f("internal_unrest_succession_crises_2", "Internal Unrest & Succession Crises", "textarea", "", undefined, false)])
+] },
+{ id:"district", title:"Settlement District & Ward", category:"Places & Polities", description:"Zoom into a distinct quarter, harbor, mage-ward, or slum within a larger city.", sections:[
+ s("sec_0", "Character & Layout", [f("district_name_0", "District Name", "text", "", undefined, true), f("parent_settlement_1", "Parent Settlement", "relation", "", undefined, false), f("architecture_street_vibe_2", "Architecture & Street Vibe", "textarea", "", undefined, false), f("notable_establishments_3", "Notable Establishments", "table", "", undefined, false)]),
+ s("sec_1", "People & Economy", [f("dominant_factions_residents_0", "Dominant Factions & Residents", "textarea", "", undefined, false), f("street_commerce_contraband_1", "Street Commerce & Contraband", "textarea", "", undefined, false)]),
+ s("sec_2", "Tensions & Secrets", [f("curfews_hazards_secrets_0", "Curfews, Hazards & Secrets", "textarea", "", undefined, false)])
+] },
+{ id:"tavern", title:"Tavern, Inn & Guild Shop", category:"Places & Polities", description:"Memorable inns, apothecaries, smithies, and guildhalls with menus, staff, and rumors.", sections:[
+ s("sec_0", "Storefront & Atmosphere", [f("establishment_name_0", "Establishment Name", "text", "", undefined, true), f("type_1", "Type", "select", "", ["Tavern/Inn","Apothecary","Blacksmith","Bookshop/Archive","Guildhall","Black Market Stall","Teahouse","Other"], false), f("location_2", "Location", "relation", "", undefined, false), f("signboard_interior_3", "Signboard & Interior", "textarea", "", undefined, false)]),
+ s("sec_1", "Staff & Clientele", [f("proprietor_0", "Proprietor", "relation", "", undefined, false), f("usual_crowd_1", "Usual Crowd", "textarea", "", undefined, false)]),
+ s("sec_2", "Menu, Stock & Prices", [f("menu_inventory_prices_0", "Menu / Inventory & Prices", "table", "Item or Drink | Price | Notes", undefined, false)]),
+ s("sec_3", "Secrets & Hooks", [f("house_rules_quirks_0", "House Rules & Quirks", "textarea", "", undefined, false), f("backrooms_vaults_rumors_1", "Backrooms, Vaults & Rumors", "textarea", "", undefined, false)])
+] },
+{ id:"stronghold", title:"Stronghold, Castle & Keep", category:"Places & Polities", description:"Fortifications, garrison strength, water/supply resilience, and siege vulnerabilities.", sections:[
+ s("sec_0", "Command & Site", [f("stronghold_name_0", "Stronghold Name", "text", "", undefined, true), f("owner_commander_1", "Owner / Commander", "relation", "", undefined, false), f("strategic_terrain_2", "Strategic Terrain", "textarea", "", undefined, false)]),
+ s("sec_1", "Fortifications & Layout", [f("floor_plan_elevation_0", "Floor Plan / Elevation", "image", "", undefined, false), f("walls_towers_wards_1", "Walls, Towers & Wards", "textarea", "", undefined, false), f("key_chambers_2", "Key Chambers", "table", "", undefined, false)]),
+ s("sec_2", "Garrison & Supply", [f("garrison_size_0", "Garrison Size", "number", "", undefined, false), f("water_granary_siege_endurance_1", "Water, Granary & Siege Endurance", "text", "", undefined, false)]),
+ s("sec_3", "Siege Weaknesses", [f("postern_gates_known_flaws_0", "Postern Gates & Known Flaws", "textarea", "", undefined, false)])
+] },
+{ id:"temple", title:"Temple, Shrine & Sacred Site", category:"Places & Polities", description:"Sanctuaries, pilgrimage shrines, and oracular groves dedicated to gods or spirits.", sections:[
+ s("sec_0", "Sanctuary & Patron", [f("sanctuary_name_0", "Sanctuary Name", "text", "", undefined, true), f("dedicated_to_1", "Dedicated To", "relation", "", undefined, false), f("location_2", "Location", "relation", "", undefined, false)]),
+ s("sec_1", "Architecture & Relics", [f("sacred_architecture_altar_0", "Sacred Architecture & Altar", "textarea", "", undefined, false), f("housed_relics_or_miracles_1", "Housed Relics or Miracles", "table", "", undefined, false)]),
+ s("sec_2", "Clergy & Rites", [f("resident_clergy_caretakers_0", "Resident Clergy & Caretakers", "textarea", "", undefined, false), f("offerings_prayers_taboos_1", "Offerings, Prayers & Taboos", "textarea", "", undefined, false)])
+] },
+{ id:"realm", title:"Plane, Realm & Afterlife", category:"Places & Polities", description:"Feywilds, shadow realms, elemental planes, dreamlands, and halls of the dead.", sections:[
+ s("sec_0", "Cosmological Nature", [f("plane_realm_name_0", "Plane / Realm Name", "text", "", undefined, true), f("plane_type_1", "Plane Type", "select", "", ["Material Prime","Fey/Twilight","Shadow/Umbral","Elemental","Astral/Dream","Celestial","Infernal/Abyssal","Afterlife","Pocket Dimension"], false), f("visual_sensory_essence_2", "Visual & Sensory Essence", "textarea", "", undefined, false)]),
+ s("sec_1", "Physical & Time Laws", [f("governing_laws_magic_shifts_0", "Governing Laws & Magic Shifts", "textarea", "", undefined, false), f("time_flow_ratio_1", "Time Flow Ratio", "text", "e.g., 1 day inside = 1 year outside", undefined, false)]),
+ s("sec_2", "Landscape & Denizens", [f("native_inhabitants_rulers_0", "Native Inhabitants & Rulers", "table", "", undefined, false)]),
+ s("sec_3", "Access & Hazards", [f("entry_methods_keys_0", "Entry Methods & Keys", "textarea", "", undefined, false), f("price_of_lingering_too_long_1", "Price of Lingering Too Long", "textarea", "", undefined, false)])
+] },
+{ id:"portal", title:"Portal, Leyline & Nexus", category:"Places & Polities", description:"Ancient waystones, planar gates, and magical conduits connecting distant realms.", sections:[
+ s("sec_0", "Endpoints & Form", [f("gate_nexus_name_0", "Gate / Nexus Name", "text", "", undefined, true), f("origin_location_1", "Origin Location", "relation", "", undefined, false), f("destination_2", "Destination", "relation", "", undefined, false), f("physical_appearance_3", "Physical Appearance", "textarea", "", undefined, false)]),
+ s("sec_1", "Activation & Costs", [f("key_phrase_or_astral_alignment_0", "Key, Phrase, or Astral Alignment", "textarea", "", undefined, false), f("energy_cost_side_effects_1", "Energy Cost & Side Effects", "textarea", "", undefined, false)]),
+ s("sec_2", "Stability & Guardians", [f("stability_restrictions_0", "Stability & Restrictions", "textarea", "", undefined, false), f("guardians_control_1", "Guardians & Control", "textarea", "", undefined, false)])
+] },
+{ id:"grimoire", title:"Grimoire, Tome & Forbidden Scroll", category:"Objects & Technology", description:"Catalog spellbooks, ancient codices, illuminated manuscripts, and ciphered journals.", sections:[
+ s("sec_0", "Binding & Script", [f("title_0", "Title", "text", "", undefined, true), f("author_scribe_1", "Author / Scribe", "text", "", undefined, false), f("language_script_2", "Language & Script", "relation", "", undefined, false), f("binding_ink_paper_3", "Binding, Ink & Paper", "textarea", "", undefined, false)]),
+ s("sec_1", "Contents & Spells", [f("chapters_contained_spells_0", "Chapters & Contained Spells", "table", "", undefined, false), f("dangerous_knowledge_within_1", "Dangerous Knowledge Within", "textarea", "", undefined, false)]),
+ s("sec_2", "Wards & Provenance", [f("protective_wards_or_ciphers_0", "Protective Wards or Ciphers", "textarea", "", undefined, false), f("current_keeper_copies_known_1", "Current Keeper & Copies Known", "textarea", "", undefined, false)])
+] },
+{ id:"mineral", title:"Mineral, Ore, Gem & Fantasy Material", category:"Objects & Technology", description:"Star-metals, soul-gems, living wood, and alchemical ores.", sections:[
+ s("sec_0", "Properties & Origin", [f("material_name_0", "Material Name", "text", "", undefined, true), f("category_1", "Category", "select", "", ["Metal/Alloy","Gemstone","Crystal","Stone","Timber","Bone/Chitin","Alchemical Salt","Planar Matter"], false), f("appearance_color_2", "Appearance & Color", "text", "", ["#A7C4E0"], false), f("physical_magical_properties_3", "Physical & Magical Properties", "textarea", "", undefined, false)]),
+ s("sec_1", "Extraction & Refining", [f("where_found_mining_hazards_0", "Where Found & Mining Hazards", "textarea", "", undefined, false), f("smelting_shaping_requirements_1", "Smelting / Shaping Requirements", "textarea", "", undefined, false)]),
+ s("sec_2", "Craft & Economy", [f("masterwork_arcane_uses_0", "Masterwork & Arcane Uses", "textarea", "", undefined, false), f("rarity_trade_monopolies_1", "Rarity & Trade Monopolies", "textarea", "", undefined, false)])
+] },
+{ id:"vessel", title:"Vessel, Airship & Caravan Wagon", category:"Objects & Technology", description:"Sailing ships, sky-galleons, subterranean crawlers, and armored merchant wagons.", sections:[
+ s("sec_0", "Vessel Identity", [f("vessel_name_class_0", "Vessel Name / Class", "text", "", undefined, true), f("medium_1", "Medium", "select", "", ["Oceanic Ship","Airship / Skyvessel","Land Caravan","Subterranean","Planar Skiff"], false), f("dimensions_layout_2", "Dimensions & Layout", "textarea", "", undefined, false), f("blueprint_sketch_3", "Blueprint / Sketch", "image", "", undefined, false)]),
+ s("sec_1", "Propulsion & Crew", [f("propulsion_fuel_magic_0", "Propulsion & Fuel / Magic", "textarea", "", undefined, false), f("minimum_full_crew_1", "Minimum & Full Crew", "text", "", undefined, false), f("speed_max_range_2", "Speed & Max Range", "text", "", undefined, false)]),
+ s("sec_2", "Armament, Cargo & History", [f("defenses_weapons_cargo_hold_0", "Defenses, Weapons & Cargo Hold", "textarea", "", undefined, false), f("captain_voyages_1", "Captain & Voyages", "relation", "", undefined, false)])
+] },
+{ id:"inventory", title:"Personal Inventory & Treasure Hoard", category:"Objects & Technology", description:"Track carried gear, pack weight, currency pouches, or vault contents.", sections:[
+ s("sec_0", "Owner & Vault", [f("inventory_hoard_title_0", "Inventory / Hoard Title", "text", "", undefined, true), f("owner_keeper_1", "Owner / Keeper", "relation", "", undefined, false)]),
+ s("sec_1", "Item Ledger", [f("items_ledger_0", "Items Ledger", "table", "Item | Qty | Weight/Notes | Origin", undefined, false)]),
+ s("sec_2", "Wealth & Notes", [f("coinage_gems_0", "Coinage & Gems", "textarea", "", undefined, false), f("hidden_compartments_or_curses_1", "Hidden Compartments or Curses", "textarea", "", undefined, false)])
+] },
+{ id:"naming", title:"Naming Convention & Onomastics", category:"Language & Knowledge", description:"Keep character and place names culturally consistent with patterns, prefixes, and taboos.", sections:[
+ s("sec_0", "Culture & Language", [f("convention_title_0", "Convention Title", "text", "", undefined, true), f("culture_species_1", "Culture / Species", "relation", "", undefined, false)]),
+ s("sec_1", "Personal Names", [f("given_name_roots_examples_0", "Given Name Roots & Examples", "table", "", undefined, false), f("family_patronymic_clan_rules_1", "Family, Patronymic & Clan Rules", "textarea", "", undefined, false), f("earned_titles_epithets_2", "Earned Titles & Epithets", "textarea", "", undefined, false)]),
+ s("sec_2", "Place & Clan Roots", [f("toponym_place_name_prefixes_suffixes_0", "Toponym (Place-Name) Prefixes & Suffixes", "table", "Element | Meaning | Example Place", undefined, false)]),
+ s("sec_3", "Taboos & Rites", [f("name_changes_true_names_taboos_0", "Name Changes, True Names & Taboos", "textarea", "", undefined, false)])
+] },
+{ id:"glossary", title:"Worldbuilding Lexicon & Glossary", category:"Language & Knowledge", description:"Living dictionary entry for in-world slang, titles, proverbs, and untranslatable terms.", sections:[
+ s("sec_0", "Term & Pronunciation", [f("term_phrase_0", "Term / Phrase", "text", "", undefined, true), f("pronunciation_1", "Pronunciation", "text", "", undefined, false), f("source_language_2", "Source Language", "relation", "", undefined, false), f("part_of_speech_category_3", "Part of Speech / Category", "select", "", ["Noun","Verb","Adjective","Title/Honorific","Idiom/Proverb","Curse/Oath","Unit/Measure"], false)]),
+ s("sec_1", "Meaning & Etymology", [f("literal_idiomatic_definition_0", "Literal & Idiomatic Definition", "textarea", "", undefined, false), f("etymology_cultural_context_1", "Etymology & Cultural Context", "textarea", "", undefined, false)]),
+ s("sec_2", "Usage", [f("example_sentences_0", "Example Sentences", "table", "", undefined, false)])
+] },
+{ id:"cuisine", title:"Food, Feast & Tavern Cuisine", category:"Societies", description:"Iconic dishes, spice trades, street food, noble banquets, and fermented brews.", sections:[
+ s("sec_0", "Dish & Origin", [f("dish_or_drink_name_0", "Dish or Drink Name", "text", "", undefined, true), f("origin_culture_region_1", "Origin Culture / Region", "relation", "", undefined, false), f("dish_image_2", "Dish Image", "image", "", undefined, false)]),
+ s("sec_1", "Ingredients & Preparation", [f("ingredients_fantasy_spices_0", "Ingredients & Fantasy Spices", "table", "", undefined, false), f("preparation_cooking_method_1", "Preparation & Cooking Method", "textarea", "", undefined, false), f("taste_aroma_presentation_2", "Taste, Aroma & Presentation", "textarea", "", undefined, false)]),
+ s("sec_2", "Cultural Meaning", [f("social_class_occasion_restrictions_0", "Social Class, Occasion & Restrictions", "textarea", "", undefined, false)])
+] },
+{ id:"clothing", title:"Clothing, Regalia & Fashion", category:"Societies", description:"Everyday garb, court attire, weather-proof cloaks, and rank insignias.", sections:[
+ s("sec_0", "Garment Profile", [f("style_garment_name_0", "Style / Garment Name", "text", "", undefined, true), f("culture_station_1", "Culture / Station", "relation", "", undefined, false), f("reference_sketch_2", "Reference Sketch", "image", "", undefined, false)]),
+ s("sec_1", "Materials & Status", [f("fabrics_dyes_climate_fit_0", "Fabrics, Dyes & Climate Fit", "textarea", "", undefined, false), f("colors_pins_status_markers_1", "Colors, Pins & Status Markers", "textarea", "", undefined, false)]),
+ s("sec_2", "Regional & Ritual Variations", [f("modesty_norms_ceremonial_versions_0", "Modesty Norms & Ceremonial Versions", "textarea", "", undefined, false)])
+] },
+{ id:"economy", title:"Economy, Currency & Guild Trade", category:"Societies", description:"Design coinage systems, exchange rates, trade routes, tariffs, and black markets.", sections:[
+ s("sec_0", "Currency & Standards", [f("economic_system_name_0", "Economic System Name", "text", "", undefined, true), f("governing_nation_region_1", "Governing Nation / Region", "relation", "", undefined, false), f("denominations_exchange_table_2", "Denominations & Exchange Table", "table", "Coin / Unit | Material | Value | Colloquial Nickname", undefined, false), f("what_backs_the_currency_3", "What Backs the Currency", "textarea", "", undefined, false)]),
+ s("sec_1", "Production & Trade Routes", [f("major_exports_imports_0", "Major Exports & Imports", "table", "", undefined, false), f("key_trade_routes_chokepoints_1", "Key Trade Routes & Chokepoints", "textarea", "", undefined, false)]),
+ s("sec_2", "Institutions & Black Market", [f("banks_tax_collectors_guild_monopolies_0", "Banks, Tax Collectors & Guild Monopolies", "textarea", "", undefined, false), f("counterfeiting_smuggling_economy_1", "Counterfeiting & Smuggling Economy", "textarea", "", undefined, false)])
+] },
+{ id:"government", title:"Government, Law & Justice", category:"Societies", description:"Offices of state, courts, trials by magic or combat, codified laws, and corruption.", sections:[
+ s("sec_0", "State Architecture", [f("polity_legal_system_name_0", "Polity / Legal System Name", "text", "", undefined, true), f("government_model_1", "Government Model", "select", "", ["Monarchy","Feudal Council","Republic","Theocracy","Magocracy","Oligarchy","Tribal Assembly","Military Junta","Anarchic Commune"], false), f("key_offices_succession_2", "Key Offices & Succession", "table", "Office | Current Holder | Authority", undefined, false)]),
+ s("sec_1", "Law & Rights", [f("protected_rights_social_privileges_0", "Protected Rights & Social Privileges", "textarea", "", undefined, false), f("major_prohibitions_capital_crimes_1", "Major Prohibitions & Capital Crimes", "table", "", undefined, false)]),
+ s("sec_2", "Courts & Punishments", [f("trial_procedure_magic_evidence_0", "Trial Procedure & Magic Evidence", "textarea", "", undefined, false), f("penalties_prisons_bribery_1", "Penalties, Prisons & Bribery", "textarea", "", undefined, false)])
+] },
+{ id:"military", title:"Military Force & Order of Battle", category:"Societies", description:"Armies, navies, battle-mages, siege trains, recruitment, and supply lines.", sections:[
+ s("sec_0", "Command & Doctrine", [f("force_legion_name_0", "Force / Legion Name", "text", "", undefined, true), f("allegiance_1", "Allegiance", "relation", "", undefined, false), f("banner_insignia_2", "Banner / Insignia", "image", "", undefined, false), f("strategic_doctrine_3", "Strategic Doctrine", "textarea", "", undefined, false)]),
+ s("sec_1", "Units & Capabilities", [f("total_active_strength_0", "Total Active Strength", "number", "", undefined, false), f("branches_special_corps_1", "Branches & Special Corps", "table", "Unit / Corps | Role | Equipment / Beasts / Mages", undefined, false)]),
+ s("sec_2", "Recruitment & Logistics", [f("conscription_training_morale_0", "Conscription, Training & Morale", "textarea", "", undefined, false), f("supply_lines_mounts_siege_gear_1", "Supply Lines, Mounts & Siege Gear", "textarea", "", undefined, false)]),
+ s("sec_3", "Campaign Record", [f("strengths_weaknesses_famous_campaigns_0", "Strengths, Weaknesses & Famous Campaigns", "textarea", "", undefined, false)])
+] },
+{ id:"game", title:"Sports, Duels & Pastimes", category:"Societies", description:"Tavern dice, knightly tournaments, aerial races, and blood-sports.", sections:[
+ s("sec_0", "Overview & Venue", [f("game_or_sport_name_0", "Game or Sport Name", "text", "", undefined, true), f("type_1", "Type", "select", "", ["Board/Tile Game","Dice/Card Game","Combat Tournament","Race","Team Ball/Field Sport","Magical Duel"], false), f("origin_culture_2", "Origin Culture", "relation", "", undefined, false), f("equipment_arena_3", "Equipment & Arena", "textarea", "", undefined, false)]),
+ s("sec_1", "Rules & Scoring", [f("core_rules_win_condition_0", "Core Rules & Win Condition", "textarea", "", undefined, false)]),
+ s("sec_2", "Prestige & Culture", [f("cheating_stakes_social_prestige_0", "Cheating, Stakes & Social Prestige", "textarea", "", undefined, false)])
+] },
+{ id:"medicine", title:"Medicine, Healing & Chirurgery", category:"Societies", description:"How healers diagnose illness, blend mundane surgery with alchemy or magic, and navigate taboos.", sections:[
+ s("sec_0", "Medical Philosophy", [f("tradition_practice_name_0", "Tradition / Practice Name", "text", "", undefined, true), f("theory_of_disease_anatomy_1", "Theory of Disease & Anatomy", "textarea", "", undefined, false)]),
+ s("sec_1", "Practitioners & Tools", [f("healer_orders_training_0", "Healer Orders & Training", "textarea", "", undefined, false), f("surgical_tools_poultices_charms_1", "Surgical Tools, Poultices & Charms", "table", "", undefined, false)]),
+ s("sec_2", "Treatments & Limits", [f("what_can_cannot_be_healed_0", "What Can & Cannot Be Healed", "textarea", "", undefined, false), f("access_cost_taboos_e_g_necromancy_1", "Access, Cost & Taboos (e.g. Necromancy)", "textarea", "", undefined, false)])
+] },
+{ id:"magic", title:"Magic System", category:"Magic & Metaphysics", description:"Define metaphysical laws, casting mechanics, true costs, hard limits, and societal fallout.", sections:[
+ s("sec_0", "Core Source & Metaphysics", [f("system_name_0", "System Name", "text", "", undefined, true), f("system_style_1", "System Style", "select", "", ["Hard Rule-Bound","Soft Mythic","Hybrid","Pact/Patron-Based","Alchemical/Material","Innate Bloodline","Linguistic/Runic"], false), f("power_source_2", "Power Source", "textarea", "Starlight, life-force, ancestral memory, planar bleed, vows", undefined, false), f("visual_sensory_signature_3", "Visual & Sensory Signature", "textarea", "", undefined, false), f("sigil_diagram_4", "Sigil / Diagram", "image", "", undefined, false)]),
+ s("sec_1", "Mechanics & Activation", [f("how_magic_is_invoked_0", "How Magic Is Invoked", "textarea", "", undefined, false), f("focuses_catalysts_components_1", "Focuses, Catalysts & Components", "table", "", undefined, false)]),
+ s("sec_2", "Costs, Drain & Catalysts", [f("immediate_cost_exhaustion_0", "Immediate Cost & Exhaustion", "textarea", "", undefined, false), f("long_term_corruption_or_consequences_1", "Long-Term Corruption or Consequences", "textarea", "", undefined, false)]),
+ s("sec_3", "Hard Limits & Paradoxes", [f("what_magic_cannot_do_hard_limits_0", "What Magic Cannot Do (Hard Limits)", "table", "", undefined, false), f("known_paradoxes_loopholes_exceptions_1", "Known Paradoxes, Loopholes & Exceptions", "textarea", "", undefined, false)]),
+ s("sec_4", "Training & Schools", [f("schools_disciplines_ranks_0", "Schools, Disciplines & Ranks", "table", "Discipline | Focus | Typical Rank/Title", undefined, false), f("notable_practitioners_1", "Notable Practitioners", "relation", "", undefined, false)]),
+ s("sec_5", "Society, Law & History", [f("legal_regulation_public_fear_reverence_0", "Legal Regulation & Public Fear/Reverence", "textarea", "", undefined, false), f("origin_myth_historical_cataclysms_1", "Origin Myth & Historical Cataclysms", "textarea", "", undefined, false)])
+] },
+{ id:"technology", title:"Technology & Magitech System", category:"Magic & Metaphysics", description:"Clockwork engines, rune-powered rails, alchemy guns, and uneven technological access.", sections:[
+ s("sec_0", "Principles & Power", [f("technology_system_name_0", "Technology / System Name", "text", "", undefined, true), f("energy_fuel_source_1", "Energy / Fuel Source", "textarea", "", undefined, false), f("schematic_diagram_2", "Schematic / Diagram", "image", "", undefined, false)]),
+ s("sec_1", "Applications", [f("civilian_industrial_uses_0", "Civilian & Industrial Uses", "textarea", "", undefined, false), f("military_transport_uses_1", "Military & Transport Uses", "textarea", "", undefined, false)]),
+ s("sec_2", "Access, Hazards & History", [f("who_controls_it_uneven_access_0", "Who Controls It & Uneven Access", "textarea", "", undefined, false), f("limitations_pollution_breakdowns_1", "Limitations, Pollution & Breakdowns", "textarea", "", undefined, false)])
+] },
+{ id:"world_rules", title:"World Rules & Metaphysical Laws", category:"Magic & Metaphysics", description:"Record absolute truths of your setting—gravity, death, souls, resurrection, or fate.", sections:[
+ s("sec_0", "Law Definition", [f("rule_constant_name_0", "Rule / Constant Name", "text", "", undefined, true), f("scope_1", "Scope", "select", "", ["Cosmic/Universal","Planar","Regional","Species-Specific","Historical Era"], false), f("exact_statement_of_law_2", "Exact Statement of Law", "textarea", "", undefined, false)]),
+ s("sec_1", "Observable Impact", [f("observable_effects_on_daily_life_0", "Observable Effects on Daily Life", "textarea", "", undefined, false)]),
+ s("sec_2", "Exceptions & Lore", [f("known_exceptions_or_myths_0", "Known Exceptions or Myths", "textarea", "", undefined, false), f("related_systems_1", "Related Systems", "relation", "", undefined, false)])
+] },
+{ id:"belief", title:"Religion & Belief System", category:"Belief & Myth", description:"Complete theology sheet: cosmology, pantheon, clergy, sacraments, sacred texts, afterlife, and schisms.", sections:[
+ s("sec_0", "Cosmology & Core Tenets", [f("faith_philosophy_name_0", "Faith / Philosophy Name", "text", "", undefined, true), f("structure_1", "Structure", "select", "", ["Monotheistic","Polytheistic Pantheon","Dualistic","Animist/Spirit-Veneration","Ancestor Worship","Non-Theistic Philosophy","Mystery Cult"], false), f("creation_myth_worldview_2", "Creation Myth & Worldview", "textarea", "", undefined, false), f("core_virtues_commandments_3", "Core Virtues & Commandments", "table", "", undefined, false)]),
+ s("sec_1", "Sacred Figures & Pantheon", [f("central_deities_spirits_0", "Central Deities / Spirits", "table", "", undefined, false), f("patron_high_deity_1", "Patron / High Deity", "relation", "", undefined, false)]),
+ s("sec_2", "Clergy & Hierarchy", [f("clergy_ranks_governance_0", "Clergy Ranks & Governance", "table", "Title | Duties | Vestments", undefined, false), f("sects_monastic_orders_templars_1", "Sects, Monastic Orders & Templars", "table", "", undefined, false)]),
+ s("sec_3", "Rituals, Sacraments & Taboos", [f("key_sacraments_prayers_rites_0", "Key Sacraments, Prayers & Rites", "textarea", "", undefined, false), f("dietary_speech_moral_taboos_1", "Dietary, Speech & Moral Taboos", "table", "", undefined, false)]),
+ s("sec_4", "Sacred Texts & Symbols", [f("holy_texts_liturgical_language_0", "Holy Texts & Liturgical Language", "textarea", "", undefined, false), f("sacred_symbol_1", "Sacred Symbol", "image", "", undefined, false)]),
+ s("sec_5", "Afterlife & Heresies", [f("view_of_death_the_afterlife_0", "View of Death & the Afterlife", "textarea", "", undefined, false), f("heresies_schisms_political_reach_1", "Heresies, Schisms & Political Reach", "textarea", "", undefined, false)])
+] },
+{ id:"secret_society", title:"Secret Society, Cult & Conspiracy", category:"Belief & Myth", description:"Hidden cabals, heretical cults, spy rings, and shadow courts.", sections:[
+ s("sec_0", "Cover & True Purpose", [f("society_cult_name_0", "Society / Cult Name", "text", "", undefined, true), f("public_front_cover_identity_1", "Public Front / Cover Identity", "textarea", "", undefined, false), f("secret_doctrine_endgame_2", "Secret Doctrine & Endgame", "textarea", "", undefined, false)]),
+ s("sec_1", "Initiation & Ciphers", [f("initiation_rituals_oaths_0", "Initiation Rituals & Oaths", "textarea", "", undefined, false), f("recognition_signs_passphrases_ciphers_1", "Recognition Signs, Passphrases & Ciphers", "textarea", "", undefined, false)]),
+ s("sec_2", "Cells, Patrons & Rivals", [f("inner_circle_patrons_0", "Inner Circle & Patrons", "relation", "", undefined, false), f("known_cells_counter_hunters_1", "Known Cells & Counter-Hunters", "textarea", "", undefined, false)])
+] },
+{ id:"celestial", title:"Celestial Body, Moon & Constellation", category:"History & Time", description:"Suns, twin moons, wandering comets, constellations, and their tidal/magical influence.", sections:[
+ s("sec_0", "Astronomical Profile", [f("body_constellation_name_0", "Body / Constellation Name", "text", "", undefined, true), f("type_1", "Type", "select", "", ["Sun/Star","Moon","Planet","Comet","Constellation","Ring/Nebula","Planar Beacon"], false), f("color_visual_appearance_2", "Color & Visual Appearance", "text", "", ["#E6D5F7"], false), f("visual_sketch_3", "Visual Sketch", "image", "", undefined, false)]),
+ s("sec_1", "Cycles & Eclipses", [f("orbital_period_phases_0", "Orbital Period & Phases", "textarea", "", undefined, false), f("eclipses_rare_conjunctions_1", "Eclipses & Rare Conjunctions", "textarea", "", undefined, false)]),
+ s("sec_2", "Arcane & Cultural Meaning", [f("effects_on_tides_magic_monsters_0", "Effects on Tides, Magic & Monsters", "textarea", "", undefined, false), f("astrology_navigation_myths_1", "Astrology, Navigation & Myths", "textarea", "", undefined, false)])
+] },
+{ id:"calendar_system", title:"Calendar & Timekeeping System", category:"History & Time", description:"Design months, week lengths, intercalary festivals, lunar ties, and era reckoning.", sections:[
+ s("sec_0", "Calendar Structure", [f("calendar_name_0", "Calendar Name", "text", "", undefined, true), f("culture_region_1", "Culture / Region", "relation", "", undefined, false), f("days_in_year_2", "Days in Year", "number", "", undefined, false), f("days_in_week_weekday_names_3", "Days in Week & Weekday Names", "text", "", undefined, false)]),
+ s("sec_1", "Months & Seasons", [f("months_table_0", "Months Table", "table", "Month | Days | Season | Associated Meaning", undefined, false), f("intercalary_out_of_time_days_1", "Intercalary / Out-of-Time Days", "textarea", "", undefined, false), f("moon_cycle_alignment_2", "Moon Cycle Alignment", "textarea", "", undefined, false)]),
+ s("sec_2", "Eras & Leap Rules", [f("current_era_year_zero_event_0", "Current Era & Year Zero Event", "textarea", "", undefined, false), f("leap_year_drift_corrections_1", "Leap-Year & Drift Corrections", "textarea", "", undefined, false)])
+] },
+{ id:"continuity", title:"Continuity & Lore Tracker", category:"History & Time", description:"Keep canon tight across books: track established facts, first mentions, and constraints.", sections:[
+ s("sec_0", "Canon Fact", [f("canon_fact_title_0", "Canon Fact Title", "text", "", undefined, true), f("canonical_rule_fact_1", "Canonical Rule / Fact", "textarea", "", undefined, false)]),
+ s("sec_1", "Dependencies & Verification", [f("first_mentioned_in_0", "First Mentioned In", "relation", "", undefined, false), f("dependent_scenes_or_characters_1", "Dependent Scenes or Characters", "table", "", undefined, false), f("verification_status_2", "Verification Status", "select", "", ["Canon Locked","Draft Assumption","Needs Revision","Retconned"], false)])
+] },
+{ id:"quest", title:"Quest, Mystery & Adventure Arc", category:"Plot & Writing", description:"Structure quests, investigations, or heist arcs with hooks, clues, twists, and outcomes.", sections:[
+ s("sec_0", "Hook & Stakes", [f("quest_arc_title_0", "Quest / Arc Title", "text", "", undefined, true), f("patron_or_inciting_hook_1", "Patron or Inciting Hook", "textarea", "", undefined, false), f("key_locations_factions_2", "Key Locations & Factions", "relation", "", undefined, false), f("stakes_ticking_clock_3", "Stakes & Ticking Clock", "textarea", "", undefined, false)]),
+ s("sec_1", "Leads, Clues & Red Herrings", [f("clue_trail_red_herrings_0", "Clue Trail & Red Herrings", "table", "Clue | Where Found | True Meaning", undefined, false)]),
+ s("sec_2", "Encounters & Outcomes", [f("major_twists_obstacles_0", "Major Twists & Obstacles", "table", "", undefined, false), f("possible_resolutions_fallout_1", "Possible Resolutions & Fallout", "textarea", "", undefined, false)])
+] },
+{ id:"novel", title:"Novel Project", category:"Plot & Writing", description:"Full novel planning bible covering premise, cast, world, and revision.", sections:[
+ s("sec_0", "Premise & Cast", [f("premise_0", "Premise", "textarea", "", undefined, true), f("genre_audience_1", "Genre & Audience", "text", "", undefined, false), f("themes_2", "Themes", "table", "", undefined, false), f("synopsis_3", "Synopsis", "textarea", "", undefined, false), f("main_cast_4", "Main Cast", "relation", "", undefined, false), f("primary_world_5", "Primary World", "relation", "", undefined, false)]),
+ s("sec_1", "Structure & Revision", [f("outline_0", "Outline", "textarea", "", undefined, false), f("revision_plan_1", "Revision Plan", "textarea", "", undefined, false)])
+] },
+{ id:"series", title:"Series Bible", category:"Plot & Writing", description:"Multi-volume arc, recurring cast, and continuity rules.", sections:[
+ s("sec_0", "Series Arc", [f("series_premise_0", "Series Premise", "textarea", "", undefined, true), f("core_themes_1", "Core Themes", "table", "", undefined, false)]),
+ s("sec_1", "Volumes & Continuity", [f("volume_list_0", "Volume List", "table", "Book | Title | Core Arc | Status", undefined, false), f("long_arc_1", "Long Arc", "textarea", "", undefined, false), f("continuity_rules_open_threads_2", "Continuity Rules & Open Threads", "textarea", "", undefined, false)])
+] },
+{ id:"standalone", title:"Standalone Story", category:"Plot & Writing", description:"Complete standalone fiction outline.", sections:[
+ s("sec_0", "Story Core", [f("premise_0", "Premise", "textarea", "", undefined, true), f("pov_tense_1", "POV & Tense", "text", "", undefined, false), f("setting_2", "Setting", "relation", "", undefined, false)]),
+ s("sec_1", "Conflict & Ending", [f("central_conflict_0", "Central Conflict", "textarea", "", undefined, false), f("structure_ending_1", "Structure & Ending", "textarea", "", undefined, false)])
+] },
+{ id:"bookplan", title:"Book Plan", category:"Plot & Writing", description:"Chapter-by-chapter book blueprint.", sections:[
+ s("sec_0", "Overview", [f("logline_0", "Logline", "text", "", undefined, true), f("summary_1", "Summary", "textarea", "", undefined, false)]),
+ s("sec_1", "Chapters & Subplots", [f("chapter_outline_0", "Chapter Outline", "table", "Chapter | POV | Goal | Turn", undefined, false), f("subplots_revision_notes_1", "Subplots & Revision Notes", "textarea", "", undefined, false)])
+] },
+{ id:"chapter", title:"Chapter Plan", category:"Plot & Writing", description:"Plan individual chapter beats and continuity.", sections:[
+ s("sec_0", "Chapter Beats", [f("purpose_0", "Purpose", "textarea", "", undefined, true), f("pov_character_1", "POV Character", "relation", "", undefined, false), f("opening_hook_2", "Opening Hook", "textarea", "", undefined, false), f("scene_beats_3", "Scene Beats", "table", "", undefined, false), f("chapter_ending_continuity_4", "Chapter Ending & Continuity", "textarea", "", undefined, false)])
+] },
+{ id:"scene", title:"Scene Sheet", category:"Plot & Writing", description:"Track POV, goal, conflict, disaster, and outcome for a scene.", sections:[
+ s("sec_0", "Scene Mechanics", [f("pov_setting_0", "POV & Setting", "text", "", undefined, true), f("scene_goal_1", "Scene Goal", "textarea", "", undefined, false), f("conflict_obstacles_2", "Conflict & Obstacles", "textarea", "", undefined, false), f("outcome_shift_3", "Outcome / Shift", "textarea", "", undefined, false), f("continuity_world_details_4", "Continuity & World Details", "textarea", "", undefined, false)])
+] },
+{ id:"outline", title:"Plot Outline", category:"Plot & Writing", description:"Classic narrative outline.", sections:[
+ s("sec_0", "Structure", [f("premise_0", "Premise", "textarea", "", undefined, true), f("inciting_incident_1", "Inciting Incident", "textarea", "", undefined, false), f("turning_points_2", "Turning Points", "table", "", undefined, false), f("climax_resolution_3", "Climax & Resolution", "textarea", "", undefined, false)])
+] },
+{ id:"threeact", title:"Three-Act Outline", category:"Plot & Writing", description:"Act I, Act II, Act III beat sheet.", sections:[
+ s("sec_0", "Three Acts", [f("act_one_setup_break_0", "Act One (Setup & Break)", "textarea", "", undefined, false), f("act_two_confrontation_midpoint_1", "Act Two (Confrontation & Midpoint)", "textarea", "", undefined, false), f("act_three_climax_denouement_2", "Act Three (Climax & Denouement)", "textarea", "", undefined, false)])
+] },
+{ id:"hero", title:"Hero's Journey", category:"Plot & Writing", description:"Mythic monomyth stages from Ordinary World to Return.", sections:[
+ s("sec_0", "Departure", [f("ordinary_world_call_0", "Ordinary World & Call", "textarea", "", undefined, false), f("crossing_the_threshold_1", "Crossing the Threshold", "textarea", "", undefined, false)]),
+ s("sec_1", "Initiation & Return", [f("trials_allies_enemies_0", "Trials, Allies & Enemies", "textarea", "", undefined, false), f("ordeal_reward_return_1", "Ordeal, Reward & Return", "textarea", "", undefined, false)])
+] },
+{ id:"savecat", title:"Save the Cat Beat Sheet", category:"Plot & Writing", description:"15-beat commercial pacing sheet.", sections:[
+ s("sec_0", "Act I", [f("opening_image_theme_stated_0", "Opening Image & Theme Stated", "textarea", "", undefined, false), f("catalyst_debate_1", "Catalyst & Debate", "textarea", "", undefined, false)]),
+ s("sec_1", "Act II & III", [f("midpoint_bad_guys_close_in_0", "Midpoint & Bad Guys Close In", "textarea", "", undefined, false), f("all_is_lost_finale_1", "All Is Lost & Finale", "textarea", "", undefined, false)])
+] },
+{ id:"poem", title:"Poem & Bardic Verse", category:"Plot & Writing", description:"Craft in-world ballads, epic verse, or personal poetry.", sections:[
+ s("sec_0", "Form & Craft", [f("poetic_form_meter_0", "Poetic Form / Meter", "text", "", undefined, false), f("theme_imagery_1", "Theme & Imagery", "textarea", "", undefined, false)]),
+ s("sec_1", "Draft", [f("draft_stanzas_0", "Draft & Stanzas", "textarea", "", undefined, false)])
+] },
+{ id:"shortstory", title:"Short Story", category:"Plot & Writing", description:"Compact story sheet from hook to twist.", sections:[
+ s("sec_0", "Story Sheet", [f("hook_0", "Hook", "text", "", undefined, true), f("character_setting_1", "Character & Setting", "textarea", "", undefined, false), f("conflict_climax_2", "Conflict & Climax", "textarea", "", undefined, false), f("resolution_3", "Resolution", "textarea", "", undefined, false)])
+] },
+{ id:"journal", title:"Journal Entry", category:"Plot & Writing", description:"Reflective daily writing or in-character diary entry.", sections:[
+ s("sec_0", "Entry", [f("date_0", "Date", "date", "", undefined, false), f("mood_1", "Mood", "text", "", undefined, false), f("events_reflections_2", "Events & Reflections", "textarea", "", undefined, false)])
+] },
+{ id:"research", title:"Research & Lore Source", category:"Research & Reference", description:"Track historical inspirations, references, quotes, and citations.", sections:[
+ s("sec_0", "Source & Summary", [f("research_question_0", "Research Question", "text", "", undefined, true), f("source_citation_1", "Source / Citation", "textarea", "", undefined, false), f("key_findings_quotes_2", "Key Findings & Quotes", "textarea", "", undefined, false), f("relevance_to_world_3", "Relevance to World", "textarea", "", undefined, false)])
+] },
+{ id:"map", title:"Map Reference Sheet", category:"Places & Polities", description:"Document map scale, key routes, borders, and legend notes.", sections:[
+ s("sec_0", "Cartography", [f("area_scale_0", "Area & Scale", "text", "", undefined, true), f("map_image_1", "Map Image", "image", "", undefined, false), f("landmarks_borders_routes_2", "Landmarks, Borders & Routes", "textarea", "", undefined, false), f("cartographer_s_bias_or_errors_3", "Cartographer's Bias or Errors", "textarea", "", undefined, false)])
+] },
+{ id:"floorplan", title:"Floor Plan & Interior Sheet", category:"Places & Polities", description:"Map levels, rooms, hidden passages, and guard rotations.", sections:[
+ s("sec_0", "Layout", [f("building_site_0", "Building / Site", "text", "", undefined, true), f("floor_plan_image_1", "Floor Plan Image", "image", "", undefined, false), f("levels_room_key_2", "Levels & Room Key", "table", "Level | Room | Purpose | Secret", undefined, false), f("entrances_exits_escape_routes_3", "Entrances, Exits & Escape Routes", "textarea", "", undefined, false)])
+] },
 { id:"custom", title:"Custom Wiki Article",category:"Custom",description:"A blank, user-owned article structure. Add, remove, rename and reorder sections and fields freely.",sections:[
  s("overview","Overview",[f("summary","Summary","textarea"),f("image","Cover image","image"),f("tags","Tags","tags")]),
  s("details","Details",[f("details","Custom details","textarea")]),
@@ -321,5 +613,5 @@ export const WIKI_TEMPLATES: WikiTemplate[] = [
 ]}
 ];
 
-export const WIKI_TEMPLATE_CATEGORIES = ["All","People","Life & Ecology","Places & Polities","Belief & Myth","Societies","Language & Knowledge","Magic & Metaphysics","Objects & Technology","History & Time","Custom"];
+export const WIKI_TEMPLATE_CATEGORIES = ["All","People","Life & Ecology","Places & Polities","Belief & Myth","Societies","Language & Knowledge","Magic & Metaphysics","Objects & Technology","History & Time","Plot & Writing","Research & Reference","Custom"];
 export function getWikiTemplate(id: string): WikiTemplate | undefined { return WIKI_TEMPLATES.find(t => t.id === id); }
